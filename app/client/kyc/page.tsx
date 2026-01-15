@@ -195,7 +195,10 @@ export default function KYCPage() {
                                 className="premium-button w-full py-6 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
                             >
                                 {isSubmitting ? (
-                                    <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    <div className="flex items-center justify-center gap-3">
+                                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                        <span>Traitement sécurisé...</span>
+                                    </div>
                                 ) : (
                                     <>
                                         <span>Procéder à la soumission</span>

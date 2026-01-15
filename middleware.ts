@@ -83,9 +83,22 @@ export async function middleware(request: NextRequest) {
     const isInactive = userData?.is_account_active === false
     const isPendingPage = path === '/client/pending-activation' || path === '/client/kyc'
 
-    // Block inactive clients from everything except pending page, kyc and auth
+    // For inactive clients, check if they have KYC documents
     if (isClient && isInactive && !isPendingPage && path.startsWith('/client')) {
-        return NextResponse.redirect(new URL('/client/pending-activation', request.url))
+        // Check if user has submitted KYC documents
+        const { data: kycDocs } = await supabase
+            .from('kyc_submissions')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1)
+
+        // If no KYC documents, redirect to KYC submission page
+        // If KYC documents exist, redirect to pending-activation to show analysis status
+        const redirectPath = kycDocs && kycDocs.length > 0
+            ? '/client/pending-activation'
+            : '/client/kyc'
+
+        return NextResponse.redirect(new URL(redirectPath, request.url))
     }
 
     return response

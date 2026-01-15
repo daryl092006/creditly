@@ -63,7 +63,10 @@ function ForgotPasswordForm() {
                         className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
                         {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            <div className="flex items-center justify-center gap-3">
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                <span>Envoi en cours...</span>
+                            </div>
                         ) : (
                             <>
                                 <span className="font-black uppercase tracking-widest text-xs">Envoyer le lien</span>
