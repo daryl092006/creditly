@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { ArrowRight, View, ViewOff } from '@carbon/icons-react'
-import { signup } from '../actions'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -40,7 +39,32 @@ function SignupForm() {
                     </div>
                 )}
 
-                <form action={signup} onSubmit={() => setIsSubmitting(true)} className="space-y-8">
+                <form onSubmit={async (e) => {
+                    e.preventDefault()
+                    setIsSubmitting(true)
+
+                    try {
+                        const formData = new FormData(e.currentTarget)
+                        const response = await fetch('/api/auth/signup', {
+                            method: 'POST',
+                            body: formData,
+                        })
+
+                        const data = await response.json()
+
+                        if (!response.ok) {
+                            window.location.href = `/auth/signup?error=${encodeURIComponent(data.error)}`
+                            return
+                        }
+
+                        // Success - redirect to login with message
+                        window.location.href = `/auth/login?message=${encodeURIComponent(data.message)}`
+                    } catch (error) {
+                        window.location.href = `/auth/signup?error=${encodeURIComponent('Erreur lors de l\'inscription')}`
+                    } finally {
+                        setIsSubmitting(false)
+                    }
+                }} className="space-y-8">
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom</label>
