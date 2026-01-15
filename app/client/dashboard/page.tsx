@@ -92,11 +92,11 @@ export default async function ClientDashboard() {
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 animate-fade-in">
                             <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Privileged Member Access</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Accès Membre Privilégié</span>
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
-                            Control <br />
-                            <span className="premium-gradient-text">Center.</span>
+                            Centre de <br />
+                            <span className="premium-gradient-text">Contrôle.</span>
                         </h1>
                         <p className="text-slate-500 font-bold text-lg italic">
                             Bonjour <span className="text-white not-italic">{profile?.prenom}</span>. Voici l&apos;état global de votre patrimoine.
@@ -118,7 +118,7 @@ export default async function ClientDashboard() {
                 <div className="mb-16">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent"></div>
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 whitespace-nowrap bg-slate-950 px-4">Live Status Tracking</h2>
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 whitespace-nowrap bg-slate-950 px-4">Suivi de Statut en Direct</h2>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent"></div>
                     </div>
 
@@ -211,8 +211,8 @@ export default async function ClientDashboard() {
                             <div className="virtual-card border-slate-800 shadow-2xl hover:scale-[1.02] transition-transform duration-500 group">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none">Global Identity</p>
-                                        <p className="text-2xl font-black text-white italic uppercase tracking-tighter">Verified Client</p>
+                                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none">Identité Globale</p>
+                                        <p className="text-2xl font-black text-white italic uppercase tracking-tighter">Client Vérifié</p>
                                     </div>
                                     <div className="w-12 h-12 bg-white/5 backdrop-blur-xl rounded-2xl flex items-center justify-center text-blue-400 border border-white/10 group-hover:rotate-12 transition-transform">
                                         <CheckmarkOutline size={24} />
@@ -226,7 +226,7 @@ export default async function ClientDashboard() {
                                             <p className="text-sm font-bold text-white uppercase">{profile?.prenom} {profile?.nom}</p>
                                         </div>
                                         <div className="px-5 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest italic">
-                                            Active Priority
+                                            Priorité Active
                                         </div>
                                     </div>
                                 </div>
@@ -250,7 +250,7 @@ export default async function ClientDashboard() {
                                         {activeSub ? activeSub.abonnements.name : 'Aucun Plan'}
                                     </h3>
                                     <Link href="/client/subscriptions" className="inline-flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:gap-3 transition-all">
-                                        Upgrade Priority <Flash size={14} />
+                                        Améliorer le Plan <Flash size={14} />
                                     </Link>
                                 </div>
                             </div>
@@ -346,13 +346,18 @@ export default async function ClientDashboard() {
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-blue-400 transition-colors">Base de Savoir</span>
                                     <Help size={16} className="text-slate-700" />
                                 </button>
-                                <button className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item">
+                                <Link
+                                    href="https://wa.me/14383906281"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item"
+                                >
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-emerald-400 transition-colors">Chat Direct</span>
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
                                     </div>
                                     <Chat size={16} className="text-slate-700" />
-                                </button>
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -397,10 +402,15 @@ export default async function ClientDashboard() {
                                 Une question ? Nos experts vous accompagnent avec la réactivité exigée par votre statut.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <button className="premium-button px-10">
+                                <Link
+                                    href="https://wa.me/14383906281"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="premium-button px-10"
+                                >
                                     <Chat size={20} />
                                     <span>Chat Live</span>
-                                </button>
+                                </Link>
                                 <button className="glass-panel bg-slate-800/50 border-slate-700 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3">
                                     <Help size={20} className="text-blue-500" />
                                     Base de Connaissances

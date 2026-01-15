@@ -33,7 +33,7 @@ export default async function ClientLoansPage() {
                     <div className="space-y-4">
                         <Link href="/client/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-blue-400 transition-colors group">
                             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            Operations Center
+                            Centre d&apos;Opérations
                         </Link>
                         <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.9]">
                             Suivi <br /><span className="premium-gradient-text uppercase">Financier.</span>

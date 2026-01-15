@@ -63,7 +63,7 @@ export async function signup(formData: FormData) {
         if (!authData.user) throw new Error("Erreur lors de la création de l'utilisateur")
 
         revalidatePath('/', 'layout')
-        redirect('/auth/login?message=Compte créé avec succès ! Connectez-vous pour finaliser votre profil.')
+        redirect('/auth/login?message=Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception pour activer votre compte.')
     } catch (error) {
         if ((error as any).digest?.startsWith('NEXT_REDIRECT')) throw error
         redirect(`/auth/signup?error=${encodeURIComponent((error as Error).message || 'Erreur lors de l&apos;inscription')}`)

@@ -36,7 +36,7 @@ export default function Home() {
                                 href="/auth/signup"
                                 className="premium-button scale-90 sm:scale-100"
                             >
-                                Infiltration
+                                Commencer
                             </Link>
                         </div>
                     </div>
@@ -138,12 +138,11 @@ export default function Home() {
                             <p className="text-slate-500 font-bold italic uppercase text-[10px] tracking-[0.3em]">Des solutions adaptées à chaque échelle de croissance</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {[
-                                { name: 'Basic', price: '500', cap: '10,000', duration: '7 jours', perks: ['1 prêt simultané', 'Support Standard'] },
-                                { name: 'Silver', price: '1,000', cap: '25,000', duration: '10 jours', perks: ['2 prêts simultanés', 'Support Prioritaire'], popular: true },
-                                { name: 'Gold', price: '1,500', cap: '50,000', duration: '15 jours', perks: ['3 prêts simultanés', 'Validation Express'] },
-                                { name: 'Platinum', price: '3,000', cap: '100,000', duration: '20 jours', perks: ['5 prêts simultanés', 'Concierge Dédié'] }
+                                { name: 'Basic', price: '2,500', cap: '10,000', duration: '7 jours', perks: ['1 prêt mensuel', 'Support Standard'] },
+                                { name: 'Silver', price: '6,250', cap: '25,000', duration: '10 jours', perks: ['2 prêts mensuels', 'Support Prioritaire'], popular: true },
+                                { name: 'Gold', price: '12,500', cap: '50,000', duration: '15 jours', perks: ['3 prêts mensuels', 'Validation Express'] },
                             ].map((tier, i) => (
                                 <div key={i} className={`glass-panel p-12 flex flex-col relative overflow-hidden ${tier.popular ? 'border-blue-500/30 ring-1 ring-blue-500/20 scale-105 z-10' : 'bg-slate-900/30'}`}>
                                     {tier.popular && (
@@ -273,9 +272,9 @@ export default function Home() {
                             <div>
                                 <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-8 italic">Compagnie</h4>
                                 <ul className="space-y-4">
-                                    {['À propos', 'Manifeste', 'Support'].map(l => (
-                                        <li key={l}><Link href="#" className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">{l}</Link></li>
-                                    ))}
+                                    <li><Link href="#" className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">À propos</Link></li>
+                                    <li><Link href="#" className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">Manifeste</Link></li>
+                                    <li><Link href="https://wa.me/14383906281" target="_blank" rel="noopener noreferrer" className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">Support</Link></li>
                                 </ul>
                             </div>
                         </div>

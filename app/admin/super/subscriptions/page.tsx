@@ -17,7 +17,7 @@ export default async function AdminSubscriptionsPage() {
                     <div>
                         <Link href="/admin/super" className="text-slate-500 font-bold hover:text-blue-600 transition-colors flex items-center gap-2 mb-4 group">
                             <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Retour au Control Center
+                            Retour au Centre de Contrôle
                         </Link>
                         <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase">Validation Abonnements</h1>
                         <p className="text-slate-500 font-bold mt-2 italic leading-relaxed">Vérifiez les preuves de paiement et activez les comptes</p>

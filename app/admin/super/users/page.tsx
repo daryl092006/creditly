@@ -24,7 +24,7 @@ export default async function UserManagementPage() {
                     <div>
                         <Link href="/admin/super" className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white hover:border-white/10 transition-all mb-8 group">
                             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            Control Center
+                            Centre de Contrôle
                         </Link>
                         <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">Gouvernance.</h1>
                         <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">

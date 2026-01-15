@@ -26,10 +26,10 @@ export default async function SubscriptionsPage() {
                     <div className="space-y-6">
                         <Link href="/client/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-blue-400 transition-colors group">
                             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            Operations Center
+                            Centre d&apos;Opérations
                         </Link>
                         <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
-                            Elite <br /><span className="premium-gradient-text uppercase">Privileges.</span>
+                            Elite <br /><span className="premium-gradient-text uppercase">Privilèges.</span>
                         </h1>
                         <p className="text-slate-500 font-bold text-lg italic max-w-xl leading-relaxed">
                             Accédez à des plafonds de financement supérieurs et à une priorité de traitement exclusive.
@@ -49,7 +49,7 @@ export default async function SubscriptionsPage() {
                                     <Flash size={24} />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Validation System</p>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Système de Validation</p>
                                     <p className="text-lg font-black text-white uppercase italic">Plan {pendingSub.plan.name}</p>
                                     <p className="text-[8px] font-bold text-slate-500 uppercase italic">Traitement de votre preuve de paiement...</p>
                                 </div>
@@ -62,7 +62,7 @@ export default async function SubscriptionsPage() {
                                     <CheckmarkOutline size={32} />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Status: Activated</p>
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Activé</p>
                                     <p className="text-xl font-black text-white uppercase italic tracking-tighter">{activeSub.plan.name}</p>
                                 </div>
                             </div>
@@ -93,7 +93,7 @@ export default async function SubscriptionsPage() {
                             <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
                                 {[
                                     { text: `${plan.max_loans_per_month} prêts mensuels`, icon: <Star size={16} /> },
-                                    { text: `${plan.max_loan_amount.toLocaleString()} FCFA Limit`, icon: <Rocket size={16} /> },
+                                    { text: `Limite de ${plan.max_loan_amount.toLocaleString()} FCFA`, icon: <Rocket size={16} /> },
                                     { text: `${plan.repayment_delay_days} jours de délai`, icon: <Flash size={16} /> }
                                 ].map((feature, i) => (
                                     <div key={i} className="flex items-center justify-center gap-4 group/feat">

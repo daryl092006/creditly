@@ -64,7 +64,7 @@ export default async function LoanRequestPage() {
                 <Link href="/client/dashboard">
                     <button className="premium-button bg-slate-800 border-white/5 active:scale-95 px-10">
                         <ArrowLeft size={16} />
-                        Operations Center
+                        Centre d&apos;Opérations
                     </button>
                 </Link>
             </div>
@@ -92,7 +92,7 @@ export default async function LoanRequestPage() {
                     <Link href="/client/dashboard">
                         <button className="premium-button bg-slate-800 border-white/5 active:scale-95 px-10">
                             <ArrowLeft size={16} />
-                            Operations Center
+                            Centre d&apos;Opérations
                         </button>
                     </Link>
                 </div>
