@@ -52,7 +52,7 @@ export default function Home() {
                             Financez vos ambitions sans limites
                         </div>
 
-                        <h1 className="text-6xl md:text-8xl lg:text-[120px] font-black tracking-tighter text-white leading-[0.85] mb-12 uppercase italic">
+                        <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[120px] font-black tracking-tighter text-white leading-[0.85] mb-12 uppercase italic">
                             L&apos;avenir du <br />
                             <span className="premium-gradient-text">Micro-Crédit.</span>
                         </h1>

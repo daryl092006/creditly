@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight } from '@carbon/icons-react'
+import { ArrowRight, View, ViewOff } from '@carbon/icons-react'
 import { signup } from '../actions'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ function SignupForm() {
     const searchParams = useSearchParams()
     const error = searchParams.get('error')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
 
     // Form data
     const [formData, setFormData] = useState({
@@ -95,15 +96,24 @@ function SignupForm() {
 
                     <div className="space-y-2 text-left">
                         <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Mot de passe de sécurité</label>
-                        <input
-                            name="password"
-                            type="password"
-                            placeholder="••••••••"
-                            required
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
-                        />
+                        <div className="relative">
+                            <input
+                                name="password"
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                required
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5 pr-14"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-2"
+                            >
+                                {showPassword ? <ViewOff size={20} /> : <View size={20} />}
+                            </button>
+                        </div>
                     </div>
 
                     <button

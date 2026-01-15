@@ -1,8 +1,9 @@
 'use client'
 
-import { ArrowRight } from '@carbon/icons-react'
+import { ArrowRight, View, ViewOff } from '@carbon/icons-react'
 import { login } from '../actions'
 import { useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 import Link from 'next/link'
 
 import { Suspense } from 'react'
@@ -11,6 +12,12 @@ function LoginForm() {
     const searchParams = useSearchParams()
     const error = searchParams.get('error')
     const message = searchParams.get('message')
+    const [showPassword, setShowPassword] = useState(false)
+
+    // Translate specific errors
+    const displayError = error === 'Invalid login credentials'
+        ? 'Email ou mot de passe incorrect'
+        : error
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
@@ -22,10 +29,10 @@ function LoginForm() {
                     </p>
                 </div>
 
-                {error && (
+                {displayError && (
                     <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {error}
+                        {displayError}
                     </div>
                 )}
 
@@ -55,13 +62,22 @@ function LoginForm() {
                                 Oublié ?
                             </Link>
                         </div>
-                        <input
-                            name="password"
-                            type="password"
-                            placeholder="••••••••"
-                            required
-                            className="w-full px-5 py-4 rounded-2xl border border-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-slate-900"
-                        />
+                        <div className="relative">
+                            <input
+                                name="password"
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                required
+                                className="w-full px-5 py-4 rounded-2xl border border-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-slate-900 pr-14"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-2"
+                            >
+                                {showPassword ? <ViewOff size={20} /> : <View size={20} />}
+                            </button>
+                        </div>
                     </div>
 
                     <button

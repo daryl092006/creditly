@@ -53,7 +53,9 @@ export default async function ClientLoansPage() {
                 {/* ACTIVE LOANS */}
                 <div className="space-y-6">
                     <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Historique des Prêts</h2>
-                    <div className="glass-panel overflow-hidden border-slate-800 bg-slate-900/50">
+
+                    {/* Desktop View Table */}
+                    <div className="glass-panel overflow-hidden border-slate-800 bg-slate-900/50 hidden md:block">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -84,11 +86,6 @@ export default async function ClientLoansPage() {
                                                                     style={{ width: `${Math.min(100, ((loan.amount_paid || 0) / loan.amount) * 100)}%` }}
                                                                 ></div>
                                                             </div>
-                                                        )}
-                                                        {loan.status === 'active' && (loan.amount_paid || 0) > 0 && (
-                                                            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
-                                                                Payé : {(loan.amount_paid || 0).toLocaleString()} FCFA
-                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -140,12 +137,80 @@ export default async function ClientLoansPage() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Mobile View Cards */}
+                    <div className="space-y-4 md:hidden">
+                        {loans && loans.length > 0 ? (
+                            loans.map((loan) => (
+                                <div key={loan.id} className="glass-panel p-6 bg-slate-900/50 border-slate-800 space-y-6">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Date de demande</p>
+                                            <p className="text-xs font-bold text-white">{new Date(loan.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest italic border ${loan.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            loan.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                loan.status === 'paid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    'bg-red-500/10 text-red-400 border-red-500/20'
+                                            }`}>
+                                            {loan.status === 'active' ? 'Actif' : loan.status === 'pending' ? 'Vérification' : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Montant Engagé</p>
+                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{loan.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                        {loan.status === 'active' && (loan.amount_paid || 0) > 0 && (
+                                            <div className="pt-2">
+                                                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
+                                                    <div
+                                                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                                        style={{ width: `${Math.min(100, ((loan.amount_paid || 0) / loan.amount) * 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">Progress : {Math.round(((loan.amount_paid || 0) / loan.amount) * 100)}% réglé</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                                        <div className="space-y-1">
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Échéance Finale</p>
+                                            <p className="text-[10px] font-bold text-slate-400">{loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : '—'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/client/loans/${loan.id}`}
+                                                className="px-4 py-2 border border-slate-700 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                            >
+                                                Details
+                                            </Link>
+                                            {loan.status === 'active' && (
+                                                <Link
+                                                    href={`/client/loans/repayment?loanId=${loan.id}`}
+                                                    className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl"
+                                                >
+                                                    Payer
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-12 text-center opacity-50">
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Aucun prêt trouvé</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* REPAYMENT HISTORY */}
                 <div className="space-y-6">
                     <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Historique des Paiements</h2>
-                    <div className="glass-panel overflow-hidden border-slate-800 bg-slate-900/50">
+
+                    {/* Desktop Table */}
+                    <div className="glass-panel overflow-hidden border-slate-800 bg-slate-900/50 hidden md:block">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -194,6 +259,42 @@ export default async function ClientLoansPage() {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="space-y-4 md:hidden">
+                        {repayments && repayments.length > 0 ? (
+                            repayments.map((repayment) => (
+                                <div key={repayment.id} className="glass-panel p-6 bg-slate-900/50 border-slate-800 space-y-6">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Date de soumission</p>
+                                            <p className="text-xs font-bold text-white">{new Date(repayment.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest italic border ${repayment.status === 'verified' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            repayment.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                'bg-red-500/10 text-red-400 border-red-500/20'
+                                            }`}>
+                                            {repayment.status === 'verified' ? 'Validé' : repayment.status === 'pending' ? 'En Attente' : 'Rejeté'}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Montant déclaré</p>
+                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{repayment.amount_declared.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-white/5">
+                                        <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none mb-1">Date de validation</p>
+                                        <p className="text-[10px] font-bold text-slate-400">{repayment.validated_at ? new Date(repayment.validated_at).toLocaleDateString('fr-FR') : 'Audit en cours...'}</p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-12 text-center opacity-50">
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Aucun paiement trouvé</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

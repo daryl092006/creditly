@@ -34,7 +34,7 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
             if (res?.error) {
                 setError(res.error)
             } else if (res?.success) {
-                router.push('/client/dashboard?message=Demande de prêt envoyée')
+                router.push(`/client/dashboard?success=${res.success}`)
             }
         } catch (error) {
             setError((error as Error).message)

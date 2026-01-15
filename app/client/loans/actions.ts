@@ -72,8 +72,7 @@ export async function requestLoan(amount: number) {
     }
 
     revalidatePath('/client/dashboard')
-    // redirect('/client/dashboard?message=Demande de prêt envoyée') // Removed to avoid NEXT_REDIRECT client catch
-    return { success: true }
+    return { success: 'PretEngage' }
 }
 
 export async function submitRepayment(formData: FormData) {
