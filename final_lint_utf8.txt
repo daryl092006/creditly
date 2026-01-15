@@ -1,0 +1,89 @@
+
+> creditly@0.1.0 lint
+> eslint
+
+
+D:\creditly\app\admin\loans\loan-table.tsx
+  14:22  error  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  28:22  error  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\creditly\app\admin\repayments\repayment-table.tsx
+   6:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:22  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  27:22  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+D:\creditly\app\admin\super\page.tsx
+  19:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\creditly\app\admin\super\users\actions.ts
+  10:21  error  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\creditly\app\admin\super\users\page.tsx
+  27:107  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\app\admin\super\users\user-table.tsx
+   6:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\creditly\app\auth\actions.ts
+   6:24  error  'createAdminClient' is defined but never used  @typescript-eslint/no-unused-vars
+  55:17  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+D:\creditly\app\auth\login\page.tsx
+  78:120  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\app\client\dashboard\page.tsx
+    4:10   error  'ArrowRight' is defined but never used                           @typescript-eslint/no-unused-vars
+   23:63   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  187:41   error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  187:101  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+D:\creditly\app\client\kyc\page.tsx
+   29:21   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   87:118  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+   89:33   error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+   89:70   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+   89:113  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+   89:131  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  105:135  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\app\client\loans\actions.ts
+  53:13  error  'reason' is never reassigned. Use 'const' instead  prefer-const
+
+D:\creditly\app\client\loans\page.tsx
+  46:105  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  87:51   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\app\client\loans\repayment\page.tsx
+  22:26  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\app\client\loans\request\loan-form.tsx
+   8:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\creditly\app\client\pending-activation\page.tsx
+  25:8   warning  React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  83:84  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                              react/no-unescaped-entities
+
+D:\creditly\app\client\subscriptions\SubscribeButton.tsx
+   4:10  error  'CheckmarkFilled' is defined but never used  @typescript-eslint/no-unused-vars
+   4:27  error  'Locked' is defined but never used           @typescript-eslint/no-unused-vars
+  17:27  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+D:\creditly\app\client\subscriptions\actions.ts
+  5:10  error  'redirect' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\creditly\app\dashboard\page.tsx
+  16:33  error  'profileError' is never reassigned. Use 'const' instead  prefer-const
+
+D:\creditly\app\page.tsx
+  56:16  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\creditly\middleware.ts
+  21:58  error  'options' is defined but never used  @typescript-eslint/no-unused-vars
+  42:14  error  'e' is defined but never used        @typescript-eslint/no-unused-vars
+
+Ô£û 41 problems (40 errors, 1 warning)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

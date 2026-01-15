@@ -1,0 +1,44 @@
+﻿    + FullyQualifiedErrorId : NativeComman 
+   dError
+./app/admin/repayments/repayment-table.tsx
+6:63  Error: Unexpected any. Specify a 
+14:22  Error: 'e' is defined but never 
+27:22  Error: 'e' is defined but never 
+./app/admin/super/page.tsx
+19:50  Error: Unexpected any. Specify a 
+./app/admin/super/users/actions.ts
+10:21  Error: 'user' is assigned a value 
+./app/admin/super/users/page.tsx
+27:107  Error: `'` can be escaped with 
+./app/auth/actions.ts
+6:24  Error: 'createAdminClient' is 
+55:17  Error: Unexpected any. Specify a 
+./app/auth/login/page.tsx
+78:120  Error: `'` can be escaped with 
+./app/client/dashboard/page.tsx
+187:41  Error: `"` can be escaped with 
+187:101  Error: `"` can be escaped with 
+./app/client/kyc/page.tsx
+29:21  Error: Unexpected any. Specify a 
+87:118  Error: `'` can be escaped with 
+89:33  Error: `"` can be escaped with 
+89:70  Error: `'` can be escaped with 
+89:113  Error: `'` can be escaped with 
+89:131  Error: `"` can be escaped with 
+105:135  Error: `'` can be escaped with 
+./app/client/loans/page.tsx
+46:105  Error: `'` can be escaped with 
+87:51  Error: `'` can be escaped with 
+./app/client/loans/repayment/page.tsx
+22:26  Error: `'` can be escaped with 
+./app/client/loans/request/loan-form.tsx
+8:75  Error: Unexpected any. Specify a 
+28:21  Error: Unexpected any. Specify a 
+./app/client/pending-activation/page.tsx
+83:84  Error: `'` can be escaped with 
+./app/client/subscriptions/actions.ts
+5:10  Error: 'redirect' is defined but 
+./app/client/subscriptions/SubscribeButton.
+4:10  Error: 'CheckmarkFilled' is defined 
+4:27  Error: 'Locked' is defined but never 
+17:27  Error: Unexpected any. Specify a 
