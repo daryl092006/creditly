@@ -13,6 +13,7 @@ function LoginForm() {
     const error = searchParams.get('error')
     const message = searchParams.get('message')
     const [showPassword, setShowPassword] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Translate specific errors
     const displayError = error === 'Invalid login credentials'
@@ -43,7 +44,7 @@ function LoginForm() {
                     </div>
                 )}
 
-                <form action={login} className="space-y-6">
+                <form action={login} onSubmit={() => setIsSubmitting(true)} className="space-y-6">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Email</label>
                         <input
@@ -82,10 +83,17 @@ function LoginForm() {
 
                     <button
                         type="submit"
+                        disabled={isSubmitting}
                         className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
-                        <span className="font-black uppercase tracking-widest text-xs">Se connecter</span>
-                        <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                        {isSubmitting ? (
+                            <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <>
+                                <span className="font-black uppercase tracking-widest text-xs">Se connecter</span>
+                                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                            </>
+                        )}
                     </button>
 
                     <div className="text-center mt-6">

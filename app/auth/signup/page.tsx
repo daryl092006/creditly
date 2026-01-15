@@ -50,17 +50,31 @@ function SignupForm() {
                             body: formData,
                         })
 
-                        const data = await response.json()
+                        // Try to parse JSON response
+                        let data
+                        try {
+                            data = await response.json()
+                        } catch (jsonError) {
+                            // If JSON parsing fails, show a generic error
+                            window.location.href = `/auth/signup?error=${encodeURIComponent('Erreur de communication avec le serveur. Veuillez réessayer.')}`
+                            return
+                        }
 
                         if (!response.ok) {
-                            window.location.href = `/auth/signup?error=${encodeURIComponent(data.error)}`
+                            // Show the specific error message from the server
+                            const errorMessage = data.error || 'Une erreur est survenue lors de l\'inscription'
+                            window.location.href = `/auth/signup?error=${encodeURIComponent(errorMessage)}`
                             return
                         }
 
                         // Success - redirect to login with message
                         window.location.href = `/auth/login?message=${encodeURIComponent(data.message)}`
                     } catch (error) {
-                        window.location.href = `/auth/signup?error=${encodeURIComponent('Erreur lors de l\'inscription')}`
+                        // Network error or other unexpected error
+                        const errorMessage = error instanceof Error && error.message
+                            ? `Erreur de connexion: ${error.message}`
+                            : 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.'
+                        window.location.href = `/auth/signup?error=${encodeURIComponent(errorMessage)}`
                     } finally {
                         setIsSubmitting(false)
                     }

@@ -65,8 +65,18 @@ export async function signup(formData: FormData) {
         revalidatePath('/', 'layout')
         redirect('/auth/login?message=Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception pour activer votre compte.')
     } catch (error) {
-        if ((error as any).digest?.startsWith('NEXT_REDIRECT')) throw error
-        redirect(`/auth/signup?error=${encodeURIComponent((error as Error).message || 'Erreur lors de l&apos;inscription')}`)
+        // Check if this is a Next.js redirect (which is expected behavior, not an error)
+        const isRedirect = error && typeof error === 'object' && 'digest' in error &&
+            typeof (error as any).digest === 'string' &&
+            (error as any).digest.startsWith('NEXT_REDIRECT')
+
+        // If it's a redirect, re-throw it to allow Next.js to handle it properly
+        if (isRedirect) {
+            throw error
+        }
+
+        // Otherwise, it's a real error - show user-friendly message
+        redirect(`/auth/signup?error=${encodeURIComponent((error as Error).message || 'Erreur lors de l\'inscription')}`)
     }
 }
 

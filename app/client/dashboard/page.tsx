@@ -1,8 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { updateContactInfo } from '../user-actions'
 import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add } from '@carbon/icons-react'
+import ContactInfoForm from './ContactInfoForm'
 
 export default async function ClientDashboard() {
     const supabase = await createClient()
@@ -316,26 +316,7 @@ export default async function ClientDashboard() {
                         <div className="glass-panel p-10 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
                             <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Mes <br /> Informations</h4>
-                            <form action={updateContactInfo} className="space-y-4">
-                                <div className="space-y-1">
-                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Numéro WhatsApp</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            name="whatsapp"
-                                            type="text"
-                                            defaultValue={profile?.whatsapp || ''}
-                                            placeholder="+229 00 00 00 00"
-                                            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
-                                        />
-                                        <button type="submit" className="px-4 py-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest">
-                                            OK
-                                        </button>
-                                    </div>
-                                    {!profile?.whatsapp && (
-                                        <p className="text-[8px] font-bold text-amber-500/80 italic mt-1 uppercase tracking-tight">Veuillez renseigner votre numéro</p>
-                                    )}
-                                </div>
-                            </form>
+                            <ContactInfoForm defaultWhatsapp={profile?.whatsapp} />
                         </div>
 
                         <div className="glass-panel p-10 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
