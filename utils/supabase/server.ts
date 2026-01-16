@@ -15,10 +15,7 @@ export async function createClient() {
                 setAll(cookiesToSet) {
                     try {
                         cookiesToSet.forEach(({ name, value, options }) => {
-                            // Supprimer maxAge et expires pour forcer les cookies de session
-                            // (ils seront supprimés à la fermeture du navigateur)
-                            const { maxAge, expires, ...rest } = options
-                            cookieStore.set(name, value, rest)
+                            cookieStore.set(name, value, options)
                         })
                     } catch {
                         // The `setAll` method was called from a Server Component.

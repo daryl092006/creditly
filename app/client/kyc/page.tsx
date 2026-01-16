@@ -28,7 +28,7 @@ export default function KYCPage() {
         try {
             await submitKyc(formData)
         } catch (error) {
-            setError((error as Error).message || "Une erreur est survenue lors de l&apos;envoi.")
+            setError((error as Error).message || "Une erreur est survenue lors de l'envoi.")
             setIsSubmitting(false)
         }
     }
@@ -197,7 +197,7 @@ export default function KYCPage() {
                                 {isSubmitting ? (
                                     <div className="flex items-center justify-center gap-3">
                                         <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                        <span>Envoi en cours...</span>
+                                        <span>Envoi du dossier en cours...</span>
                                     </div>
                                 ) : (
                                     <>
