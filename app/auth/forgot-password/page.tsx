@@ -1,18 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useActionState } from 'react'
 import { requestPasswordReset } from '../actions'
-import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, ArrowLeft, Email } from '@carbon/icons-react'
-
+import { ArrowRight, ArrowLeft, Email, Warning, CheckmarkFilled } from '@carbon/icons-react'
 import { Suspense } from 'react'
 
+const initialState = {
+    message: null,
+    error: null,
+}
+
 function ForgotPasswordForm() {
-    const searchParams = useSearchParams()
-    const error = searchParams.get('error')
-    const message = searchParams.get('message')
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [state, formAction, isPending] = useActionState(requestPasswordReset, initialState)
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
@@ -24,17 +24,17 @@ function ForgotPasswordForm() {
                     </p>
                 </div>
 
-                {error && (
+                {state.error && (
                     <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
-                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {error}
+                        <Warning size={20} className="shrink-0" />
+                        {state.error}
                     </div>
                 )}
 
-                {message && (
+                {state.message && (
                     <div className="mb-8 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-fade-in">
-                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                        {message}
+                        <CheckmarkFilled size={20} className="shrink-0" />
+                        {state.message}
                     </div>
                 )}
 
@@ -42,7 +42,7 @@ function ForgotPasswordForm() {
                     Saisissez votre adresse email pour recevoir un lien de réinitialisation de votre mot de passe.
                 </p>
 
-                <form action={requestPasswordReset} onSubmit={() => setIsSubmitting(true)} className="space-y-6">
+                <form action={formAction} className="space-y-6">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Email</label>
                         <div className="relative">
@@ -59,10 +59,10 @@ function ForgotPasswordForm() {
 
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isPending}
                         className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
-                        {isSubmitting ? (
+                        {isPending ? (
                             <div className="flex items-center justify-center gap-3">
                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                                 <span>Envoi en cours...</span>
@@ -94,4 +94,3 @@ export default function ForgotPasswordPage() {
         </Suspense>
     )
 }
-

@@ -86,7 +86,7 @@ export async function signout() {
     redirect('/')
 }
 
-export async function requestPasswordReset(formData: FormData) {
+export async function requestPasswordReset(prevState: any, formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
     const origin = (await headers()).get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -106,10 +106,16 @@ export async function requestPasswordReset(formData: FormData) {
     }
 
     if (errorOccurred) {
-        redirect(`/auth/forgot-password?error=${encodeURIComponent(errorOccurred.message || 'Une erreur est survenue')}`)
+        // Return state object instead of redirecting for errors if preferred, or keep redirect.
+        // For consistency with the crash fix, we will keep redirect but ensure it's safe.
+        // However, with useActionState, returning error in state is often better UI.
+        // We will try returning state to avoid "redirect" from exploding if caught by client incorrectly.
+        return { error: errorOccurred.message || 'Une erreur est survenue', message: null }
     }
 
-    redirect('/auth/forgot-password?message=Lien de réinitialisation envoyé par email.')
+    // Success - we can still redirect or return success message
+    // Returning success message allows the UI to show the green banner without page reload/flicker
+    return { error: null, message: 'Lien de réinitialisation envoyé par email.' }
 }
 
 export async function resetPassword(formData: FormData) {
