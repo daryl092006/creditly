@@ -1,0 +1,33 @@
+'use client'
+
+import Link from 'next/link'
+import { Warning, ArrowLeft } from '@carbon/icons-react'
+
+export default function AuthCodeError() {
+    return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+            <div className="max-w-md w-full text-center space-y-8">
+                <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto border border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-pulse">
+                    <Warning size={40} />
+                </div>
+
+                <div className="space-y-4">
+                    <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">
+                        Lien <span className="text-red-500">Invalide</span>
+                    </h1>
+                    <p className="text-slate-400 font-medium">
+                        Le lien de réinitialisation a expiré ou a déjà été utilisé. Veuillez effectuer une nouvelle demande.
+                    </p>
+                </div>
+
+                <Link
+                    href="/auth/forgot-password"
+                    className="premium-button w-full py-4 flex items-center justify-center gap-2 group"
+                >
+                    <ArrowLeft className="group-hover:-translate-x-1 transition-transform" />
+                    <span>Nouvelle demande</span>
+                </Link>
+            </div>
+        </div>
+    )
+}

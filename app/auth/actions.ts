@@ -91,26 +91,25 @@ export async function requestPasswordReset(formData: FormData) {
     const email = formData.get('email') as string
     const origin = (await headers()).get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
+    let errorOccurred = null
+
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${origin}/auth/callback?next=/auth/reset-password`,
         })
 
         if (error) {
-            throw error
+            errorOccurred = error
         }
-
-        redirect('/auth/forgot-password?message=Lien de réinitialisation envoyé par email.')
     } catch (error) {
-        if (isRedirectError(error)) throw error
-        redirect(`/auth/forgot-password?error=${encodeURIComponent((error as Error).message || 'Une erreur est survenue')}`)
+        errorOccurred = error as Error
     }
-}
 
-function isRedirectError(error: any) {
-    return error && typeof error === 'object' && 'digest' in error &&
-        typeof error.digest === 'string' &&
-        error.digest.startsWith('NEXT_REDIRECT')
+    if (errorOccurred) {
+        redirect(`/auth/forgot-password?error=${encodeURIComponent(errorOccurred.message || 'Une erreur est survenue')}`)
+    }
+
+    redirect('/auth/forgot-password?message=Lien de réinitialisation envoyé par email.')
 }
 
 export async function resetPassword(formData: FormData) {
