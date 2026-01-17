@@ -297,7 +297,7 @@ export default async function SuperAdminPage({
                                     <span className="font-black text-slate-200 italic tracking-tight">Utilisateurs & Rôles</span>
                                     <ChevronRight size={20} className="w-5 h-5 text-slate-700 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                                 </Link>
-                                <Link href="/admin/super/settings" className="flex items-center justify-between p-5 rounded-2xl bg-slate-950 border border-white/5 hover:border-blue-500/30 transition-all group">
+                                <Link href="/admin/super/offers" className="flex items-center justify-between p-5 rounded-2xl bg-slate-950 border border-white/5 hover:border-blue-500/30 transition-all group">
                                     <span className="font-black text-slate-200 italic tracking-tight">Paramètres Offres</span>
                                     <ChevronRight size={20} className="w-5 h-5 text-slate-700 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                                 </Link>

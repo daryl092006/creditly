@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function subscribeToPlan(planId: string) {
     const supabase = await createClient()
@@ -22,7 +23,7 @@ export async function subscribeToPlan(planId: string) {
             is_active: false // Admin must activate
         })
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(getUserFriendlyErrorMessage(error))
 
     revalidatePath('/client/subscriptions')
     // Maybe redirect to a confirmation page or show toast?

@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { getCurrentUserRole } from '@/utils/admin-security'
 import { revalidatePath } from 'next/cache'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function updateKycStatus(submissionId: string, status: 'approved' | 'rejected', notes?: string) {
     const supabase = await createClient()
@@ -21,7 +22,7 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
         .eq('id', submissionId)
 
     if (error) {
-        throw new Error(error.message)
+        throw new Error(getUserFriendlyErrorMessage(error))
     }
 
     revalidatePath('/admin/kyc')
@@ -48,7 +49,7 @@ export async function activateUserAccount(userId: string) {
 
     if (error) {
         console.error(`[activateUserAccount] Database error: ${error.message}`)
-        throw new Error(error.message)
+        throw new Error(getUserFriendlyErrorMessage(error))
     }
 
     if (!data || data.length === 0) {
@@ -115,7 +116,7 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
         .update(updates)
         .eq('id', loanId)
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(getUserFriendlyErrorMessage(error))
     revalidatePath('/admin/loans')
 }
 
@@ -137,7 +138,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
         .select()
         .single()
 
-    if (repError) throw new Error(repError.message)
+    if (repError) throw new Error(getUserFriendlyErrorMessage(repError))
 
     // If verified, update loan status to 'paid' (?) 
     // Logic: check if total repayments >= loan amount. 
@@ -171,7 +172,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             })
             .eq('id', repayment.loan_id)
 
-        if (loanError) throw new Error(loanError.message)
+        if (loanError) throw new Error(getUserFriendlyErrorMessage(loanError))
     }
 
     revalidatePath('/admin/repayments')
@@ -184,7 +185,7 @@ export async function activateSubscription(subId: string) {
         .update({ is_active: true, start_date: new Date().toISOString() })
         .eq('id', subId)
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(getUserFriendlyErrorMessage(error))
     revalidatePath('/admin/super')
     revalidatePath('/admin/super/subscriptions')
 }

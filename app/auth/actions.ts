@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
@@ -16,7 +17,7 @@ export async function login(formData: FormData) {
     const { error } = await supabase.auth.signInWithPassword(data)
 
     if (error) {
-        redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
+        redirect(`/auth/login?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
     }
 
     revalidatePath('/', 'layout')
@@ -76,7 +77,7 @@ export async function signup(formData: FormData) {
         }
 
         // Otherwise, it's a real error - show user-friendly message
-        redirect(`/auth/signup?error=${encodeURIComponent((error as Error).message || 'Erreur lors de l\'inscription')}`)
+        redirect(`/auth/signup?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
     }
 }
 
@@ -122,12 +123,19 @@ export async function resetPassword(formData: FormData) {
     const supabase = await createClient()
     const password = formData.get('password') as string
 
+    // Verify session exists
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        redirect('/auth/login?error=Votre session a expiré. Veuillez cliquer à nouveau sur le lien reçu par email.')
+    }
+
     const { error } = await supabase.auth.updateUser({
         password: password,
     })
 
     if (error) {
-        redirect(`/auth/reset-password?error=${encodeURIComponent(error.message)}`)
+        redirect(`/auth/reset-password?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
     }
 
     redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')

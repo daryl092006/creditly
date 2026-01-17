@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function requestLoan(amount: number) {
     const supabase = await createClient()
@@ -68,7 +69,7 @@ export async function requestLoan(amount: number) {
         })
 
     if (insertError) {
-        return { error: insertError.message }
+        return { error: getUserFriendlyErrorMessage(insertError) }
     }
 
     revalidatePath('/client/dashboard')
@@ -120,10 +121,7 @@ export async function submitRepayment(formData: FormData) {
 
     if (uploadError) {
         console.error('Upload error:', uploadError)
-        if (uploadError.message.includes('bucket not found')) {
-            throw new Error("Le dossier de stockage 'repayment-proofs' n'existe pas. Veuillez le créer sur Supabase.")
-        }
-        throw new Error(`Échec de l'upload: ${uploadError.message}`)
+        throw new Error(getUserFriendlyErrorMessage(uploadError))
     }
 
     // 2. Insert record
@@ -139,7 +137,7 @@ export async function submitRepayment(formData: FormData) {
 
     if (dbError) {
         console.error('DB error:', dbError)
-        throw new Error(`Erreur base de données: ${dbError.message}`)
+        throw new Error(getUserFriendlyErrorMessage(dbError))
     }
 
     revalidatePath('/client/loans')

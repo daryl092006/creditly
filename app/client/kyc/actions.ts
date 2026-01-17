@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function submitKyc(formData: FormData) {
     const supabase = await createClient()
@@ -31,19 +32,24 @@ export async function submitKyc(formData: FormData) {
 
         console.log(`Tentative d'upload pour ${type}: bucket=kyc-documents, path=${fileName}`)
 
+        if (file.size > 10 * 1024 * 1024) {
+            throw new Error(`Le fichier ${file.name} est trop volumineux (max 10MB).`)
+        }
+
         const { data, error } = await adminSupabase.storage
             .from('kyc-documents')
             .upload(fileName, file, {
                 cacheControl: '3600',
-                upsert: true
+                upsert: true,
+                contentType: file.type // Explicitly set content type
             })
 
         if (error) {
             console.error(`DÉTAIL ERREUR UPLOAD ${type}:`, error)
-            if ((error as any).message?.includes('bucket not found')) {
-                throw new Error(`Le dossier de stockage 'kyc-documents' n'existe pas sur Supabase.`)
-            }
-            throw new Error(`Échec de l'upload du document ${type} : ${error.message}`)
+            // Use our sanitizer which handles bucket/size errors but pass it the raw error 
+            // or construct a specific error if we know it (as was done partially before)
+            // Ideally we just map the error.
+            throw new Error(getUserFriendlyErrorMessage(error))
         }
         return data.path
     }
@@ -65,7 +71,7 @@ export async function submitKyc(formData: FormData) {
 
     if (dbError) {
         console.error('Database error:', dbError)
-        throw new Error(`Erreur lors de l'enregistrement du dossier : ${dbError.message}`)
+        throw new Error(getUserFriendlyErrorMessage(dbError))
     }
 
     revalidatePath('/client/dashboard')

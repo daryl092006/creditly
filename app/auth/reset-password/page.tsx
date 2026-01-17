@@ -13,7 +13,7 @@ function ResetPasswordForm() {
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
             <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-black gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
