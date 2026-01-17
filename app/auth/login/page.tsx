@@ -46,7 +46,7 @@ function LoginForm() {
 
                 <form action={login} onSubmit={() => setIsSubmitting(true)} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Email</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
                         <input
                             name="email"
                             type="email"
@@ -58,7 +58,7 @@ function LoginForm() {
 
                     <div className="space-y-2">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Mot de passe</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mot de passe</label>
                             <Link href="/auth/forgot-password" title="Oublié ?" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors">
                                 Oublié ?
                             </Link>

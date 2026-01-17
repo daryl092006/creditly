@@ -127,7 +127,9 @@ export async function resetPassword(formData: FormData) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
-        redirect('/auth/login?error=Votre session a expiré. Veuillez cliquer à nouveau sur le lien reçu par email.')
+        // If session is missing despite being on this page, it means the magic link cookie wasn't found or expired.
+        // We must redirect to login because we can't update a user without a session.
+        redirect('/auth/login?error=Votre lien de réinitialisation a expiré ou est invalide. Veuillez en demander un nouveau.')
     }
 
     const { error } = await supabase.auth.updateUser({

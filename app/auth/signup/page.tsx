@@ -23,7 +23,7 @@ function SignupForm() {
     })
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
             <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-black premium-gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
@@ -81,7 +81,7 @@ function SignupForm() {
                 }} className="space-y-8">
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom</label>
                             <input
                                 name="prenom"
                                 type="text"
@@ -89,11 +89,11 @@ function SignupForm() {
                                 required
                                 value={formData.prenom}
                                 onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
+                                className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom</label>
                             <input
                                 name="nom"
                                 type="text"
@@ -101,13 +101,13 @@ function SignupForm() {
                                 required
                                 value={formData.nom}
                                 onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
+                                className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp <span className="text-blue-500 font-bold lowercase italic">(Indicatif obligatoire, ex: +229)</span></label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp <span className="text-blue-500 font-bold lowercase italic">(Indicatif obligatoire, ex: +229)</span></label>
                         <input
                             name="whatsapp"
                             type="text"
@@ -120,7 +120,7 @@ function SignupForm() {
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Professionnel</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Email Professionnel</label>
                         <input
                             name="email"
                             type="email"
@@ -133,7 +133,7 @@ function SignupForm() {
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Mot de passe de sécurité</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Mot de passe de sécurité</label>
                         <div className="relative">
                             <input
                                 name="password"
