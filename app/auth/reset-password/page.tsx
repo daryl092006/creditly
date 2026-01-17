@@ -23,19 +23,19 @@ function ResetPasswordForm() {
                 </div>
 
                 {error && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
+                    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest italic animate-shake">
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {error}
                     </div>
                 )}
 
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm text-center mb-8">
+                <p className="text-slate-500 font-bold text-sm text-center mb-8 italic">
                     Définissez votre nouveau mot de passe de sécurité.
                 </p>
 
                 <form action={resetPassword} onSubmit={() => setIsSubmitting(true)} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Nouveau mot de passe</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Nouveau mot de passe</label>
                         <div className="relative">
                             <Password className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                             <input
@@ -44,7 +44,7 @@ function ResetPasswordForm() {
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
-                                className="w-full pl-12 pr-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
+                                className="w-full pl-12 pr-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-white bg-slate-950 placeholder:text-slate-800"
                             />
                         </div>
                     </div>

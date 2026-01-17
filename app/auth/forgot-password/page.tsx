@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ArrowRight, ArrowLeft, Email, Warning, CheckmarkFilled } from '@carbon/icons-react'
 import { Suspense } from 'react'
 
-const initialState = {
+const initialState: { message: string | null; error: string | null } = {
     message: null,
     error: null,
 }
@@ -15,7 +15,7 @@ function ForgotPasswordForm() {
     const [state, formAction, isPending] = useActionState(requestPasswordReset, initialState)
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
             <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-black gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
@@ -25,26 +25,26 @@ function ForgotPasswordForm() {
                 </div>
 
                 {state.error && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
+                    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest italic animate-shake">
                         <Warning size={20} className="shrink-0" />
                         {state.error}
                     </div>
                 )}
 
                 {state.message && (
-                    <div className="mb-8 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl flex items-center gap-3 text-sm font-bold animate-fade-in">
+                    <div className="mb-8 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest italic animate-fade-in">
                         <CheckmarkFilled size={20} className="shrink-0" />
                         {state.message}
                     </div>
                 )}
 
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm text-center mb-8">
+                <p className="text-slate-500 font-bold text-sm text-center mb-8 italic">
                     Saisissez votre adresse email pour recevoir un lien de réinitialisation de votre mot de passe.
                 </p>
 
                 <form action={formAction} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Email</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Email</label>
                         <div className="relative">
                             <Email className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                             <input
@@ -52,7 +52,7 @@ function ForgotPasswordForm() {
                                 type="email"
                                 placeholder="votre@email.com"
                                 required
-                                className="w-full pl-12 pr-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
+                                className="w-full pl-12 pr-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-white bg-slate-950 placeholder:text-slate-800"
                             />
                         </div>
                     </div>

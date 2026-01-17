@@ -132,13 +132,20 @@ export async function resetPassword(formData: FormData) {
         redirect('/auth/login?error=Votre lien de réinitialisation a expiré ou est invalide. Veuillez en demander un nouveau.')
     }
 
-    const { error } = await supabase.auth.updateUser({
-        password: password,
-    })
+    try {
+        const { error } = await supabase.auth.updateUser({
+            password: password,
+        })
 
-    if (error) {
+        if (error) {
+            redirect(`/auth/reset-password?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
+        }
+
+        redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')
+    } catch (error) {
+        if (error && typeof error === 'object' && 'digest' in error && (error as any).digest?.startsWith('NEXT_REDIRECT')) {
+            throw error
+        }
         redirect(`/auth/reset-password?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
     }
-
-    redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')
 }
