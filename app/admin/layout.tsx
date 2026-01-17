@@ -9,7 +9,7 @@ export default async function AdminLayout({
     const role = await getCurrentUserRole()
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-slate-950">
             <AdminNav userRole={role} />
             <main className="page-transition">
                 {children}

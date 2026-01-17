@@ -222,9 +222,9 @@ export default function AdminKycClientTable({ submissions }: {
                         </div>
                         <div className="flex-1 overflow-auto bg-black/40 p-4 flex items-center justify-center">
                             {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
-                                <iframe src={previewDoc.url} className="w-full h-[70vh] rounded-xl" />
+                                <iframe src={previewDoc.url} className="w-full h-[50vh] md:h-[70vh] rounded-xl" />
                             ) : (
-                                <img src={previewDoc.url} alt="Document preview" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+                                <img src={previewDoc.url} alt="Document preview" className="w-full h-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
                             )}
                         </div>
                         <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end">

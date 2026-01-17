@@ -52,16 +52,16 @@ export default function Home() {
                             Financez vos ambitions sans limites
                         </div>
 
-                        <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[120px] font-black tracking-tighter text-white leading-[0.85] mb-12 uppercase italic">
+                        <h1 className="text-5xl md:text-8xl lg:text-[120px] font-black tracking-tighter text-white leading-[0.9] md:leading-[0.85] mb-8 md:mb-12 uppercase italic">
                             L&apos;avenir du <br />
                             <span className="premium-gradient-text">Micro-Crédit.</span>
                         </h1>
 
-                        <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-bold leading-relaxed mb-16 italic">
+                        <p className="max-w-2xl mx-auto text-base md:text-xl text-slate-500 font-bold leading-relaxed mb-12 italic px-4">
                             Une plateforme ultra-rapide, sécurisée et conçue pour propulser vos projets vers le succès. Simplifiez votre accès au capital dès aujourd'hui.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                        <div className="flex flex-col md:flex-row gap-6 justify-center items-center w-full px-6">
                             <Link
                                 href="/auth/signup"
                                 className="premium-button px-16 py-6 text-sm"

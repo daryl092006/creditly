@@ -36,12 +36,12 @@
 }
 
 :root {
-  --bg-main: #020617; /* Dark Night Blue */
-  --text-main: var(--color-text-light);
+  --bg-main: #020617; /* Dark Night Blue forced */
+  --text-main: #e2e8f0; /* Light text forced */
   --primary-main: var(--color-primary-light);
   --action-main: var(--color-action);
   
-  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-bg: rgba(2, 6, 23, 0.7); /* Darker glass base */
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-blur: blur(20px);
 }
