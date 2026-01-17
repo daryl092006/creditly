@@ -9,6 +9,9 @@ import { Suspense } from 'react'
 
 import { useActionState } from 'react'
 
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+
 const initialState: { message: string | null; error: string | null } = {
     message: null,
     error: null,
@@ -16,11 +19,18 @@ const initialState: { message: string | null; error: string | null } = {
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams()
+    const router = useRouter()
     const urlError = searchParams.get('error')
     const [state, formAction, isPending] = useActionState(resetPassword, initialState)
 
     // Combine URL errors (if any, from stale redirects) with state errors
     const displayError = state.error || urlError
+
+    useEffect(() => {
+        if (state.message) {
+            router.push('/auth/login?message=' + encodeURIComponent(state.message))
+        }
+    }, [state.message, router])
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">

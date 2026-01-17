@@ -219,7 +219,7 @@ export default async function ClientDashboard() {
                                     </div>
                                 </div>
                                 <div className="space-y-6">
-                                    <p className="text-4xl font-black text-white tracking-[0.2em] italic">•••• {user.id.slice(-4)}</p>
+                                    <p className="text-2xl md:text-4xl font-black text-white tracking-[0.2em] italic">•••• {user.id.slice(-4)}</p>
                                     <div className="flex justify-between items-end">
                                         <div className="space-y-0.5">
                                             <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Titulaire</p>

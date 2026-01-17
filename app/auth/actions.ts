@@ -142,5 +142,5 @@ export async function resetPassword(prevState: any, formData: FormData) {
         return { error: getUserFriendlyErrorMessage(error), message: null }
     }
 
-    redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')
+    return { error: null, message: 'Mot de passe réinitialisé avec succès. Redirection...' }
 }
