@@ -7,10 +7,20 @@ import { ArrowRight, Password } from '@carbon/icons-react'
 
 import { Suspense } from 'react'
 
+import { useActionState } from 'react'
+
+const initialState: { message: string | null; error: string | null } = {
+    message: null,
+    error: null,
+}
+
 function ResetPasswordForm() {
     const searchParams = useSearchParams()
-    const error = searchParams.get('error')
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const urlError = searchParams.get('error')
+    const [state, formAction, isPending] = useActionState(resetPassword, initialState)
+
+    // Combine URL errors (if any, from stale redirects) with state errors
+    const displayError = state.error || urlError
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
@@ -22,10 +32,10 @@ function ResetPasswordForm() {
                     </p>
                 </div>
 
-                {error && (
+                {displayError && (
                     <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest italic animate-shake">
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {error}
+                        {displayError}
                     </div>
                 )}
 
@@ -33,7 +43,7 @@ function ResetPasswordForm() {
                     Définissez votre nouveau mot de passe de sécurité.
                 </p>
 
-                <form action={resetPassword} onSubmit={() => setIsSubmitting(true)} className="space-y-6">
+                <form action={formAction} className="space-y-6">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Nouveau mot de passe</label>
                         <div className="relative">
@@ -51,10 +61,10 @@ function ResetPasswordForm() {
 
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isPending}
                         className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
-                        {isSubmitting ? (
+                        {isPending ? (
                             <div className="flex items-center justify-center gap-3">
                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                                 <span>Réinitialisation en cours...</span>

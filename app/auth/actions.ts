@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
-import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { getUserFriendlyErrorMessage } from '../../utils/error-handler'
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
@@ -119,7 +119,7 @@ export async function requestPasswordReset(prevState: any, formData: FormData) {
     return { error: null, message: 'Lien de réinitialisation envoyé par email.' }
 }
 
-export async function resetPassword(formData: FormData) {
+export async function resetPassword(prevState: any, formData: FormData) {
     const supabase = await createClient()
     const password = formData.get('password') as string
 
@@ -127,9 +127,7 @@ export async function resetPassword(formData: FormData) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
-        // If session is missing despite being on this page, it means the magic link cookie wasn't found or expired.
-        // We must redirect to login because we can't update a user without a session.
-        redirect('/auth/login?error=Votre lien de réinitialisation a expiré ou est invalide. Veuillez en demander un nouveau.')
+        return { error: 'Votre lien de réinitialisation a expiré ou est invalide. Veuillez en demander un nouveau.', message: null }
     }
 
     try {
@@ -138,14 +136,11 @@ export async function resetPassword(formData: FormData) {
         })
 
         if (error) {
-            redirect(`/auth/reset-password?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
+            return { error: getUserFriendlyErrorMessage(error), message: null }
         }
-
-        redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')
     } catch (error) {
-        if (error && typeof error === 'object' && 'digest' in error && (error as any).digest?.startsWith('NEXT_REDIRECT')) {
-            throw error
-        }
-        redirect(`/auth/reset-password?error=${encodeURIComponent(getUserFriendlyErrorMessage(error))}`)
+        return { error: getUserFriendlyErrorMessage(error), message: null }
     }
+
+    redirect('/auth/login?message=Mot de passe réinitialisé avec succès.')
 }
