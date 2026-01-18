@@ -1,14 +1,9 @@
-'use server'
-
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
-import { sendAdminNotification } from '@/app/utils/email-service'
-
-import { redirect } from 'next/navigation'
+import { sendAdminNotification } from '@/utils/email-service'
 
 export async function subscribeToPlan(formData: FormData) {
-    const { createAdminClient } = await import('@/utils/supabase/server')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -63,18 +58,23 @@ export async function subscribeToPlan(formData: FormData) {
             return { error: getUserFriendlyErrorMessage(error) }
         }
 
-        // 4. Notify Admin (Async)
-        const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
-        const { data: plan } = await adminSupabase.from('abonnements').select('name').eq('id', planId).single()
-
-        sendAdminNotification('SUBSCRIPTION', {
-            userEmail: user.email!,
-            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            planName: plan?.name || 'Inconnu',
-            amount: Number(amount)
-        }).catch(err => console.error('Notification Error:', err))
+        // 4. Notify Admin
+        try {
+            const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
+            const { data: plan } = await adminSupabase.from('abonnements').select('name').eq('id', planId).single()
+            
+            await sendAdminNotification('SUBSCRIPTION', {
+                userEmail: user.email!,
+                userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                planName: plan?.name || 'Inconnu',
+                amount: Number(amount)
+            })
+        } catch (notifErr) {
+            console.error('Erreur notification admin (non-bloquant):', notifErr)
+        }
 
         revalidatePath('/client/subscriptions')
+        revalidatePath('/client/dashboard')
         return { success: true }
     } catch (e: any) {
         return { error: e.message || "Erreur lors de la souscription." }

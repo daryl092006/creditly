@@ -53,9 +53,9 @@ export default async function SubscriptionsPage() {
                                 </div>
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Système de Validation</p>
-                                    <p className="text-lg font-black text-white uppercase italic">Plan {pendingSub.plan.name}</p>
+                                    <p className="text-lg font-black text-white uppercase italic">Plan {pendingSub.plan?.name || '...'}</p>
                                     <p className="text-[10px] font-bold text-slate-300 uppercase italic">
-                                        Paiement déclaré : {Number(pendingSub.amount_paid).toLocaleString()} FCFA
+                                        Paiement déclaré : {Number(pendingSub.amount_paid || 0).toLocaleString()} FCFA
                                     </p>
                                     <p className="text-[8px] font-bold text-slate-500 uppercase italic">Vérification de la preuve en cours...</p>
                                 </div>
@@ -69,7 +69,7 @@ export default async function SubscriptionsPage() {
                                 </div>
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1 italic">Paiement Refusé</p>
-                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter">Plan {rejectedSub.plan.name}</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter">Plan {rejectedSub.plan?.name || '...'}</p>
                                     <p className="text-[10px] font-bold text-red-400 uppercase italic">
                                         Raison : {rejectedSub.rejection_reason || 'Preuve de paiement non conforme'}
                                     </p>
@@ -85,8 +85,8 @@ export default async function SubscriptionsPage() {
                                 </div>
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Actif</p>
-                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {activeSub.plan.name}</p>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {new Date(activeSub.end_date).toLocaleDateString('fr-FR')}</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {activeSub.plan?.name || '...'}</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {activeSub.end_date ? new Date(activeSub.end_date).toLocaleDateString('fr-FR') : '...'}</p>
                                 </div>
                             </div>
                         )}
@@ -98,7 +98,7 @@ export default async function SubscriptionsPage() {
                                 </div>
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-red-400 uppercase tracking-widest italic">Statut : Expiré</p>
-                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {expiredSub.plan.name}</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {expiredSub.plan?.name || '...'}</p>
                                     <p className="text-[8px] font-bold text-slate-500 uppercase italic">Veuillez renouveler votre accès</p>
                                 </div>
                             </div>

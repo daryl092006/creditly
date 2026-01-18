@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
-import { sendAdminNotification } from '@/app/utils/email-service'
+import { sendAdminNotification } from '@/utils/email-service'
 
 export async function requestLoan(amount: number, payoutPhone: string, payoutName: string, payoutNetwork: string) {
     const supabase = await createClient()
