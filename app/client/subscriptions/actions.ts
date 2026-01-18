@@ -1,3 +1,5 @@
+'use server'
+
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
@@ -62,7 +64,7 @@ export async function subscribeToPlan(formData: FormData) {
         try {
             const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
             const { data: plan } = await adminSupabase.from('abonnements').select('name').eq('id', planId).single()
-            
+
             await sendAdminNotification('SUBSCRIPTION', {
                 userEmail: user.email!,
                 userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
