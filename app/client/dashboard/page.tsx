@@ -204,9 +204,10 @@ export default async function ClientDashboard() {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    {/* Main Column */}
+                    <div className="lg:col-span-2 space-y-10">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             {/* Card Identity */}
                             <div className="virtual-card border-slate-800 shadow-2xl hover:scale-[1.02] transition-transform duration-500 group">
                                 <div className="flex justify-between items-start">
@@ -219,23 +220,23 @@ export default async function ClientDashboard() {
                                     </div>
                                 </div>
                                 <div className="space-y-6">
-                                    <p className="text-2xl md:text-4xl font-black text-white tracking-[0.2em] italic">•••• {user.id.slice(-4)}</p>
+                                    <p className="text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-[0.2em] italic">•••• {user.id.slice(-4)}</p>
                                     <div className="flex justify-between items-end">
                                         <div className="space-y-0.5">
                                             <p className="text-[8px] font-black text-white/30 uppercase tracking-widest">Titulaire</p>
-                                            <p className="text-sm font-bold text-white uppercase">{profile?.prenom} {profile?.nom}</p>
+                                            <p className="text-xs sm:text-sm font-bold text-white uppercase">{profile?.prenom} {profile?.nom}</p>
                                         </div>
-                                        <div className="px-5 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest italic">
+                                        <div className="px-3 sm:px-5 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[8px] sm:text-[10px] font-black uppercase tracking-widest italic">
                                             Priorité Active
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Subscription Status */}
-                            <div className="glass-panel p-10 flex flex-col justify-between bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all group">
+                            {/* Subscription Status Card */}
+                            <div className="glass-panel p-8 sm:p-10 flex flex-col justify-between bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all group">
                                 <div className="flex justify-between items-start">
-                                    <div className="w-14 h-14 bg-blue-600/10 text-blue-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-600/10 text-blue-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                                         <Rocket size={32} />
                                     </div>
                                     <div className="text-right">
@@ -245,8 +246,8 @@ export default async function ClientDashboard() {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
+                                <div className="mt-8 space-y-3">
+                                    <h3 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
                                         {activeSub ? activeSub.abonnements.name : 'Aucun Plan'}
                                     </h3>
                                     <Link href="/client/subscriptions" className="inline-flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:gap-3 transition-all">
@@ -257,7 +258,7 @@ export default async function ClientDashboard() {
                         </div>
 
                         {/* Recent Activity Mini-Panel */}
-                        <div className="glass-panel p-8 bg-slate-900/50 border-slate-800">
+                        <div className="glass-panel p-6 sm:p-8 bg-slate-900/50 border-slate-800">
                             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-8 flex items-center gap-3">
                                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
                                 Système Notifications
@@ -272,14 +273,14 @@ export default async function ClientDashboard() {
                                                 }`}>
                                                 <Chat size={18} />
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="text-xs font-bold text-white">{notif.text}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-white truncate">{notif.text}</p>
                                                 <p className="text-[10px] font-bold text-slate-500 mt-0.5 uppercase tracking-tight italic">
                                                     {new Date(notif.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                 </p>
                                             </div>
-                                            {notif.type === 'pending' && <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>}
-                                            {notif.type === 'status' && <div className={`w-2 h-2 rounded-full ${notif.status === 'rejected' ? 'bg-red-500' : 'bg-blue-600'}`}></div>}
+                                            {notif.type === 'pending' && <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></div>}
+                                            {notif.type === 'status' && <div className={`w-2 h-2 rounded-full shrink-0 ${notif.status === 'rejected' ? 'bg-red-500' : 'bg-blue-600'}`}></div>}
                                         </div>
                                     ))
                                 ) : (
@@ -290,127 +291,132 @@ export default async function ClientDashboard() {
                             </div>
                         </div>
 
-                        {/* Sidebar Stats Panel - Replaced Quick Links with Admin Stats Style */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-950 border border-white/5 shadow-sm hover:border-blue-500/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 text-indigo-500 flex items-center justify-center shadow-inner">
-                                    <Wallet size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">En-cours total</p>
-                                    <p className="text-3xl font-black text-white tracking-tighter italic">{totalOutstanding.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                </div>
-
-                                <div className="glass-panel p-8 bg-slate-900/50 border-slate-800 group hover:border-emerald-500/20 transition-all">
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-500 flex items-center justify-center shadow-inner">
-                                            <CheckmarkOutline size={20} />
-                                        </div>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dernier Paiement</p>
-                                    </div>
-                                    <p className="text-3xl font-black text-white tracking-tighter italic">Aucun</p>
-                                </div>
-
-                                <div className="glass-panel p-10 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
-                                    <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Mes <br /> Informations</h4>
-                                    <ContactInfoForm defaultWhatsapp={profile?.whatsapp} />
-                                </div>
-
-                                <div className="glass-panel p-10 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
-                                    <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Support & <br /> Conciergerie</h4>
-                                    <div className="space-y-3">
-                                        <button className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-blue-400 transition-colors">Base de Savoir</span>
-                                            <Help size={16} className="text-slate-700" />
-                                        </button>
-                                        <Link
-                                            href="https://wa.me/14383906281"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-emerald-400 transition-colors">Chat Direct</span>
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
-                                            </div>
-                                            <Chat size={16} className="text-slate-700" />
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Quick Actions Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
                             {[
-                                { t: 'Mes Abonnements', d: 'Plans et avantages', icon: <Flash />, href: '/client/subscriptions', c: 'blue' },
-                                { t: 'Mes Prêts', d: 'Historique et demandes', icon: <Rocket />, href: '/client/loans', c: 'blue' },
-                                { t: 'Remboursements', d: 'Preuves de paiement', icon: <Wallet />, href: '/client/loans/repayment', c: 'blue' }
+                                { t: 'Mes Abonnements', d: 'Plans et avantages', icon: <Flash />, href: '/client/subscriptions' },
+                                { t: 'Mes Prêts', d: 'Historique et demandes', icon: <Rocket />, href: '/client/loans' },
+                                { t: 'Remboursements', d: 'Preuves de paiement', icon: <Wallet />, href: '/client/loans/repayment' }
                             ].map((action, i) => (
                                 <Link key={i} href={action.href} className="glass-panel p-8 group hover:border-blue-500/40 relative overflow-hidden transition-all duration-500 bg-slate-900/50 border-slate-800">
                                     <div className="absolute -right-4 -bottom-4 opacity-5 text-white group-hover:scale-150 transition-transform duration-700">
                                         {action.icon}
                                     </div>
-                                    <div className="space-y-12 relative z-10 text-left">
-                                        <div className="w-14 h-14 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                                    <div className="space-y-10 relative z-10 text-left">
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
                                             {action.icon}
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-black text-white uppercase italic leading-none mb-2">{action.t}</h4>
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-relaxed italic">{action.d}</p>
+                                            <h4 className="text-base font-black text-white uppercase italic leading-none mb-2">{action.t}</h4>
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-relaxed italic">{action.d}</p>
                                         </div>
                                     </div>
                                 </Link>
                             ))}
                         </div>
+                    </div>
 
-                        {/* Support Luxury Section */}
-                        <div className="mt-24 glass-panel p-10 lg:p-16 bg-slate-900 border-slate-800 text-white relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_50%_120%,rgba(59,130,246,1),transparent_70%)]"></div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
-                                <div className="space-y-8 text-left">
-                                    <div className="inline-flex px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                                        Conciergerie 24/7
-                                    </div>
-                                    <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.9]">
-                                        Assistance <br /><span className="premium-gradient-text uppercase">Prioritaire.</span>
-                                    </h2>
-                                    <p className="text-slate-500 font-bold text-lg max-w-md italic">
-                                        Une question ? Nos experts vous accompagnent avec la réactivité exigée par votre statut.
-                                    </p>
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <Link
-                                            href="https://wa.me/14383906281"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="premium-button px-10"
-                                        >
-                                            <Chat size={20} />
-                                            <span>Chat Live</span>
-                                        </Link>
-                                        <button className="glass-panel bg-slate-800/50 border-slate-700 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3">
-                                            <Help size={20} className="text-blue-500" />
-                                            Base de Connaissances
-                                        </button>
-                                    </div>
+                    {/* Sidebar Column */}
+                    <div className="space-y-8">
+                        {/* Financial Stats */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800 shadow-sm hover:border-blue-500/30 transition-colors">
+                                <div className="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center shadow-inner shrink-0">
+                                    <Wallet size={24} />
                                 </div>
-                                <div className="hidden lg:block relative">
-                                    <div className="absolute -inset-10 bg-blue-600/10 blur-[100px] animate-mesh"></div>
-                                    <div className="relative glass-panel bg-slate-900/80 border-slate-800 p-10 backdrop-blur-3xl transform rotate-3 hover:rotate-0 transition-transform duration-1000 shadow-2xl">
-                                        <div className="space-y-6">
-                                            <div className="flex gap-4">
-                                                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-black italic">C</div>
-                                                <div className="flex-1 space-y-2">
-                                                    <div className="h-4 w-1/3 bg-white/10 rounded-full animate-pulse"></div>
-                                                    <div className="h-3 w-full bg-white/5 rounded-full"></div>
-                                                </div>
-                                            </div>
-                                            <div className="p-6 rounded-2xl bg-white/5 border border-white/5 text-[11px] font-black uppercase tracking-widest text-slate-400 italic">
-                                                &quot;Support Opérationnel : Comment pouvons-nous vous aider aujourd&apos;hui ?&quot;
-                                            </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">En-cours total</p>
+                                    <p className="text-2xl font-black text-white tracking-tighter italic truncate">{totalOutstanding.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                </div>
+                            </div>
+
+                            <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 group hover:border-emerald-500/20 transition-all flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-600/10 text-emerald-500 flex items-center justify-center shadow-inner shrink-0">
+                                    <CheckmarkOutline size={24} />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dernière Opération</p>
+                                    <p className="text-2xl font-black text-white tracking-tighter italic truncate">Validée</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Contact Info */}
+                        <div className="glass-panel p-8 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
+                            <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Mes <br /> Informations</h4>
+                            <ContactInfoForm defaultWhatsapp={profile?.whatsapp} />
+                        </div>
+
+                        {/* Support & Help */}
+                        <div className="glass-panel p-8 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
+                            <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Support & <br /> Conciergerie</h4>
+                            <div className="space-y-3">
+                                <button className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item">
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-blue-400 transition-colors">Base de Savoir</span>
+                                    <Help size={20} className="text-slate-700" />
+                                </button>
+                                <Link
+                                    href="https://wa.me/14383906281"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-emerald-400 transition-colors">Chat Direct</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
+                                    </div>
+                                    <Chat size={20} className="text-slate-700" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Support Luxury Section */}
+                <div className="mt-20 glass-panel p-8 sm:p-12 lg:p-16 bg-slate-900 border-slate-800 text-white relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_50%_120%,rgba(59,130,246,1),transparent_70%)]"></div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+                        <div className="space-y-8">
+                            <div className="inline-flex px-4 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 text-[10px] font-black uppercase tracking-widest text-blue-400">
+                                Conciergerie 24/7
+                            </div>
+                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black italic uppercase tracking-tighter leading-[0.9]">
+                                Assistance <br /><span className="premium-gradient-text uppercase">Prioritaire.</span>
+                            </h2>
+                            <p className="text-slate-500 font-bold text-lg max-w-md italic">
+                                Une question ? Nos experts vous accompagnent avec la réactivité exigée par votre statut.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Link
+                                    href="https://wa.me/14383906281"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="premium-button px-10"
+                                >
+                                    <Chat size={20} />
+                                    <span>Chat Live</span>
+                                </Link>
+                                <button className="glass-panel bg-slate-800/50 border-slate-700 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3">
+                                    <Help size={20} className="text-blue-500" />
+                                    Base de Connaissances
+                                </button>
+                            </div>
+                        </div>
+                        <div className="hidden lg:block relative">
+                            <div className="absolute -inset-10 bg-blue-600/10 blur-[100px] animate-mesh"></div>
+                            <div className="relative glass-panel bg-slate-900/80 border-slate-800 p-10 backdrop-blur-3xl transform rotate-3 hover:rotate-0 transition-transform duration-1000 shadow-2xl">
+                                <div className="space-y-6">
+                                    <div className="flex gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-black italic">C</div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 w-1/3 bg-white/10 rounded-full animate-pulse"></div>
+                                            <div className="h-3 w-full bg-white/5 rounded-full"></div>
                                         </div>
+                                    </div>
+                                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5 text-[11px] font-black uppercase tracking-widest text-slate-400 italic">
+                                        &quot;Support Opérationnel : Comment pouvons-nous vous aider aujourd&apos;hui ?&quot;
                                     </div>
                                 </div>
                             </div>
