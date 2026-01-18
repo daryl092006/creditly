@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Warning, CheckmarkFilled, ErrorFilled, InformationFilled } from '@carbon/icons-react'
 
 interface ConfirmModalProps {
@@ -70,7 +71,7 @@ export default function ConfirmModal({
 
     const currentVariant = variantStyles[variant]
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
                 className="absolute inset-0 bg-slate-950/80 backdrop-blur-md animate-fade-in"
@@ -114,6 +115,7 @@ export default function ConfirmModal({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
