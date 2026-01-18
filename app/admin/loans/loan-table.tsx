@@ -13,6 +13,9 @@ export default function AdminLoanTable({ rows }: {
         plan: string;
         date: string;
         status: string;
+        payout_phone?: string;
+        payout_name?: string;
+        payout_network?: string;
         whatsapp?: string;
         admin: { name: string; role: string; whatsapp?: string } | null
     }>
@@ -56,7 +59,8 @@ export default function AdminLoanTable({ rows }: {
                         <tr className="bg-slate-900/50 border-b border-white/5">
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Demande</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Offre Choisie</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Offre</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Réception des Fonds</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Approuvé Par</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact</th>
@@ -81,6 +85,22 @@ export default function AdminLoanTable({ rows }: {
                                     <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">
                                         {row.plan}
                                     </span>
+                                </td>
+                                <td className="px-8 py-6">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${row.payout_network === 'MTN' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
+                                                    row.payout_network === 'Moov' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                                        'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                }`}>
+                                                {row.payout_network || 'N/A'}
+                                            </span>
+                                            <p className="text-xs font-black text-white italic">{row.payout_phone || 'Non renseigné'}</p>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate max-w-[150px] italic">
+                                            {row.payout_name || '-'}
+                                        </p>
+                                    </div>
                                 </td>
                                 <td className="px-8 py-6 text-sm font-bold text-slate-500 italic">
                                     {new Date(row.date).toLocaleDateString()}
@@ -166,9 +186,16 @@ export default function AdminLoanTable({ rows }: {
                             </span>
                         </div>
 
-                        <div className="space-y-2">
-                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant demandé</p>
-                            <p className="font-black text-white text-2xl tracking-tighter italic leading-none">{row.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600 tracking-normal uppercase">FCFA</span></p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant demandé</p>
+                                <p className="font-black text-white text-2xl tracking-tighter italic leading-none">{row.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600 tracking-normal uppercase">FCFA</span></p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Réception ({row.payout_network})</p>
+                                <p className="text-sm font-black text-white italic leading-none">{row.payout_phone}</p>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight italic truncate">{row.payout_name}</p>
+                            </div>
                         </div>
 
                         <div className="flex justify-between items-center pt-6 border-t border-white/5">

@@ -44,7 +44,7 @@ export default async function PaymentPage({
                             </h3>
                             <div className="space-y-6">
                                 <div>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Numéro de dépôt (Momo/Flooz)</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Numéro de dépôt (Momo)</p>
                                     <p className="text-3xl font-black text-white tracking-widest italic selection:bg-blue-600">+229 01 69 46 30 04</p>
                                 </div>
                                 <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">

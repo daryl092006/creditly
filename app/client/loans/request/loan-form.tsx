@@ -16,6 +16,9 @@ interface Subscription {
 export default function LoanRequestForm({ subscription }: { subscription: Subscription }) {
     const router = useRouter()
     const [amount, setAmount] = useState<number>(subscription.plan.max_loan_amount)
+    const [payoutPhone, setPayoutPhone] = useState('')
+    const [payoutName, setPayoutName] = useState('')
+    const [payoutNetwork, setPayoutNetwork] = useState('MTN')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
@@ -29,7 +32,13 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
             return
         }
 
-        const res = await requestLoan(amount)
+        if (!payoutPhone || !payoutName || !payoutNetwork) {
+            setError('Veuillez remplir toutes les informations de réception.')
+            setLoading(false)
+            return
+        }
+
+        const res = await requestLoan(amount, payoutPhone, payoutName, payoutNetwork)
         if (res?.error) {
             setError(res.error)
             setLoading(false)
@@ -98,10 +107,47 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
                     </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Réseau</label>
+                        <select
+                            value={payoutNetwork}
+                            onChange={(e) => setPayoutNetwork(e.target.value)}
+                            className="w-full px-6 py-4 rounded-xl border border-white/5 bg-slate-950 text-white font-bold italic outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="MTN">MTN</option>
+                            <option value="Moov">Moov</option>
+                            <option value="Celtiis">Celtiis</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Numéro de réception</label>
+                        <input
+                            type="text"
+                            placeholder="01XXXXXXXX"
+                            value={payoutPhone}
+                            onChange={(e) => setPayoutPhone(e.target.value)}
+                            className="w-full px-6 py-4 rounded-xl border border-white/5 bg-slate-950 text-white font-bold italic outline-none focus:border-blue-500/50 transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Nom complet du compte</label>
+                    <input
+                        type="text"
+                        placeholder="Ex: Jean Dupont"
+                        value={payoutName}
+                        onChange={(e) => setPayoutName(e.target.value)}
+                        className="w-full px-6 py-4 rounded-xl border border-white/5 bg-slate-950 text-white font-bold italic outline-none focus:border-blue-500/50 transition-all"
+                    />
+                </div>
+
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="premium-button w-full py-6 text-sm active:scale-[0.98] group/btn"
+                    className="premium-button w-full py-6 text-sm active:scale-[0.98] group/btn mt-4"
                 >
                     <Money size={20} className="group-hover/btn:rotate-12 transition-transform" />
                     {loading ? 'Traitement Instantané...' : 'Engager le Financement'}

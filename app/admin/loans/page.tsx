@@ -37,6 +37,9 @@ export default async function AdminLoanPage({
         plan: loan.plan?.name || 'N/A',
         date: loan.request_date,
         status: loan.status,
+        payout_phone: loan.payout_phone,
+        payout_name: loan.payout_name,
+        payout_network: loan.payout_network,
         admin: loan.admin ? {
             name: `${loan.admin.prenom} ${loan.admin.nom}`,
             role: loan.admin.role,

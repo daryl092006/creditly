@@ -158,6 +158,9 @@ create table public.prets (
   admin_decision_date timestamptz,
   rejection_reason text,
   amount_paid numeric default 0,
+  payout_phone text,
+  payout_name text,
+  payout_network text,
   created_at timestamptz default now()
 );
 

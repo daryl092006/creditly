@@ -4,8 +4,9 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { sendAdminNotification } from '@/app/utils/email-service'
 
-export async function requestLoan(amount: number) {
+export async function requestLoan(amount: number, payoutPhone: string, payoutName: string, payoutNetwork: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
@@ -66,12 +67,25 @@ export async function requestLoan(amount: number) {
             user_id: user.id,
             amount: amount,
             subscription_snapshot_id: sub.plan.id,
-            status: 'pending'
+            status: 'pending',
+            payout_phone: payoutPhone,
+            payout_name: payoutName,
+            payout_network: payoutNetwork
         })
 
     if (insertError) {
         return { error: getUserFriendlyErrorMessage(insertError) }
     }
+
+    // 6. Notify Admin (Async)
+    const { data: profile } = await supabase.from('users').select('nom, prenom').eq('id', user.id).single()
+    sendAdminNotification('LOAN_REQUEST', {
+        userEmail: user.email!,
+        userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+        amount: amount,
+        payoutNetwork: payoutNetwork,
+        payoutPhone: payoutPhone
+    }).catch(err => console.error('Notification Error:', err))
 
     revalidatePath('/client/dashboard')
     return { success: 'PretEngage' }
@@ -139,6 +153,14 @@ export async function submitRepayment(formData: FormData) {
         if (dbError) {
             return { error: getUserFriendlyErrorMessage(dbError) }
         }
+
+        // 3. Notify Admin (Async)
+        const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
+        sendAdminNotification('REPAYMENT', {
+            userEmail: user.email!,
+            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            amount: Number(amount)
+        }).catch(err => console.error('Notification Error:', err))
 
         revalidatePath('/client/loans')
         revalidatePath(`/client/loans/${loanId}`)

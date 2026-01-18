@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { sendAdminNotification } from '@/app/utils/email-service'
 
 export async function submitKyc(formData: FormData) {
     const supabase = await createClient()
@@ -71,6 +72,13 @@ export async function submitKyc(formData: FormData) {
         if (dbError) {
             return { error: getUserFriendlyErrorMessage(dbError) }
         }
+
+        // 3. Notify Admin (Async)
+        const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
+        sendAdminNotification('KYC_SUBMISSION', {
+            userEmail: user.email!,
+            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+        }).catch((err: any) => console.error('Notification Error:', err))
 
         revalidatePath('/client/dashboard')
         revalidatePath('/admin/kyc')

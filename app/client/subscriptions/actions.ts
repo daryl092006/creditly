@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { sendAdminNotification } from '@/app/utils/email-service'
 
 import { redirect } from 'next/navigation'
 
@@ -61,6 +62,17 @@ export async function subscribeToPlan(formData: FormData) {
         if (error) {
             return { error: getUserFriendlyErrorMessage(error) }
         }
+
+        // 4. Notify Admin (Async)
+        const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
+        const { data: plan } = await adminSupabase.from('abonnements').select('name').eq('id', planId).single()
+
+        sendAdminNotification('SUBSCRIPTION', {
+            userEmail: user.email!,
+            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            planName: plan?.name || 'Inconnu',
+            amount: Number(amount)
+        }).catch(err => console.error('Notification Error:', err))
 
         revalidatePath('/client/subscriptions')
         return { success: true }
