@@ -7,7 +7,7 @@ export default async function AdminSubscriptionsPage() {
     const { data: pendingSubs } = await supabase
         .from('user_subscriptions')
         .select('*, plan:abonnements(*), user:users(*)')
-        .eq('is_active', false)
+        .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
     return (

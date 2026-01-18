@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import SubscribeButton from './SubscribeButton'
 import Link from 'next/link'
-import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash } from '@carbon/icons-react'
+import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse } from '@carbon/icons-react'
 
 export default async function SubscriptionsPage() {
     const supabase = await createClient()
@@ -11,9 +11,10 @@ export default async function SubscriptionsPage() {
     const { data: allSubs } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id) : { data: [] }
 
     const now = new Date().toISOString()
-    const activeSub = allSubs?.find(s => s.is_active && s.end_date && s.end_date > now)
-    const expiredSub = !activeSub ? allSubs?.find(s => s.is_active && s.end_date && s.end_date <= now) : null
-    const pendingSub = allSubs?.find(s => !s.is_active)
+    const activeSub = allSubs?.find(s => s.status === 'active' && s.end_date && s.end_date > now)
+    const expiredSub = !activeSub ? allSubs?.find(s => s.status === 'expired' || (s.status === 'active' && s.end_date && s.end_date <= now)) : null
+    const pendingSub = allSubs?.find(s => s.status === 'pending')
+    const rejectedSub = allSubs?.find(s => s.status === 'rejected')
 
     const getPlanIcon = (name: string) => {
         if (name === 'Platinum') return <Rocket size={32} />
@@ -57,6 +58,22 @@ export default async function SubscriptionsPage() {
                                         Paiement déclaré : {Number(pendingSub.amount_paid).toLocaleString()} FCFA
                                     </p>
                                     <p className="text-[8px] font-bold text-slate-500 uppercase italic">Vérification de la preuve en cours...</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {rejectedSub && (
+                            <div className="glass-panel p-6 bg-red-600/10 border-red-500/30 flex items-center gap-6 animate-shake shadow-xl shadow-red-500/10">
+                                <div className="w-14 h-14 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center">
+                                    <Misuse size={32} className="animate-pulse" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1 italic">Paiement Refusé</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter">Plan {rejectedSub.plan.name}</p>
+                                    <p className="text-[10px] font-bold text-red-400 uppercase italic">
+                                        Raison : {rejectedSub.rejection_reason || 'Preuve de paiement non conforme'}
+                                    </p>
+                                    <p className="text-[8px] font-black text-slate-500 uppercase italic mt-1 font-mono tracking-widest leading-none">Veuillez choisir un plan pour resoumettre</p>
                                 </div>
                             </div>
                         )}

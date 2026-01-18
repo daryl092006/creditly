@@ -6,6 +6,7 @@ create type user_role as enum ('client', 'admin_kyc', 'admin_loan', 'admin_repay
 create type kyc_status as enum ('pending', 'approved', 'rejected');
 create type loan_status as enum ('pending', 'approved', 'active', 'rejected', 'paid', 'overdue');
 create type repayment_status as enum ('pending', 'verified', 'rejected');
+create type subscription_status as enum ('pending', 'active', 'rejected', 'expired');
 
 -- 2. USERS / PROFILES (Extends Supabase Auth)
 create table public.users (
@@ -108,7 +109,11 @@ create table public.user_subscriptions (
   plan_id uuid references public.abonnements(id) not null,
   start_date timestamptz default now(),
   end_date timestamptz, -- logic to set this depends on payment
-  is_active boolean default false, -- (payment validation)
+  is_active boolean default false, -- (payment validation) - DEPRECATED: use status
+  status subscription_status default 'pending',
+  rejection_reason text,
+  proof_url text, -- Storage path to payment proof
+  amount_paid numeric,
   created_at timestamptz default now()
 );
 

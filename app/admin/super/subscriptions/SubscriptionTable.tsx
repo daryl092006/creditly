@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
-import { activateSubscription } from '@/app/admin/actions'
+import { activateSubscription, rejectSubscription } from '@/app/admin/actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
-import { Rocket, Flash, Star, User, Calendar, Money, Image, CheckmarkFilled, InformationFilled } from '@carbon/icons-react'
+import { Rocket, Flash, Star, User, Calendar, Money, Image, CheckmarkFilled, InformationFilled, Misuse } from '@carbon/icons-react'
 
 interface Subscription {
     id: string
@@ -28,7 +28,9 @@ interface Subscription {
 export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [confirmSub, setConfirmSub] = useState<Subscription | null>(null)
-    const [isActivating, setIsActivating] = useState(false)
+    const [rejectSub, setRejectSub] = useState<Subscription | null>(null)
+    const [rejectionReason, setRejectionReason] = useState('')
+    const [isProcessing, setIsProcessing] = useState(false)
 
     const getFullUrl = (path: string) => {
         const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -37,15 +39,28 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
 
     const handleActivate = async () => {
         if (!confirmSub) return
-        setIsActivating(true)
+        setIsProcessing(true)
         try {
             await activateSubscription(confirmSub.id)
             setConfirmSub(null)
         } catch (error) {
             console.error(error)
-            // Error handling could be a simple temporary toast or modal update
         } finally {
-            setIsActivating(false)
+            setIsProcessing(false)
+        }
+    }
+
+    const handleReject = async () => {
+        if (!rejectSub || !rejectionReason.trim()) return
+        setIsProcessing(true)
+        try {
+            await rejectSubscription(rejectSub.id, rejectionReason)
+            setRejectSub(null)
+            setRejectionReason('')
+        } catch (error) {
+            console.error(error)
+        } finally {
+            setIsProcessing(false)
         }
     }
 
@@ -124,11 +139,19 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                             </div>
 
                             {/* Actions */}
-                            <div className="shrink-0 w-full lg:w-auto pt-4 lg:pt-0">
+                            <div className="shrink-0 w-full lg:w-auto pt-4 lg:pt-0 flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => setRejectSub(sub)}
+                                    className="px-6 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2 group/reject"
+                                >
+                                    <Misuse size={20} className="group-hover/reject:rotate-12 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Refuser</span>
+                                </button>
                                 <button
                                     onClick={() => setConfirmSub(sub)}
                                     className="premium-button w-full lg:w-auto py-4 px-10 active:scale-95 shadow-2xl flex items-center justify-center gap-2"
                                 >
+                                    <CheckmarkFilled size={20} />
                                     <span>Activer</span>
                                 </button>
                             </div>
@@ -173,8 +196,32 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                     message={`Voulez-vous confirmer le paiement de ${(confirmSub.amount_paid || 0).toLocaleString()} FCFA et activer l'abonnement "${confirmSub.plan.name}" pour ${confirmSub.user.prenom} ${confirmSub.user.nom} ?`}
                     confirmText="Confirmer & Activer"
                     variant="success"
-                    isLoading={isActivating}
+                    isLoading={isProcessing}
                 />
+            )}
+
+            {/* Rejection Modal */}
+            {rejectSub && (
+                <ConfirmModal
+                    isOpen={!!rejectSub}
+                    onClose={() => setRejectSub(null)}
+                    onConfirm={handleReject}
+                    title="Refuser le Paiement ?"
+                    message={`Indiquez la raison du refus pour ${rejectSub.user.prenom} ${rejectSub.user.nom}. Ce motif sera visible par l'utilisateur.`}
+                    confirmText="Confirmer le Refus"
+                    variant="danger"
+                    isLoading={isProcessing}
+                    disabled={!rejectionReason.trim()}
+                >
+                    <div className="mt-6">
+                        <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Ex: Image illisible, Montant incorrect..."
+                            className="w-full h-32 bg-slate-950 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:border-red-500/50 outline-none transition-all resize-none font-bold italic"
+                        />
+                    </div>
+                </ConfirmModal>
             )}
         </div>
     )

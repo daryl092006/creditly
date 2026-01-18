@@ -6,7 +6,8 @@ import { Identification, Hourglass, ArrowRight, Logout } from '@carbon/icons-rea
 import Link from 'next/link'
 
 export default function PendingActivationPage() {
-    const [hasDocs, setHasDocs] = useState<boolean | null>(null)
+    const [kycStatus, setKycStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null)
+    const [adminNotes, setAdminNotes] = useState<string | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -15,10 +16,16 @@ export default function PendingActivationPage() {
             if (user) {
                 const { data } = await supabase
                     .from('kyc_submissions')
-                    .select('id')
+                    .select('status, admin_notes')
                     .eq('user_id', user.id)
-                    .limit(1)
-                setHasDocs(data && data.length > 0)
+                    .maybeSingle()
+
+                if (data) {
+                    setKycStatus(data.status)
+                    setAdminNotes(data.admin_notes)
+                } else {
+                    setKycStatus(null)
+                }
             }
         }
         checkKyc()
@@ -33,9 +40,11 @@ export default function PendingActivationPage() {
                 {/* Visual Cue */}
                 <div className="relative inline-block z-10">
                     <div className="w-32 h-32 rounded-[2.5rem] bg-slate-900 border border-white/10 shadow-2xl flex items-center justify-center relative group">
-                        <div className="absolute inset-0 bg-blue-600/20 rounded-[2.5rem] blur-xl group-hover:bg-blue-600/30 transition-all duration-700 animate-pulse-slow"></div>
-                        {hasDocs === false ? (
+                        <div className={`absolute inset-0 rounded-[2.5rem] blur-xl transition-all duration-700 animate-pulse-slow ${kycStatus === 'rejected' ? 'bg-red-600/20 group-hover:bg-red-600/30' : 'bg-blue-600/20 group-hover:bg-blue-600/30'}`}></div>
+                        {kycStatus === null ? (
                             <Identification size={48} className="text-blue-500 relative z-10" />
+                        ) : kycStatus === 'rejected' ? (
+                            <Identification size={48} className="text-red-500 relative z-10" />
                         ) : (
                             <Hourglass size={48} className="text-emerald-500 animate-spin-slow relative z-10" />
                         )}
@@ -44,27 +53,33 @@ export default function PendingActivationPage() {
 
                 <div className="space-y-4 relative z-10">
                     <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-[0.9] uppercase italic">
-                        {hasDocs === false ? (
+                        {kycStatus === null ? (
                             <>Vérification <br /><span className="premium-gradient-text uppercase">Requise.</span></>
+                        ) : kycStatus === 'rejected' ? (
+                            <>Dossier <br /><span className="text-red-500 uppercase">Refusé.</span></>
                         ) : (
                             <>Analyse <br /><span className="premium-gradient-text uppercase">En cours.</span></>
                         )}
                     </h1>
                     <p className="text-slate-500 font-bold text-lg max-w-lg mx-auto leading-relaxed italic">
-                        {hasDocs === false
+                        {kycStatus === null
                             ? "Pour activer votre compte et accéder aux services de prêt, vous devez d'abord soumettre vos pièces justificatives."
-                            : "Nos analystes vérifient actuellement la conformité de vos documents d'identité pour garantir la sécurité du réseau."
+                            : kycStatus === 'rejected'
+                                ? `Votre dossier a été refusé pour la raison suivante : "${adminNotes || 'Dossier non conforme'}". Veuillez corriger et resoumettre.`
+                                : "Nos analystes vérifient actuellement la conformité de vos documents d'identité pour garantir la sécurité du réseau."
                         }
                     </p>
                 </div>
 
-                {hasDocs === false ? (
+                {kycStatus === null || kycStatus === 'rejected' ? (
                     <div className="pt-8 relative z-10">
                         <Link
                             href="/client/kyc"
-                            className="premium-button px-12 py-6 flex items-center justify-center gap-3 mx-auto active:scale-95"
+                            className={`premium-button px-12 py-6 flex items-center justify-center gap-3 mx-auto active:scale-95 ${kycStatus === 'rejected' ? '!bg-red-600 !shadow-red-600/20 hover:!bg-red-500' : ''}`}
                         >
-                            <span className="font-black uppercase tracking-widest text-xs">Soumettre mon dossier</span>
+                            <span className="font-black uppercase tracking-widest text-xs">
+                                {kycStatus === 'rejected' ? 'Resoumettre mon dossier' : 'Soumettre mon dossier'}
+                            </span>
                             <ArrowRight size={20} />
                         </Link>
                     </div>

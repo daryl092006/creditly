@@ -187,13 +187,33 @@ export async function activateSubscription(subId: string) {
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
-            is_active: true,
+            is_active: true, // Legacy
+            status: 'active',
             start_date: startDate.toISOString(),
-            end_date: endDate.toISOString()
+            end_date: endDate.toISOString(),
+            rejection_reason: null
         })
         .eq('id', subId)
 
     if (error) throw new Error(getUserFriendlyErrorMessage(error))
     revalidatePath('/admin/super')
     revalidatePath('/admin/super/subscriptions')
+    revalidatePath('/client/dashboard')
+}
+
+export async function rejectSubscription(subId: string, reason: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('user_subscriptions')
+        .update({
+            status: 'rejected',
+            is_active: false,
+            rejection_reason: reason
+        })
+        .eq('id', subId)
+
+    if (error) throw new Error(getUserFriendlyErrorMessage(error))
+    revalidatePath('/admin/super/subscriptions')
+    revalidatePath('/client/dashboard')
 }

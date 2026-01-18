@@ -15,6 +15,8 @@ interface ConfirmModalProps {
     variant?: 'danger' | 'success' | 'info' | 'warning'
     isLoading?: boolean
     customIcon?: React.ReactNode
+    children?: React.ReactNode
+    disabled?: boolean
 }
 
 export default function ConfirmModal({
@@ -27,7 +29,9 @@ export default function ConfirmModal({
     cancelText = 'Annuler',
     variant = 'info',
     isLoading = false,
-    customIcon
+    customIcon,
+    children,
+    disabled = false
 }: ConfirmModalProps) {
     const [mounted, setMounted] = useState(false)
 
@@ -93,6 +97,12 @@ export default function ConfirmModal({
                         </p>
                     </div>
 
+                    {children && (
+                        <div className="w-full">
+                            {children}
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4 w-full pt-4">
                         <button
                             onClick={onClose}
@@ -103,7 +113,7 @@ export default function ConfirmModal({
                         </button>
                         <button
                             onClick={onConfirm}
-                            disabled={isLoading}
+                            disabled={isLoading || disabled}
                             className={`premium-button py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
                         >
                             {isLoading ? (

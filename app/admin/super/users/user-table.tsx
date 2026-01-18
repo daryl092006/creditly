@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react'
 import { updateUserRole, deleteUserAccount, blacklistUserAccount } from './actions'
-import { TrashCan, User, Switcher, Misuse, UserAvailable, UserSpeaker } from '@carbon/icons-react'
+import { TrashCan, User, Switcher, Misuse } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string }> }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist' } | null>(null)
+    const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         setLoading(userId)
@@ -32,8 +33,12 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                 await deleteUserAccount(id)
             }
             setConfirmAction(null)
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
+            setErrorAction({
+                title: "Suppression Impossible",
+                message: error.message || "Une erreur inattendue est survenue."
+            })
         } finally {
             setProcessingId(null)
         }
@@ -221,6 +226,18 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                 variant={confirmAction?.type === 'blacklist' ? "danger" : "warning"}
                 isLoading={processingId === confirmAction?.id}
                 customIcon={confirmAction?.type === 'blacklist' ? <Misuse size={32} className="text-red-500" /> : <TrashCan size={32} className="text-amber-500" />}
+            />
+
+            {/* Error Modal (Implicitly informed from Server Action) */}
+            <ConfirmModal
+                isOpen={!!errorAction}
+                onClose={() => setErrorAction(null)}
+                onConfirm={() => setErrorAction(null)}
+                title={errorAction?.title || "Action Impossible"}
+                message={errorAction?.message || ""}
+                confirmText="Fermer"
+                cancelText="OK"
+                variant="danger"
             />
         </div>
     )

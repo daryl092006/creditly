@@ -58,16 +58,20 @@ export async function submitKyc(formData: FormData) {
     const selfiePath = await uploadDoc(selfie, 'selfie')
     const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence')
 
-    // Insertion unique pour tout le dossier
-    const { error: dbError } = await adminSupabase.from('kyc_submissions').insert([
+    // Insertion ou Mise à jour du dossier (Upsert sur user_id)
+    const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(
         {
             user_id: userId,
             id_card_url: idCardPath,
             selfie_url: selfiePath,
             proof_of_residence_url: proofPath,
-            status: 'pending'
-        }
-    ])
+            status: 'pending',
+            admin_notes: null, // Clear reason for previous rejection
+            reviewed_at: null,
+            admin_id: null
+        },
+        { onConflict: 'user_id' }
+    )
 
     if (dbError) {
         console.error('Database error:', dbError)

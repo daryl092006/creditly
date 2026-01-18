@@ -17,19 +17,30 @@ export default async function ClientDashboard() {
 
     const { data: profile } = await supabase
         .from('users')
-        .select('*, user_subscriptions(is_active, plan_id, end_date, created_at, abonnements(name))')
+        .select(`
+            *, 
+            user_subscriptions(
+                is_active, 
+                status,
+                rejection_reason,
+                plan_id, 
+                end_date, 
+                created_at, 
+                abonnements(name)
+            )
+        `)
         .eq('id', user.id)
         .single()
 
     const now = new Date().toISOString()
     // Find a subscription that is active and not expired
     const activeSub = profile?.user_subscriptions?.find((sub: any) =>
-        sub.is_active && sub.end_date && sub.end_date > now
+        sub.status === 'active' && sub.end_date && sub.end_date > now
     )
 
     // Find if there's an expired but previously active subscription
     const expiredSub = !activeSub ? profile?.user_subscriptions?.find((sub: any) =>
-        sub.is_active && sub.end_date && sub.end_date <= now
+        (sub.status === 'expired' || sub.status === 'active') && sub.end_date && sub.end_date <= now
     ) : null
 
     // Fetch active loans for "En-cours total"
@@ -66,6 +77,16 @@ export default async function ClientDashboard() {
 
     // Combine and format notifications
     const notifications = [
+        ...(profile?.user_subscriptions?.map((s: any) => ({
+            id: `sub-${s.created_at}`,
+            text: s.status === 'pending' ? `Paiement abonnement ${s.abonnements.name} en cours de validation` :
+                s.status === 'active' ? `Abonnement ${s.abonnements.name} actif` :
+                    s.status === 'rejected' ? `Paiement ${s.abonnements.name} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                        `Abonnement ${s.abonnements.name} expiré`,
+            date: s.created_at,
+            type: s.status === 'pending' ? 'pending' : 'status',
+            status: s.status
+        })) || []),
         ...(recentLoans?.map(l => ({
             id: `loan-${l.id}`,
             text: l.status === 'pending' ? `Demande de prêt de ${l.amount.toLocaleString()} FCFA en attente` :
@@ -88,9 +109,9 @@ export default async function ClientDashboard() {
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)
 
     // Identity Card Formatting
-    const kycBadge = profile?.is_account_active ? 'Complet' : kycDocs ? 'En attente' : 'Incomplet'
-    const kycColor = profile?.is_account_active ? 'bg-emerald-500/10 text-emerald-500' : kycDocs ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
-    const kycProgress = profile?.is_account_active ? '100' : kycDocs ? '66' : '33'
+    const kycBadge = profile?.is_account_active ? 'Complet' : kycDocs?.status === 'rejected' ? 'Refusé' : kycDocs ? 'En attente' : 'Incomplet'
+    const kycColor = profile?.is_account_active ? 'bg-emerald-500/10 text-emerald-500' : kycDocs?.status === 'rejected' ? 'bg-red-500/10 text-red-500/80 animate-pulse' : kycDocs ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
+    const kycProgress = profile?.is_account_active ? '100' : kycDocs?.status === 'rejected' ? '33' : kycDocs ? '66' : '33'
 
 
     return (

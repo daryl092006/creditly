@@ -42,7 +42,14 @@ export async function subscribeToPlan(formData: FormData) {
         throw new Error(getUserFriendlyErrorMessage(uploadError))
     }
 
-    // 2. Insert record with proof and amount
+    // 2. Cleanup old pending/rejected attempts to avoid confusion
+    await adminSupabase
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'rejected'])
+
+    // 3. Insert new record with status tracking
     const { error } = await supabase
         .from('user_subscriptions')
         .insert({
@@ -50,7 +57,9 @@ export async function subscribeToPlan(formData: FormData) {
             plan_id: planId,
             amount_paid: Number(amount),
             proof_url: uploadData.path,
-            is_active: false
+            is_active: false,
+            status: 'pending',
+            rejection_reason: null
         })
 
     if (error) {

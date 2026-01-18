@@ -23,14 +23,37 @@ export async function updateUserRole(userId: string, role: 'client' | 'admin_kyc
 export async function deleteUserAccount(userId: string) {
     const adminSupabase = await createAdminClient()
 
-    // 1. Delete from auth.users (Cascades to public.users via RLS or DB references usually, 
-    // but we can be explicit if needed. The references in schema.sql say 'on delete cascade')
+    // 1. Delete from auth.users (Cascades to public.users via RLS or DB references usually)
     const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId)
 
     if (authError) {
-        // Fallback: Try delete from public.users if auth delete fails (sometimes user might not exist in auth anymore)
+        let terminalMessage = authError.message
+
+        // Handle Foreign Key Violations (Postgres code 23503) from the cascading delete
+        if (terminalMessage.includes('23503') || terminalMessage.includes('violates foreign key constraint')) {
+            if (terminalMessage.includes('prets_user_id_fkey')) {
+                throw new Error("Suppression Impossible : L'utilisateur possède des prêts enregistrés.")
+            }
+            if (terminalMessage.includes('remboursements_user_id_fkey')) {
+                throw new Error("Suppression Impossible : L'utilisateur possède des remboursements enregistrés.")
+            }
+            if (terminalMessage.includes('kyc_submissions_user_id_fkey')) {
+                throw new Error("Suppression Impossible : L'utilisateur a un dossier KYC en cours.")
+            }
+            if (terminalMessage.includes('user_subscriptions_user_id_fkey')) {
+                throw new Error("Suppression Impossible : L'utilisateur a des abonnements enregistrés.")
+            }
+            throw new Error("Suppression Impossible : L'utilisateur est lié à des dossiers administratifs actifs.")
+        }
+
+        // Fallback: Try delete from public.users if auth delete fails for other reasons
         const { error: publicError } = await adminSupabase.from('users').delete().eq('id', userId)
-        if (publicError) throw new Error(`Auth Delete: ${authError.message} | Public Delete: ${publicError.message}`)
+        if (publicError) {
+            const pubMsg = publicError.message
+            if (pubMsg.includes('prets_user_id_fkey')) throw new Error("Suppression Impossible : Prêts détectés.")
+            if (pubMsg.includes('kyc_submissions_user_id_fkey')) throw new Error("Suppression Impossible : KYC détecté.")
+            throw new Error(`Erreur technique : ${pubMsg}`)
+        }
     }
 
     revalidatePath('/admin/super/users')
