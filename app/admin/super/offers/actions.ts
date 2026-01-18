@@ -33,6 +33,7 @@ export async function updateOffer(formData: FormData) {
 
     revalidatePath('/admin/super/offers')
     revalidatePath('/client/subscriptions')
+    revalidatePath('/')
 }
 
 export async function createOffer(formData: FormData) {
@@ -62,4 +63,5 @@ export async function createOffer(formData: FormData) {
 
     revalidatePath('/admin/super/offers')
     revalidatePath('/client/subscriptions')
+    revalidatePath('/')
 }

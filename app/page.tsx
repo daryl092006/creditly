@@ -1,7 +1,17 @@
 import Link from 'next/link';
-import { ArrowRight, Security, Rocket, ChartBar, Time, UserAvatarFilledAlt, CloudLogging, Locked, CheckmarkFilled, Checkmark } from '@carbon/icons-react';
+import { ArrowRight, Security, Rocket, ChartBar, Time, UserAvatarFilledAlt, CloudLogging, Locked, CheckmarkFilled, Checkmark, Star, Flash } from '@carbon/icons-react';
+import { createClient } from '@/utils/supabase/server';
 
-export default function Home() {
+export default async function Home() {
+    const supabase = await createClient();
+    const { data: tiers } = await supabase.from('abonnements').select('*').order('price');
+
+    const getTierIcon = (name: string) => {
+        if (name.toLowerCase().includes('platinum') || name.toLowerCase().includes('gold')) return <Rocket size={20} />;
+        if (name.toLowerCase().includes('silver') || name.toLowerCase().includes('haut')) return <Flash size={20} />;
+        return <Star size={20} />;
+    };
+
     return (
         <div className="min-h-screen flex flex-col selection:bg-blue-600/30">
             {/* Navigation Elite */}
@@ -138,26 +148,26 @@ export default function Home() {
                             <p className="text-slate-500 font-bold italic uppercase text-[10px] tracking-[0.3em]">Des solutions adaptées à chaque échelle de croissance</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {[
-                                { name: 'Basic', price: '2,500', cap: '10,000', duration: '7 jours', perks: ['1 prêt mensuel', 'Support Standard'] },
-                                { name: 'Silver', price: '6,250', cap: '25,000', duration: '10 jours', perks: ['2 prêts mensuels', 'Support Prioritaire'], popular: true },
-                                { name: 'Gold', price: '12,500', cap: '50,000', duration: '15 jours', perks: ['3 prêts mensuels', 'Validation Express'] },
-                            ].map((tier, i) => (
-                                <div key={i} className={`glass-panel p-12 flex flex-col relative overflow-hidden ${tier.popular ? 'border-blue-500/30 ring-1 ring-blue-500/20 scale-105 z-10' : 'bg-slate-900/30'}`}>
-                                    {tier.popular && (
+                        <div className="flex flex-wrap justify-center gap-8">
+                            {tiers?.map((tier, i) => (
+                                <div key={tier.id} className={`glass-panel p-12 flex flex-col relative overflow-hidden min-w-[320px] max-w-[350px] ${tier.name.toLowerCase().includes('gold') || tier.name.toLowerCase().includes('platinum') ? 'border-blue-500/30 ring-1 ring-blue-500/20 scale-105 z-10' : 'bg-slate-900/30'}`}>
+                                    {(tier.name.toLowerCase().includes('gold') || tier.name.toLowerCase().includes('platinum')) && (
                                         <div className="absolute top-6 right-[-40px] bg-blue-600 text-white text-[8px] font-black uppercase py-2 px-12 rotate-45 transform">Populaire</div>
                                     )}
                                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic leading-none">{tier.name}</h4>
-                                    <p className="text-4xl font-black text-white italic mb-8 leading-none">{tier.price} <span className="text-[10px] font-black text-slate-600 not-italic">FCFA / mois</span></p>
+                                    <p className="text-4xl font-black text-white italic mb-8 leading-none">{tier.price.toLocaleString()} <span className="text-[10px] font-black text-slate-600 not-italic">FCFA / mois</span></p>
 
                                     <div className="space-y-6 mb-12 flex-grow">
                                         <div className="p-4 rounded-xl bg-slate-950 border border-white/5 shadow-inner text-center">
                                             <p className="text-[10px] font-black text-slate-600 uppercase italic mb-1">Plafond Déblocable</p>
-                                            <p className="text-2xl font-black text-emerald-500 italic uppercase leading-none">{tier.cap} FCFA</p>
+                                            <p className="text-2xl font-black text-emerald-500 italic uppercase leading-none">{tier.max_loan_amount.toLocaleString()} FCFA</p>
                                         </div>
                                         <ul className="space-y-4">
-                                            {tier.perks.map((p, pi) => (
+                                            {[
+                                                `${tier.max_loans_per_month} prêt${tier.max_loans_per_month > 1 ? 's' : ''} mensuel${tier.max_loans_per_month > 1 ? 's' : ''}`,
+                                                `${tier.repayment_delay_days} jours de délai`,
+                                                tier.name.toLowerCase().includes('gold') || tier.name.toLowerCase().includes('platinum') ? 'Support Prioritaire' : 'Support Standard'
+                                            ].map((p, pi) => (
                                                 <li key={pi} className="flex items-center gap-3 text-xs font-bold text-slate-400 italic">
                                                     <Checkmark className="text-blue-500 w-4 h-4 shrink-0" />
                                                     {p}
@@ -166,7 +176,7 @@ export default function Home() {
                                         </ul>
                                     </div>
 
-                                    <Link href="/auth/signup" className={`w-full py-4 text-center rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tier.popular ? 'bg-blue-600 text-white shadow-xl hover:bg-blue-500' : 'bg-white/5 text-white hover:bg-white/10 border border-white/5'}`}>
+                                    <Link href="/auth/signup" className={`w-full py-4 text-center rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tier.name.toLowerCase().includes('gold') || tier.name.toLowerCase().includes('platinum') ? 'bg-blue-600 text-white shadow-xl hover:bg-blue-500' : 'bg-white/5 text-white hover:bg-white/10 border border-white/5'}`}>
                                         Choisir cette offre
                                     </Link>
                                 </div>
