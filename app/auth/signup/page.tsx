@@ -172,6 +172,11 @@ function SignupForm() {
                         )}
                     </button>
 
+                    <p className="text-[9px] font-bold text-slate-500 text-center uppercase tracking-widest px-4 italic leading-relaxed">
+                        En cliquant sur "Créer mon Espace", vous acceptez nos{' '}
+                        <Link href="/politiques" className="text-blue-500 hover:underline">Politiques de Confidentialité et de Remboursement</Link>.
+                    </p>
+
                     <div className="text-center mt-6">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                             Déjà membre ?{' '}

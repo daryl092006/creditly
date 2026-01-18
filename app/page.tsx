@@ -293,8 +293,8 @@ export default async function Home() {
                     <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
                         <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic">© 2024 CREDITLY FINANCE. CONÇU POUR L&apos;EXCELLENCE.</p>
                         <div className="flex gap-12">
-                            <Link href="#" className="text-[10px] font-black text-slate-700 uppercase tracking-widest hover:text-slate-500 italic">Confidentialité</Link>
-                            <Link href="#" className="text-[10px] font-black text-slate-700 uppercase tracking-widest hover:text-slate-500 italic">Termes</Link>
+                            <Link href="/politiques" className="text-[10px] font-black text-slate-700 uppercase tracking-widest hover:text-slate-500 italic">Confidentialité</Link>
+                            <Link href="/politiques" className="text-[10px] font-black text-slate-700 uppercase tracking-widest hover:text-slate-500 italic">Termes</Link>
                         </div>
                     </div>
                 </div>
