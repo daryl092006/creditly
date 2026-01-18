@@ -51,7 +51,10 @@ export default async function SubscriptionsPage() {
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Système de Validation</p>
                                     <p className="text-lg font-black text-white uppercase italic">Plan {pendingSub.plan.name}</p>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Traitement de votre preuve de paiement...</p>
+                                    <p className="text-[10px] font-bold text-slate-300 uppercase italic">
+                                        Paiement déclaré : {Number(pendingSub.amount_paid).toLocaleString()} FCFA
+                                    </p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Vérification de la preuve en cours...</p>
                                 </div>
                             </div>
                         )}

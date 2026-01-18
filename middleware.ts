@@ -53,14 +53,6 @@ export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname
 
     // Auth routes
-    const authRoutes = ['/auth/login', '/auth/signup']
-    const isAuthRoute = authRoutes.some(route => path.startsWith(route))
-
-    /* 
-    if (isAuthRoute && user) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    */
 
     // Protection logic
     if (!user) {

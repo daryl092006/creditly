@@ -1,7 +1,14 @@
-export function getUserFriendlyErrorMessage(error: any): string {
+export function getUserFriendlyErrorMessage(error: unknown): string {
     if (!error) return "Une erreur inconnue est survenue.";
 
-    const message = typeof error === 'string' ? error : error.message || JSON.stringify(error);
+    let message = "";
+    if (typeof error === 'string') {
+        message = error;
+    } else if (error instanceof Error) {
+        message = error.message;
+    } else {
+        message = JSON.stringify(error);
+    }
 
     // Supabase / Postgres Errors
     if (message.includes('fetch failed')) return "Problème de connexion. Vérifiez votre réseau.";

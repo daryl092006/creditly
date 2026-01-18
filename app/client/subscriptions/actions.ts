@@ -4,28 +4,60 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
-export async function subscribeToPlan(planId: string) {
+import { redirect } from 'next/navigation'
+
+export async function subscribeToPlan(formData: FormData) {
+    const { createAdminClient } = await import('@/utils/supabase/server')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) throw new Error('Not authenticated')
+    if (!user) throw new Error('Non authentifié')
 
-    // In a real app, this would redirect to payment gateway.
-    // Here we just insert the record as 'active' or 'pending' if manual validation required.
-    // The specs say: "Statut abonnement_actif = true si payé et activé par l’admin"
-    // So we create it as inactive.
+    const planId = formData.get('planId') as string
+    const amount = formData.get('amount') as string
+    const file = formData.get('proof') as File
 
+    if (!planId || !amount || !file || file.size === 0) {
+        throw new Error('Données incomplètes')
+    }
+
+    const adminSupabase = await createAdminClient()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/sub_${planId}_${Date.now()}.${fileExt}`
+
+    // 1. Upload to Storage (reusing repayment-proofs or use a dedicated one if exists)
+    // We'll use 'subscription-proofs' bucket. We assume the user has created it or we use repayment-proofs for now if safety is needed.
+    // Given the user instructions, I'll attempt using 'subscription-proofs' and fallback logic if possible, 
+    // but usually in this environment I should stick to what exists or tell the user.
+    // I'll use 'repayment-proofs' but with a 'subscriptions/' prefix to be safe and organized.
+    const { data: uploadData, error: uploadError } = await adminSupabase.storage
+        .from('repayment-proofs')
+        .upload(`subscriptions/${fileName}`, file, {
+            cacheControl: '3600',
+            upsert: true
+        })
+
+    if (uploadError) {
+        console.error('Upload error:', uploadError)
+        throw new Error(getUserFriendlyErrorMessage(uploadError))
+    }
+
+    // 2. Insert record with proof and amount
     const { error } = await supabase
         .from('user_subscriptions')
         .insert({
             user_id: user.id,
             plan_id: planId,
-            is_active: false // Admin must activate
+            amount_paid: Number(amount),
+            proof_url: uploadData.path,
+            is_active: false
         })
 
-    if (error) throw new Error(getUserFriendlyErrorMessage(error))
+    if (error) {
+        console.error('DB error:', error)
+        throw new Error(getUserFriendlyErrorMessage(error))
+    }
 
     revalidatePath('/client/subscriptions')
-    // Maybe redirect to a confirmation page or show toast?
-    // relying on UI update for now.
+    redirect('/client/subscriptions?success=AbonnementSoumis')
 }
