@@ -48,7 +48,7 @@ export default function AdminLoanTable({ rows }: {
     return (
         <div>
             {/* Desktop Table View */}
-            <div className="overflow-x-auto hidden md:block">
+            <div className="overflow-x-auto hidden xl:block">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-900/50 border-b border-white/5">
@@ -167,7 +167,7 @@ export default function AdminLoanTable({ rows }: {
             </div>
 
             {/* Mobile Card View */}
-            <div className="space-y-4 md:hidden">
+            <div className="space-y-4 xl:hidden">
                 {rows.map((row) => (
                     <div key={row.id} className="glass-panel p-6 bg-slate-900 border-slate-800 space-y-6">
                         <div className="flex justify-between items-start">

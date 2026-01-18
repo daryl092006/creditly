@@ -61,7 +61,7 @@ export default function AdminKycClientTable({ submissions }: {
     return (
         <div className="relative">
             {/* Desktop Table */}
-            <div className="overflow-x-auto hidden md:block">
+            <div className="overflow-x-auto hidden xl:block">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-900/50 border-b border-white/5">
@@ -154,7 +154,7 @@ export default function AdminKycClientTable({ submissions }: {
             </div>
 
             {/* Mobile Cards */}
-            <div className="space-y-4 md:hidden">
+            <div className="space-y-4 xl:hidden">
                 {submissions.map((sub) => (
                     <div key={sub.id} className="glass-panel p-6 bg-slate-900 border-slate-800 space-y-6">
                         <div className="flex justify-between items-start">

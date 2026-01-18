@@ -82,7 +82,7 @@ export default function Home() {
                 {/* Features Grid */}
                 <section className="py-32 bg-slate-900/20" id="features">
                     <div className="main-container">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                             {[
                                 { title: 'Vitesse Absolue', desc: "Demande approuvée et fonds débloqués en moins de 10 minutes.", icon: <Time size={32} /> },
                                 { title: 'Zéro Paperasse', desc: "Tout se passe en ligne, de l'identification au remboursement.", icon: <Security size={32} /> },

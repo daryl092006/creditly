@@ -204,8 +204,8 @@ export default async function ClientDashboard() {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12">
-                    <div className="xl:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                    <div className="lg:col-span-2 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Card Identity */}
                             <div className="virtual-card border-slate-800 shadow-2xl hover:scale-[1.02] transition-transform duration-500 group">
