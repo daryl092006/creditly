@@ -13,35 +13,35 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         setLoading(userId)
-        try {
-            await updateUserRole(userId, newRole as any)
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setLoading(null)
+        const result = await updateUserRole(userId, newRole as any)
+        if (result?.error) {
+            setErrorAction({
+                title: "Erreur de Privilège",
+                message: result.error
+            })
         }
+        setLoading(null)
     }
 
     const handleExecuteAction = async () => {
         if (!confirmAction) return
         const { id, email, type } = confirmAction
         setProcessingId(id)
-        try {
-            if (type === 'blacklist') {
-                await blacklistUserAccount(id, email)
-            } else {
-                await deleteUserAccount(id)
-            }
-            setConfirmAction(null)
-        } catch (error: any) {
-            console.error(error)
+
+        const result = type === 'blacklist'
+            ? await blacklistUserAccount(id, email)
+            : await deleteUserAccount(id)
+
+        if (result?.error) {
             setErrorAction({
-                title: "Suppression Impossible",
-                message: error.message || "Une erreur inattendue est survenue."
+                title: "Action Impossible",
+                message: result.error
             })
-        } finally {
-            setProcessingId(null)
+        } else {
+            setConfirmAction(null)
         }
+
+        setProcessingId(null)
     }
 
     return (

@@ -19,6 +19,7 @@ export default function AdminKycClientTable({ submissions }: {
     const [previewDoc, setPreviewDoc] = useState<{ url: string; type: string; name: string } | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, userId?: string, status: 'approved' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
+    const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleAction = async () => {
         if (!confirmAction) return
@@ -27,20 +28,29 @@ export default function AdminKycClientTable({ submissions }: {
         if (status === 'rejected' && !rejectionReason) return
 
         setLoading(id)
-        try {
-            if (status === 'approved' && userId) {
-                await updateKycStatus(id, 'approved')
-                await activateUserAccount(userId)
-            } else if (status === 'rejected') {
-                await updateKycStatus(id, 'rejected', rejectionReason)
+
+        let result: any = { success: true }
+
+        if (status === 'approved' && userId) {
+            const kycRes = await updateKycStatus(id, 'approved')
+            if (kycRes?.error) {
+                result = kycRes
+            } else {
+                const actRes = await activateUserAccount(userId)
+                if (actRes?.error) result = actRes
             }
-            window.location.reload()
-        } catch (error) {
-            console.error(error)
-        } finally {
+        } else if (status === 'rejected') {
+            result = await updateKycStatus(id, 'rejected', rejectionReason)
+        }
+
+        if (result?.error) {
+            setErrorAction({
+                title: "Erreur de Dossier",
+                message: result.error
+            })
             setLoading(null)
-            setConfirmAction(null)
-            setRejectionReason('')
+        } else {
+            window.location.reload()
         }
     }
 
@@ -242,6 +252,18 @@ export default function AdminKycClientTable({ submissions }: {
                     </div>
                 )}
             </ConfirmModal>
+
+            {/* Error Feedback Modal */}
+            <ConfirmModal
+                isOpen={!!errorAction}
+                onClose={() => setErrorAction(null)}
+                onConfirm={() => setErrorAction(null)}
+                title={errorAction?.title || "Action Impossible"}
+                message={errorAction?.message || ""}
+                confirmText="Fermer"
+                cancelText="OK"
+                variant="danger"
+            />
         </div>
     )
 }

@@ -31,6 +31,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const [rejectSub, setRejectSub] = useState<Subscription | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const getFullUrl = (path: string) => {
         const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -40,28 +41,32 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const handleActivate = async () => {
         if (!confirmSub) return
         setIsProcessing(true)
-        try {
-            await activateSubscription(confirmSub.id)
+        const result = await activateSubscription(confirmSub.id)
+        if (result?.error) {
+            setErrorAction({
+                title: "Erreur d'Activation",
+                message: result.error
+            })
+        } else {
             setConfirmSub(null)
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setIsProcessing(false)
         }
+        setIsProcessing(false)
     }
 
     const handleReject = async () => {
         if (!rejectSub || !rejectionReason.trim()) return
         setIsProcessing(true)
-        try {
-            await rejectSubscription(rejectSub.id, rejectionReason)
+        const result = await rejectSubscription(rejectSub.id, rejectionReason)
+        if (result?.error) {
+            setErrorAction({
+                title: "Erreur de Refus",
+                message: result.error
+            })
+        } else {
             setRejectSub(null)
             setRejectionReason('')
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setIsProcessing(false)
         }
+        setIsProcessing(false)
     }
 
     return (
@@ -223,6 +228,18 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                     </div>
                 </ConfirmModal>
             )}
+
+            {/* Error Feedback Modal */}
+            <ConfirmModal
+                isOpen={!!errorAction}
+                onClose={() => setErrorAction(null)}
+                onConfirm={() => setErrorAction(null)}
+                title={errorAction?.title || "Action Impossible"}
+                message={errorAction?.message || ""}
+                confirmText="Fermer"
+                cancelText="OK"
+                variant="danger"
+            />
         </div>
     )
 }

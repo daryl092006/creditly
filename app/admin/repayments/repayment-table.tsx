@@ -23,18 +23,24 @@ export default function AdminRepaymentTable({
     const [loading, setLoading] = useState<string | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
+    const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleAction = async () => {
         if (!confirmAction) return
         const { id, status } = confirmAction
         setLoading(id)
-        try {
-            await updateRepaymentStatus(id, status)
-            setConfirmAction(null)
-        } catch (error) {
-            console.error(error)
-        } finally {
+
+        const result = await updateRepaymentStatus(id, status)
+
+        if (result?.error) {
+            setErrorAction({
+                title: status === 'verified' ? "Erreur de Validation" : "Erreur de Rejet",
+                message: result.error
+            })
             setLoading(null)
+        } else {
+            setConfirmAction(null)
+            window.location.reload()
         }
     }
 
@@ -272,6 +278,18 @@ export default function AdminRepaymentTable({
                 confirmText={confirmAction?.status === 'verified' ? 'Valider' : 'Rejeter'}
                 variant={confirmAction?.status === 'verified' ? 'success' : 'danger'}
                 isLoading={loading === confirmAction?.id}
+            />
+
+            {/* Error Feedback Modal */}
+            <ConfirmModal
+                isOpen={!!errorAction}
+                onClose={() => setErrorAction(null)}
+                onConfirm={() => setErrorAction(null)}
+                title={errorAction?.title || "Action Impossible"}
+                message={errorAction?.message || ""}
+                confirmText="Fermer"
+                cancelText="OK"
+                variant="danger"
             />
         </div>
     )

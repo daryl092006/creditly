@@ -8,7 +8,7 @@ import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 export async function requestLoan(amount: number) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
+    if (!user) return { error: 'Not authenticated' }
 
     // 1. Check Active Subscription
     const { data: sub } = await supabase
@@ -82,14 +82,14 @@ export async function submitRepayment(formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) throw new Error('Non authentifié')
+    if (!user) return { error: 'Non authentifié' }
 
     const loanId = formData.get('loanId') as string
     const amount = formData.get('amount') as string
     const file = formData.get('proof') as File
 
     if (!loanId || !amount || !file || file.size === 0) {
-        throw new Error('Données incomplètes')
+        return { error: 'Données incomplètes' }
     }
 
     const numAmount = Number(amount)
@@ -101,47 +101,49 @@ export async function submitRepayment(formData: FormData) {
         .eq('id', loanId)
         .single()
 
-    if (loanError || !loan) throw new Error('Prêt introuvable')
+    if (loanError || !loan) return { error: 'Prêt introuvable' }
 
     const remaining = Number(loan.amount) - (Number(loan.amount_paid) || 0)
     if (numAmount > remaining) {
-        throw new Error(`Le montant (${numAmount.toLocaleString()} F) dépasse votre solde restant (${remaining.toLocaleString()} F).`)
+        return { error: `Le montant (${numAmount.toLocaleString()} F) dépasse votre solde restant (${remaining.toLocaleString()} F).` }
     }
 
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/repayment_${loanId}_${Date.now()}.${fileExt}`
 
-    // 1. Upload to Storage (repayment-proofs)
-    const { data: uploadData, error: uploadError } = await adminSupabase.storage
-        .from('repayment-proofs')
-        .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: true
-        })
+    try {
+        // 1. Upload to Storage (repayment-proofs)
+        const { data: uploadData, error: uploadError } = await adminSupabase.storage
+            .from('repayment-proofs')
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: true
+            })
 
-    if (uploadError) {
-        console.error('Upload error:', uploadError)
-        throw new Error(getUserFriendlyErrorMessage(uploadError))
+        if (uploadError) {
+            return { error: getUserFriendlyErrorMessage(uploadError) }
+        }
+
+        // 2. Insert record
+        const { error: dbError } = await adminSupabase
+            .from('remboursements')
+            .insert({
+                loan_id: loanId,
+                user_id: user.id,
+                amount_declared: Number(amount),
+                proof_url: uploadData.path,
+                status: 'pending'
+            })
+
+        if (dbError) {
+            return { error: getUserFriendlyErrorMessage(dbError) }
+        }
+
+        revalidatePath('/client/loans')
+        revalidatePath(`/client/loans/${loanId}`)
+        return { success: true }
+    } catch (e: any) {
+        return { error: e.message || "Erreur lors de l'envoi de la preuve." }
     }
-
-    // 2. Insert record
-    const { error: dbError } = await adminSupabase
-        .from('remboursements')
-        .insert({
-            loan_id: loanId,
-            user_id: user.id,
-            amount_declared: Number(amount),
-            proof_url: uploadData.path,
-            status: 'pending'
-        })
-
-    if (dbError) {
-        console.error('DB error:', dbError)
-        throw new Error(getUserFriendlyErrorMessage(dbError))
-    }
-
-    revalidatePath('/client/loans')
-    revalidatePath(`/client/loans/${loanId}`)
-    redirect('/client/loans?success=PaiementEnvoye')
 }

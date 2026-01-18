@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Identification, Camera, ArrowRight, ArrowLeft, CheckmarkFilled, Warning } from '@carbon/icons-react'
 import { submitKyc } from './actions'
 
 export default function KYCPage() {
+    const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [files, setFiles] = useState<{ idCard: string | null, selfie: string | null, residence: string | null }>({
@@ -25,11 +27,14 @@ export default function KYCPage() {
     const handleSubmit = async (formData: FormData) => {
         setIsSubmitting(true)
         setError(null)
-        try {
-            await submitKyc(formData)
-        } catch (error) {
-            setError((error as Error).message || "Une erreur est survenue lors de l'envoi.")
+
+        const result = await submitKyc(formData)
+
+        if (result?.error) {
+            setError(result.error)
             setIsSubmitting(false)
+        } else {
+            router.push('/client/dashboard?success=DossierSoumis')
         }
     }
 

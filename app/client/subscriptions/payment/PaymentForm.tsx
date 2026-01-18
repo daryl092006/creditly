@@ -3,8 +3,10 @@
 import { Upload, CheckmarkOutline, Warning } from '@carbon/icons-react'
 import { useState, useTransition } from 'react'
 import { subscribeToPlan } from '../actions'
+import { useRouter } from 'next/navigation'
 
 export default function SubscriptionPaymentForm({ planId, planPrice }: { planId: string; planPrice: number }) {
+    const router = useRouter()
     const [file, setFile] = useState<File | null>(null)
     const [amount, setAmount] = useState(planPrice.toString())
     const [error, setError] = useState<string | null>(null)
@@ -20,10 +22,11 @@ export default function SubscriptionPaymentForm({ planId, planPrice }: { planId:
         formData.append('proof', file)
 
         startTransition(async () => {
-            try {
-                await subscribeToPlan(formData)
-            } catch (err: unknown) {
-                setError(err instanceof Error ? err.message : "Une erreur est survenue")
+            const result = await subscribeToPlan(formData)
+            if (result?.error) {
+                setError(result.error)
+            } else {
+                router.push('/client/subscriptions?success=AbonnementSoumis')
             }
         })
     }

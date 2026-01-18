@@ -10,7 +10,7 @@ export async function submitKyc(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        throw new Error("Vous devez être connecté pour soumettre votre dossier KYC.")
+        return { error: "Vous devez être connecté pour soumettre votre dossier KYC." }
     }
 
     const idCard = formData.get('id_card') as File
@@ -18,7 +18,7 @@ export async function submitKyc(formData: FormData) {
     const proofOfResidence = formData.get('proof_of_residence') as File
 
     if (!idCard || !selfie || !proofOfResidence || idCard.size === 0 || selfie.size === 0 || proofOfResidence.size === 0) {
-        throw new Error("Veuillez fournir les trois documents requis (ID, Selfie, Preuve de résidence).")
+        return { error: "Veuillez fournir les trois documents requis (ID, Selfie, Preuve de résidence)." }
     }
 
     const userId = user.id
@@ -30,8 +30,6 @@ export async function submitKyc(formData: FormData) {
         const fileExt = file.name.split('.').pop()
         const fileName = `${userId}/${type}_${Date.now()}.${fileExt}`
 
-        console.log(`Tentative d'upload pour ${type}: bucket=kyc-documents, path=${fileName}`)
-
         if (file.size > 10 * 1024 * 1024) {
             throw new Error(`Le fichier ${file.name} est trop volumineux (max 10MB).`)
         }
@@ -41,44 +39,43 @@ export async function submitKyc(formData: FormData) {
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: true,
-                contentType: file.type // Explicitly set content type
+                contentType: file.type
             })
 
         if (error) {
-            console.error(`DÉTAIL ERREUR UPLOAD ${type}:`, error)
-            // Use our sanitizer which handles bucket/size errors but pass it the raw error 
-            // or construct a specific error if we know it (as was done partially before)
-            // Ideally we just map the error.
             throw new Error(getUserFriendlyErrorMessage(error))
         }
         return data.path
     }
 
-    const idCardPath = await uploadDoc(idCard, 'id_card')
-    const selfiePath = await uploadDoc(selfie, 'selfie')
-    const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence')
+    try {
+        const idCardPath = await uploadDoc(idCard, 'id_card')
+        const selfiePath = await uploadDoc(selfie, 'selfie')
+        const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence')
 
-    // Insertion ou Mise à jour du dossier (Upsert sur user_id)
-    const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(
-        {
-            user_id: userId,
-            id_card_url: idCardPath,
-            selfie_url: selfiePath,
-            proof_of_residence_url: proofPath,
-            status: 'pending',
-            admin_notes: null, // Clear reason for previous rejection
-            reviewed_at: null,
-            admin_id: null
-        },
-        { onConflict: 'user_id' }
-    )
+        // Insertion ou Mise à jour du dossier (Upsert sur user_id)
+        const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(
+            {
+                user_id: userId,
+                id_card_url: idCardPath,
+                selfie_url: selfiePath,
+                proof_of_residence_url: proofPath,
+                status: 'pending',
+                admin_notes: null,
+                reviewed_at: null,
+                admin_id: null
+            },
+            { onConflict: 'user_id' }
+        )
 
-    if (dbError) {
-        console.error('Database error:', dbError)
-        throw new Error(getUserFriendlyErrorMessage(dbError))
+        if (dbError) {
+            return { error: getUserFriendlyErrorMessage(dbError) }
+        }
+
+        revalidatePath('/client/dashboard')
+        revalidatePath('/admin/kyc')
+        return { success: true }
+    } catch (e: any) {
+        return { error: e.message || "Une erreur est survenue lors du téléversement." }
     }
-
-    revalidatePath('/client/dashboard')
-    revalidatePath('/admin/kyc')
-    redirect('/client/dashboard?success=DossierSoumis')
 }

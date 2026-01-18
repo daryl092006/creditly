@@ -29,17 +29,13 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
             return
         }
 
-        try {
-            const res = await requestLoan(amount)
-            if (res?.error) {
-                setError(res.error)
-            } else if (res?.success) {
-                router.push(`/client/dashboard?success=${res.success}`)
-            }
-        } catch (error) {
-            setError((error as Error).message)
+        const res = await requestLoan(amount)
+        if (res?.error) {
+            setError(res.error)
+            setLoading(false)
+        } else {
+            router.push(`/client/dashboard?success=PretEngage`)
         }
-        setLoading(false)
     }
 
 

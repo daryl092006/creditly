@@ -20,22 +20,30 @@ export default function AdminLoanTable({ rows }: {
     const [loading, setLoading] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'active' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
+    const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleAction = async () => {
         if (!confirmAction) return
         const { id, status } = confirmAction
 
-        if (status === 'rejected' && !rejectionReason) return
+        if (status === 'rejected' && !rejectionReason.trim()) return
 
         setLoading(id)
-        try {
-            await updateLoanStatus(id, status, status === 'rejected' ? rejectionReason : undefined)
+
+        const result = await updateLoanStatus(id, status, status === 'rejected' ? rejectionReason : undefined)
+
+        if (result?.error) {
+            setErrorAction({
+                title: status === 'active' ? "Erreur d'Approbation" : "Erreur de Rejet",
+                message: result.error
+            })
+            setLoading(null)
+        } else {
             setConfirmAction(null)
             setRejectionReason('')
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setLoading(null)
+            // Optional: revalidate or reload is handled by server action revalidatePath, but window.location.reload() ensures fresh data if needed.
+            // Many of our tables use reload for simplicity in this MVP.
+            window.location.reload()
         }
     }
 
@@ -221,6 +229,18 @@ export default function AdminLoanTable({ rows }: {
                     </div>
                 )}
             </ConfirmModal>
+
+            {/* Error Feedback Modal */}
+            <ConfirmModal
+                isOpen={!!errorAction}
+                onClose={() => setErrorAction(null)}
+                onConfirm={() => setErrorAction(null)}
+                title={errorAction?.title || "Action Impossible"}
+                message={errorAction?.message || ""}
+                confirmText="Fermer"
+                cancelText="OK"
+                variant="danger"
+            />
         </div>
     )
 }

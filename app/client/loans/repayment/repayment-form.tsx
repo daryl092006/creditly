@@ -3,8 +3,10 @@
 import { Upload, CheckmarkOutline, Warning } from '@carbon/icons-react'
 import { useState, useTransition } from 'react'
 import { submitRepayment } from '../actions'
+import { useRouter } from 'next/navigation'
 
 export default function RepaymentForm({ loanId, remainingBalance }: { loanId: string; remainingBalance: number }) {
+    const router = useRouter()
     const [file, setFile] = useState<File | null>(null)
     const [amount, setAmount] = useState('')
     const [error, setError] = useState<string | null>(null)
@@ -26,10 +28,11 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         formData.append('proof', file)
 
         startTransition(async () => {
-            try {
-                await submitRepayment(formData)
-            } catch (err: any) {
-                setError(err.message || "Une erreur est survenue")
+            const result = await submitRepayment(formData)
+            if (result?.error) {
+                setError(result.error)
+            } else {
+                router.push('/client/loans?success=PaiementEnvoye')
             }
         })
     }
