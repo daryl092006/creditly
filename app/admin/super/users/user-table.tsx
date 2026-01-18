@@ -1,14 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateUserRole, deleteUserAccount } from './actions'
-import { TrashCan, User, Switcher } from '@carbon/icons-react'
+import { updateUserRole, deleteUserAccount, blacklistUserAccount } from './actions'
+import { TrashCan, User, Switcher, Misuse, UserPresence } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string }> }) {
     const [loading, setLoading] = useState<string | null>(null)
-    const [deleting, setDeleting] = useState<string | null>(null)
-    const [confirmDelete, setConfirmDelete] = useState<{ id: string, email: string } | null>(null)
+    const [processingId, setProcessingId] = useState<string | null>(null)
+    const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist' } | null>(null)
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         setLoading(userId)
@@ -21,17 +21,21 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
         }
     }
 
-    const handleDelete = async () => {
-        if (!confirmDelete) return
-        const { id, email } = confirmDelete
-        setDeleting(id)
+    const handleExecuteAction = async () => {
+        if (!confirmAction) return
+        const { id, email, type } = confirmAction
+        setProcessingId(id)
         try {
-            await deleteUserAccount(id, email)
-            setConfirmDelete(null)
+            if (type === 'blacklist') {
+                await blacklistUserAccount(id, email)
+            } else {
+                await deleteUserAccount(id)
+            }
+            setConfirmAction(null)
         } catch (error) {
             console.error(error)
         } finally {
-            setDeleting(null)
+            setProcessingId(null)
         }
     }
 
@@ -88,7 +92,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                     <div className="relative inline-block">
                                         <select
                                             defaultValue={row.role}
-                                            disabled={loading === row.id || deleting === row.id}
+                                            disabled={loading === row.id || !!processingId}
                                             onChange={(e) => handleRoleChange(row.id, e.target.value)}
                                             className="bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer pr-10 hover:bg-slate-800"
                                         >
@@ -107,14 +111,24 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                     </div>
                                 </td>
                                 <td className="px-8 py-6 text-right">
-                                    <button
-                                        onClick={() => setConfirmDelete({ id: row.id, email: row.email })}
-                                        disabled={deleting === row.id || loading === row.id}
-                                        className={`p-3 rounded-xl transition-all ${deleting === row.id ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
-                                        title="Supprimer définitivement (Blacklist)"
-                                    >
-                                        <TrashCan size={18} />
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete' })}
+                                            disabled={!!processingId || loading === row.id}
+                                            className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'delete' ? 'bg-amber-500/20 text-amber-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-amber-500/10 hover:text-amber-500 border border-white/5 hover:border-amber-500/20'}`}
+                                            title="Supprimer le compte uniquement"
+                                        >
+                                            <UserPresence size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
+                                            disabled={!!processingId || loading === row.id}
+                                            className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'blacklist' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
+                                            title="Bannir & Supprimer"
+                                        >
+                                            <Misuse size={18} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -141,12 +155,22 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setConfirmDelete({ id: row.id, email: row.email })}
-                                className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
-                            >
-                                <TrashCan size={18} />
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete' })}
+                                    className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                    title="Supprimer"
+                                >
+                                    <UserPresence size={18} />
+                                </button>
+                                <button
+                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
+                                    className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                    title="Bannir"
+                                >
+                                    <Misuse size={18} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -186,15 +210,17 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
 
             {/* Confirmation Modal */}
             <ConfirmModal
-                isOpen={!!confirmDelete}
-                onClose={() => setConfirmDelete(null)}
-                onConfirm={handleDelete}
-                title="Supprimer définitivement ?"
-                message={`Êtes-vous sûr de vouloir supprimer définitivement le compte de ${confirmDelete?.email} ? Cette action est irréversible et l'email sera mis sur liste noire.`}
-                confirmText="Supprimer & Bannir"
-                variant="danger"
-                isLoading={deleting === confirmDelete?.id}
+                isOpen={!!confirmAction}
+                onClose={() => setConfirmAction(null)}
+                onConfirm={handleExecuteAction}
+                title={confirmAction?.type === 'blacklist' ? "Bannir & Supprimer ?" : "Supprimer le Compte ?"}
+                message={confirmAction?.type === 'blacklist'
+                    ? `Êtes-vous sûr de vouloir bannir ${confirmAction?.email} ? Son compte sera effacé et il ne pourra plus jamais se réinscrire.`
+                    : `Êtes-vous sûr de vouloir supprimer le compte de ${confirmAction?.email} ? Toutes ses données seront effacées, mais il pourra se réinscrire un jour.`}
+                confirmText={confirmAction?.type === 'blacklist' ? "Bannir définitivement" : "Supprimer le compte"}
+                variant={confirmAction?.type === 'blacklist' ? "danger" : "warning"}
+                isLoading={processingId === confirmAction?.id}
             />
-        </div>
+        </div >
     )
 }

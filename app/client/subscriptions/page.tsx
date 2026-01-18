@@ -10,7 +10,9 @@ export default async function SubscriptionsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: allSubs } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id) : { data: [] }
 
-    const activeSub = allSubs?.find(s => s.is_active)
+    const now = new Date().toISOString()
+    const activeSub = allSubs?.find(s => s.is_active && s.end_date && s.end_date > now)
+    const expiredSub = !activeSub ? allSubs?.find(s => s.is_active && s.end_date && s.end_date <= now) : null
     const pendingSub = allSubs?.find(s => !s.is_active)
 
     const getPlanIcon = (name: string) => {
@@ -65,8 +67,22 @@ export default async function SubscriptionsPage() {
                                     <CheckmarkOutline size={32} />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Activé</p>
-                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter">{activeSub.plan.name}</p>
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Actif</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {activeSub.plan.name}</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {new Date(activeSub.end_date).toLocaleDateString('fr-FR')}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {expiredSub && (
+                            <div className="glass-panel p-6 bg-red-500/5 border-red-500/20 flex items-center gap-6 animate-fade-in shadow-xl shadow-red-500/5">
+                                <div className="w-14 h-14 bg-red-600/20 text-red-400 border border-red-500/30 rounded-2xl flex items-center justify-center">
+                                    <Star size={32} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-red-400 uppercase tracking-widest italic">Statut : Expiré</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {expiredSub.plan.name}</p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Veuillez renouveler votre accès</p>
                                 </div>
                             </div>
                         )}

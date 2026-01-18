@@ -180,9 +180,17 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 export async function activateSubscription(subId: string) {
     const supabase = await createClient()
 
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(startDate.getDate() + 30)
+
     const { error } = await supabase
         .from('user_subscriptions')
-        .update({ is_active: true, start_date: new Date().toISOString() })
+        .update({
+            is_active: true,
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString()
+        })
         .eq('id', subId)
 
     if (error) throw new Error(getUserFriendlyErrorMessage(error))

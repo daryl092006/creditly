@@ -206,3 +206,16 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- 8. BLACKLIST
+create table public.email_blacklist (
+  id uuid default uuid_generate_v4() primary key,
+  email text unique not null,
+  created_at timestamptz default now()
+);
+
+alter table public.email_blacklist enable row level security;
+create policy "Admins can manage blacklist" on public.email_blacklist for all using (
+    public.check_user_role(array['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin']::public.user_role[])
+);
+create policy "Everyone can view blacklist for signup check" on public.email_blacklist for select using (true);
+

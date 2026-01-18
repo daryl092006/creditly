@@ -16,6 +16,7 @@ export async function requestLoan(amount: number) {
         .select('*, plan:abonnements(*)')
         .eq('user_id', user.id)
         .eq('is_active', true)
+        .gt('end_date', new Date().toISOString())
         .single()
 
     if (!sub) {

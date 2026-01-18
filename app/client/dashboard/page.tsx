@@ -17,11 +17,20 @@ export default async function ClientDashboard() {
 
     const { data: profile } = await supabase
         .from('users')
-        .select('*, user_subscriptions(is_active, plan_id, abonnements(name))')
+        .select('*, user_subscriptions(is_active, plan_id, end_date, created_at, abonnements(name))')
         .eq('id', user.id)
         .single()
 
-    const activeSub = profile?.user_subscriptions?.find((sub: { is_active: boolean }) => sub.is_active)
+    const now = new Date().toISOString()
+    // Find a subscription that is active and not expired
+    const activeSub = profile?.user_subscriptions?.find((sub: any) =>
+        sub.is_active && sub.end_date && sub.end_date > now
+    )
+
+    // Find if there's an expired but previously active subscription
+    const expiredSub = !activeSub ? profile?.user_subscriptions?.find((sub: any) =>
+        sub.is_active && sub.end_date && sub.end_date <= now
+    ) : null
 
     // Fetch active loans for "En-cours total"
     const { data: activeLoans } = await supabase
@@ -144,15 +153,18 @@ export default async function ClientDashboard() {
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Abonnement</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{activeSub ? activeSub.abonnements.name : 'N/A'}</span>
+                                    <span className="text-xl font-black text-white italic truncate">{activeSub ? activeSub.abonnements.name : (expiredSub ? expiredSub.abonnements.name : 'N/A')}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${activeSub ? 'bg-emerald-500/10 text-emerald-500' :
-                                        latestSubscription && !latestSubscription.is_active ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-800 text-slate-500'
+                                        expiredSub ? 'bg-red-500/10 text-red-500' :
+                                            latestSubscription && !latestSubscription.is_active ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-800 text-slate-500'
                                         }`}>
-                                        {activeSub ? 'Actif' : latestSubscription && !latestSubscription.is_active ? 'Validation' : 'Aucun'}
+                                        {activeSub ? 'Actif' : expiredSub ? 'Expiré' : latestSubscription && !latestSubscription.is_active ? 'Validation' : 'Aucun'}
                                     </span>
                                 </div>
                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-                                    {activeSub ? 'Plein accès prêt' : 'Services restreints'}
+                                    {activeSub
+                                        ? `Expire le ${new Date(activeSub.end_date).toLocaleDateString('fr-FR')}`
+                                        : expiredSub ? 'Abonnement expiré' : 'Services restreints'}
                                 </p>
                             </div>
                         </div>
@@ -241,14 +253,14 @@ export default async function ClientDashboard() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Allocation Actuelle</p>
-                                        <p className={`text-xs font-black uppercase mt-1 ${activeSub ? 'text-emerald-400' : 'text-amber-500'}`}>
-                                            {activeSub ? 'Optimisé' : 'Inactif'}
+                                        <p className={`text-xs font-black uppercase mt-1 ${activeSub ? 'text-emerald-400' : expiredSub ? 'text-red-500' : 'text-amber-500'}`}>
+                                            {activeSub ? 'Optimisé' : expiredSub ? 'Expiré' : 'Inactif'}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="mt-8 space-y-3">
                                     <h3 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
-                                        {activeSub ? activeSub.abonnements.name : 'Aucun Plan'}
+                                        {activeSub ? activeSub.abonnements.name : (expiredSub ? expiredSub.abonnements.name : 'Aucun Plan')}
                                     </h3>
                                     <Link href="/client/subscriptions" className="inline-flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:gap-3 transition-all">
                                         Améliorer le Plan <Flash size={14} />
