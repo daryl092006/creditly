@@ -27,33 +27,27 @@ export async function deleteUserAccount(userId: string) {
     const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId)
 
     if (authError) {
-        let terminalMessage = authError.message
+        const msg = authError.message.toLowerCase()
 
-        // Handle Foreign Key Violations (Postgres code 23503) from the cascading delete
-        if (terminalMessage.includes('23503') || terminalMessage.includes('violates foreign key constraint')) {
-            if (terminalMessage.includes('prets_user_id_fkey')) {
-                throw new Error("Suppression Impossible : L'utilisateur possède des prêts enregistrés.")
+        // Map technical database constraints to clear, human reasons
+        if (msg.includes('23503') || msg.includes('foreign key constraint')) {
+            if (msg.includes('prets_user_id_fkey')) {
+                throw new Error("Action Impossible : Cet utilisateur possède des dossiers de prêts actifs.")
             }
-            if (terminalMessage.includes('remboursements_user_id_fkey')) {
-                throw new Error("Suppression Impossible : L'utilisateur possède des remboursements enregistrés.")
+            if (msg.includes('remboursements_user_id_fkey')) {
+                throw new Error("Action Impossible : Des remboursements sont liés à ce compte.")
             }
-            if (terminalMessage.includes('kyc_submissions_user_id_fkey')) {
-                throw new Error("Suppression Impossible : L'utilisateur a un dossier KYC en cours.")
+            if (msg.includes('kyc_submissions_user_id_fkey')) {
+                throw new Error("Action Impossible : Un dossier de vérification d'identité (KYC) est en cours.")
             }
-            if (terminalMessage.includes('user_subscriptions_user_id_fkey')) {
-                throw new Error("Suppression Impossible : L'utilisateur a des abonnements enregistrés.")
+            if (msg.includes('user_subscriptions_user_id_fkey')) {
+                throw new Error("Action Impossible : L'utilisateur possède un historique d'abonnements.")
             }
-            throw new Error("Suppression Impossible : L'utilisateur est lié à des dossiers administratifs actifs.")
+            throw new Error("Action Impossible : L'utilisateur est lié à des activités administratives qui empêchent sa suppression.")
         }
 
-        // Fallback: Try delete from public.users if auth delete fails for other reasons
-        const { error: publicError } = await adminSupabase.from('users').delete().eq('id', userId)
-        if (publicError) {
-            const pubMsg = publicError.message
-            if (pubMsg.includes('prets_user_id_fkey')) throw new Error("Suppression Impossible : Prêts détectés.")
-            if (pubMsg.includes('kyc_submissions_user_id_fkey')) throw new Error("Suppression Impossible : KYC détecté.")
-            throw new Error(`Erreur technique : ${pubMsg}`)
-        }
+        // Generic friendly fallback
+        throw new Error("Impossible de supprimer ce compte pour le moment. Veuillez vérifier s'il possède des prêts ou des paiements en cours.")
     }
 
     revalidatePath('/admin/super/users')
