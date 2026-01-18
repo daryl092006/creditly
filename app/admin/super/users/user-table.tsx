@@ -1,35 +1,35 @@
 'use client'
 
+import React, { useState } from 'react'
 import { updateUserRole, deleteUserAccount } from './actions'
-import { useState } from 'react'
-import { TrashCan, UserAdmin, User, Switcher, WatsonHealthStatusResolved } from '@carbon/icons-react'
-import { ActionButton } from '@/app/components/ui/ActionButton'
+import { TrashCan, User, Switcher } from '@carbon/icons-react'
+import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string }> }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string, email: string } | null>(null)
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         setLoading(userId)
         try {
             await updateUserRole(userId, newRole as any)
         } catch (error) {
-            alert('Erreur: ' + (error as Error).message)
+            console.error(error)
         } finally {
             setLoading(null)
         }
     }
 
-    const handleDelete = async (userId: string, email: string) => {
-        if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le compte de ${email} ? Cette action est irréversible et l'email sera mis sur liste noire.`)) {
-            return
-        }
-
-        setDeleting(userId)
+    const handleDelete = async () => {
+        if (!confirmDelete) return
+        const { id, email } = confirmDelete
+        setDeleting(id)
         try {
-            await deleteUserAccount(userId, email)
+            await deleteUserAccount(id, email)
+            setConfirmDelete(null)
         } catch (error) {
-            alert('Erreur lors de la suppression: ' + (error as Error).message)
+            console.error(error)
         } finally {
             setDeleting(null)
         }
@@ -108,7 +108,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 </td>
                                 <td className="px-8 py-6 text-right">
                                     <button
-                                        onClick={() => handleDelete(row.id, row.email)}
+                                        onClick={() => setConfirmDelete({ id: row.id, email: row.email })}
                                         disabled={deleting === row.id || loading === row.id}
                                         className={`p-3 rounded-xl transition-all ${deleting === row.id ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
                                         title="Supprimer définitivement (Blacklist)"
@@ -142,7 +142,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 </div>
                             </div>
                             <button
-                                onClick={() => handleDelete(row.id, row.email)}
+                                onClick={() => setConfirmDelete({ id: row.id, email: row.email })}
                                 className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
                             >
                                 <TrashCan size={18} />
@@ -183,6 +183,18 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                     </div>
                 ))}
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                onConfirm={handleDelete}
+                title="Supprimer définitivement ?"
+                message={`Êtes-vous sûr de vouloir supprimer définitivement le compte de ${confirmDelete?.email} ? Cette action est irréversible et l'email sera mis sur liste noire.`}
+                confirmText="Supprimer & Bannir"
+                variant="danger"
+                isLoading={deleting === confirmDelete?.id}
+            />
         </div>
     )
 }

@@ -1,8 +1,8 @@
 'use client'
 
+import React, { useState } from 'react'
 import { updateRepaymentStatus } from '../actions'
-import { useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function AdminRepaymentTable({
     rows
@@ -22,30 +22,19 @@ export default function AdminRepaymentTable({
 }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
 
-    const handleVerify = async (id: string) => {
-        if (confirm('Confirmer ce paiement ?')) {
-            setLoading(id)
-            try {
-                await updateRepaymentStatus(id, 'verified')
-            } catch {
-                alert('Erreur lors de la validation')
-            } finally {
-                setLoading(null)
-            }
-        }
-    }
-
-    const handleReject = async (id: string) => {
-        if (confirm('Rejeter ce paiement ?')) {
-            setLoading(id)
-            try {
-                await updateRepaymentStatus(id, 'rejected')
-            } catch {
-                alert('Erreur lors du rejet')
-            } finally {
-                setLoading(null)
-            }
+    const handleAction = async () => {
+        if (!confirmAction) return
+        const { id, status } = confirmAction
+        setLoading(id)
+        try {
+            await updateRepaymentStatus(id, status)
+            setConfirmAction(null)
+        } catch (error) {
+            console.error(error)
+        } finally {
+            setLoading(null)
         }
     }
 
@@ -149,14 +138,14 @@ export default function AdminRepaymentTable({
                                         {row.status === 'pending' ? (
                                             <>
                                                 <button
-                                                    onClick={() => handleVerify(row.id)}
+                                                    onClick={() => setConfirmAction({ id: row.id, status: 'verified' })}
                                                     disabled={loading === row.id}
                                                     className="h-10 px-6 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2"
                                                 >
                                                     Valider
                                                 </button>
                                                 <button
-                                                    onClick={() => handleReject(row.id)}
+                                                    onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })}
                                                     disabled={loading === row.id}
                                                     className="h-10 px-6 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 border border-transparent transition-all active:scale-95 flex items-center gap-2"
                                                 >
@@ -232,10 +221,10 @@ export default function AdminRepaymentTable({
                         <div className="flex gap-3 pt-6 border-t border-white/5">
                             {row.status === 'pending' ? (
                                 <>
-                                    <button onClick={() => handleVerify(row.id)} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">
+                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'verified' })} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">
                                         Valider
                                     </button>
-                                    <button onClick={() => handleReject(row.id)} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
+                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </>
@@ -253,7 +242,7 @@ export default function AdminRepaymentTable({
             {previewUrl && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fade-in">
                     <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPreviewUrl(null)}></div>
-                    <div className="glass-panel w-full max-w-4xl max-h-full overflow-hidden flex flex-col relative z-10 animate-slide-up">
+                    <div className="glass-panel w-full max-w-4xl max-h-full overflow-hidden flex flex-col relative z-10 animate-slide-up bg-slate-900 border-slate-800">
                         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                             <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Preuve de paiement</h3>
                             <button onClick={() => setPreviewUrl(null)} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
@@ -271,6 +260,19 @@ export default function AdminRepaymentTable({
                     </div>
                 </div>
             )}
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!confirmAction}
+                onClose={() => setConfirmAction(null)}
+                onConfirm={handleAction}
+                title={confirmAction?.status === 'verified' ? 'Valider le paiement ?' : 'Rejeter le paiement ?'}
+                message={confirmAction?.status === 'verified'
+                    ? "Souhaitez-vous confirmer la réception de ce paiement ? Cette action mettra à jour le solde du prêt."
+                    : "Êtes-vous sûr de vouloir rejeter cette preuve de paiement ?"}
+                confirmText={confirmAction?.status === 'verified' ? 'Valider' : 'Rejeter'}
+                variant={confirmAction?.status === 'verified' ? 'success' : 'danger'}
+                isLoading={loading === confirmAction?.id}
+            />
         </div>
     )
 }
