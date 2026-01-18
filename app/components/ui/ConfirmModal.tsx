@@ -13,6 +13,7 @@ interface ConfirmModalProps {
     cancelText?: string
     variant?: 'danger' | 'success' | 'info' | 'warning'
     isLoading?: boolean
+    customIcon?: React.ReactNode
 }
 
 export default function ConfirmModal({
@@ -24,7 +25,8 @@ export default function ConfirmModal({
     confirmText = 'Confirmer',
     cancelText = 'Annuler',
     variant = 'info',
-    isLoading = false
+    isLoading = false,
+    customIcon
 }: ConfirmModalProps) {
     const [mounted, setMounted] = useState(false)
 
@@ -78,7 +80,7 @@ export default function ConfirmModal({
             <div className={`glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-slide-up border-slate-800 bg-slate-900/80 shadow-2xl ${currentVariant.bg}`}>
                 <div className="flex flex-col items-center text-center space-y-6">
                     <div className="w-20 h-20 rounded-3xl bg-slate-950 border border-white/5 flex items-center justify-center shadow-2xl group transition-transform hover:scale-105 duration-500">
-                        {currentVariant.icon}
+                        {customIcon || currentVariant.icon}
                     </div>
 
                     <div className="space-y-3">

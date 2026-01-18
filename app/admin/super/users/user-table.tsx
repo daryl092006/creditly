@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { updateUserRole, deleteUserAccount, blacklistUserAccount } from './actions'
-import { TrashCan, User, Switcher, Warning, UserProfile } from '@carbon/icons-react'
+import { TrashCan, User, Switcher, Misuse, UserAvailable, UserSpeaker } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string }> }) {
@@ -118,7 +118,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                             className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'delete' ? 'bg-amber-500/20 text-amber-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-amber-500/10 hover:text-amber-500 border border-white/5 hover:border-amber-500/20'}`}
                                             title="Supprimer le compte uniquement"
                                         >
-                                            <UserProfile size={18} />
+                                            <TrashCan size={18} />
                                         </button>
                                         <button
                                             onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
@@ -126,7 +126,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                             className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'blacklist' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
                                             title="Bannir & Supprimer"
                                         >
-                                            <TrashCan size={18} />
+                                            <Misuse size={18} />
                                         </button>
                                     </div>
                                 </td>
@@ -161,14 +161,14 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                     className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
                                     title="Supprimer"
                                 >
-                                    <UserProfile size={18} />
+                                    <TrashCan size={18} />
                                 </button>
                                 <button
                                     onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
                                     className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
                                     title="Bannir"
                                 >
-                                    <TrashCan size={18} />
+                                    <Misuse size={18} />
                                 </button>
                             </div>
                         </div>
@@ -213,13 +213,14 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                 isOpen={!!confirmAction}
                 onClose={() => setConfirmAction(null)}
                 onConfirm={handleExecuteAction}
-                title={confirmAction?.type === 'blacklist' ? "Bannir & Supprimer ?" : "Supprimer le Compte ?"}
+                title={confirmAction?.type === 'blacklist' ? "Bannissement Définitif" : "Suppression Simple"}
                 message={confirmAction?.type === 'blacklist'
-                    ? `Êtes-vous sûr de vouloir bannir ${confirmAction?.email} ? Son compte sera effacé et il ne pourra plus jamais se réinscrire.`
-                    : `Êtes-vous sûr de vouloir supprimer le compte de ${confirmAction?.email} ? Toutes ses données seront effacées, mais il pourra se réinscrire un jour.`}
-                confirmText={confirmAction?.type === 'blacklist' ? "Bannir définitivement" : "Supprimer le compte"}
+                    ? `ATTENTION : Vous allez bannir ${confirmAction?.email}. Son compte sera effacé et toute réinscription future sera bloquée.`
+                    : `Vous allez supprimer le compte de ${confirmAction?.email}. Ses données seront effacées, mais il pourra se réinscrire ultérieurement.`}
+                confirmText={confirmAction?.type === 'blacklist' ? "Bannir & Supprimer" : "Supprimer le compte"}
                 variant={confirmAction?.type === 'blacklist' ? "danger" : "warning"}
                 isLoading={processingId === confirmAction?.id}
+                customIcon={confirmAction?.type === 'blacklist' ? <Misuse size={32} className="text-red-500" /> : <TrashCan size={32} className="text-amber-500" />}
             />
         </div>
     )
