@@ -4,12 +4,29 @@ import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { getCurrentUserRole } from '@/utils/admin-security'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { sendUserEmail } from '@/utils/email-service'
+
+export async function getSignedProofUrl(path: string, bucket: string) {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600) // 1 hour validity
+
+    if (error || !data) {
+        return { error: 'Impossible de générer le lien sécurisé.' }
+    }
+    return { url: data.signedUrl }
+}
 
 export async function updateKycStatus(submissionId: string, status: 'approved' | 'rejected', notes?: string) {
     const supabase = await createClient()
 
     const user = await supabase.auth.getUser()
     const adminId = user.data.user?.id
+
+    // Fetch user details for notification first
+    const { data: submission } = await supabase.from('kyc_submissions').select('user_id, users(email, prenom, nom)').eq('id', submissionId).single()
+    const userData = submission?.users as any
+    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
+    const userEmail = userData?.email
 
     const { error } = await supabase
         .from('kyc_submissions')
@@ -22,6 +39,17 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
         .eq('id', submissionId)
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    // Notify User
+    if (userEmail) {
+        if (status === 'rejected') {
+            await sendUserEmail('KYC_REJECTED', { email: userEmail, name: userName, details: notes })
+        }
+        // Approval email is sent in activateUserAccount if done together, or here?
+        // Usually approval happens with activation. But let's send it here if just status update.
+        // Actually, logic below handles activation separately. So we might delay approval email to activation?
+        // But let's keep it safe. If specific status update to rejected, we sent it.
+    }
 
     revalidatePath('/admin/kyc')
     return { success: true }
@@ -47,6 +75,13 @@ export async function activateUserAccount(userId: string) {
         return { error: "Erreur : Impossible d'activer le compte. Utilisateur introuvable ou mise à jour échouée." }
     }
 
+    // Notify User of Approval & Activation
+    const user = data[0]
+    await sendUserEmail('KYC_APPROVED', {
+        email: user.email,
+        name: `${user.prenom} ${user.nom}`
+    })
+
     revalidatePath('/admin/kyc')
     return { success: true }
 }
@@ -62,10 +97,15 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
         admin_id: adminId
     }
 
-    if (status === 'approved' || status === 'active') {
-        const { data: loan, error: fetchError } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*)').eq('id', loanId).single()
-        if (fetchError || !loan) return { error: 'Prêt introuvable' }
+    // Fetch loan & user details for notification
+    const { data: loan, error: fetchError } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*), users(email, prenom, nom)').eq('id', loanId).single()
+    if (fetchError || !loan) return { error: 'Prêt introuvable' }
 
+    const userData = loan.users as any
+    const userEmail = userData?.email
+    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
+
+    if (status === 'approved' || status === 'active') {
         if (loan.snapshot) {
             const { data: activeLoans } = await supabase
                 .from('prets')
@@ -100,6 +140,16 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
         .eq('id', loanId)
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    // Notify User
+    if (userEmail) {
+        if (status === 'rejected') {
+            await sendUserEmail('LOAN_REJECTED', { email: userEmail, name: userName, details: reason })
+        } else if (status === 'active' || status === 'approved') {
+            await sendUserEmail('LOAN_ACTIVE', { email: userEmail, name: userName, amount: Number(loan.amount) })
+        }
+    }
+
     revalidatePath('/admin/loans')
     return { success: true }
 }
@@ -118,10 +168,23 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             admin_id: adminId
         })
         .eq('id', repaymentId)
-        .select()
+        .select('*, users(email, prenom, nom)') // Fetch user info
         .single()
 
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
+
+    // Notify User
+    const userData = repayment.users as any
+    const userEmail = userData?.email
+    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
+
+    if (userEmail) {
+        if (status === 'verified') {
+            await sendUserEmail('REPAYMENT_VALIDATED', { email: userEmail, name: userName, amount: repayment.amount_declared })
+        } else if (status === 'rejected') {
+            await sendUserEmail('REPAYMENT_REJECTED', { email: userEmail, name: userName })
+        }
+    }
 
     if (status === 'verified') {
         const amountVerified = repayment.amount_declared

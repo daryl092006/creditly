@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateRepaymentStatus } from '../actions'
+import { updateRepaymentStatus, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function AdminRepaymentTable({
@@ -44,9 +44,13 @@ export default function AdminRepaymentTable({
         }
     }
 
-    const getFullUrl = (path: string) => {
-        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        return `${baseUrl}/storage/v1/object/public/repayment-proofs/${path}`
+    const handlePreview = async (path: string) => {
+        const res = await getSignedProofUrl(path, 'repayment-proofs')
+        if (res.url) {
+            setPreviewUrl(res.url)
+        } else {
+            alert("Impossible d'ouvrir le document.")
+        }
     }
 
     return (
@@ -99,7 +103,7 @@ export default function AdminRepaymentTable({
                                 </td>
                                 <td className="px-8 py-6">
                                     <button
-                                        onClick={() => setPreviewUrl(getFullUrl(row.proof_url))}
+                                        onClick={() => handlePreview(row.proof_url)}
                                         className="px-3 py-1 bg-slate-800 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest italic border border-white/5 hover:border-blue-500/30 hover:text-white transition-colors flex items-center gap-2"
                                     >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
@@ -186,7 +190,7 @@ export default function AdminRepaymentTable({
                                 <p className="text-[10px] font-bold text-slate-500 lowercase">{row.user.split('(')[1]?.replace(')', '')}</p>
                             </div>
                             <button
-                                onClick={() => setPreviewUrl(getFullUrl(row.proof_url))}
+                                onClick={() => handlePreview(row.proof_url)}
                                 className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-400"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>

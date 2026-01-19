@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateKycStatus, activateUserAccount } from '../actions'
+import { updateKycStatus, activateUserAccount, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 
 export default function AdminKycClientTable({ submissions }: {
@@ -54,9 +54,13 @@ export default function AdminKycClientTable({ submissions }: {
         }
     }
 
-    const getFullUrl = (path: string) => {
-        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        return `${baseUrl}/storage/v1/object/public/kyc-documents/${path}`
+    const handlePreview = async (path: string, type: string, name: string) => {
+        const res = await getSignedProofUrl(path, 'kyc-documents')
+        if (res.url) {
+            setPreviewDoc({ url: res.url, type, name })
+        } else {
+            alert("Impossible d'ouvrir le document.")
+        }
     }
 
     return (
@@ -106,11 +110,7 @@ export default function AdminKycClientTable({ submissions }: {
                                         {sub.docs.map((doc, idx) => (
                                             <button
                                                 key={idx}
-                                                onClick={() => setPreviewDoc({
-                                                    url: getFullUrl(doc.url),
-                                                    type: doc.type,
-                                                    name: sub.name
-                                                })}
+                                                onClick={() => handlePreview(doc.url, doc.type, sub.name)}
                                                 className="px-3 py-2 bg-slate-800 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:border-blue-500/50 hover:text-white hover:bg-slate-700 transition-all shadow-sm flex items-center gap-2"
                                             >
                                                 {doc.type.replace(/_/g, ' ')}
@@ -125,11 +125,7 @@ export default function AdminKycClientTable({ submissions }: {
                                             onClick={() => setConfirmAction({ id: sub.id, userId: sub.user_id, status: 'approved' })}
                                             className="h-12 px-6 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
                                         >
-                                            {loading === sub.id ? (
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                            )}
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                                             Approuver
                                         </button>
                                         <button
@@ -164,11 +160,7 @@ export default function AdminKycClientTable({ submissions }: {
                                 {sub.docs.map((doc, idx) => (
                                     <button
                                         key={idx}
-                                        onClick={() => setPreviewDoc({
-                                            url: getFullUrl(doc.url),
-                                            type: doc.type,
-                                            name: sub.name
-                                        })}
+                                        onClick={() => handlePreview(doc.url, doc.type, sub.name)}
                                         className="px-4 py-3 bg-slate-800 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300"
                                     >
                                         {doc.type.split('_')[0]}

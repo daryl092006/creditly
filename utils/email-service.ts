@@ -105,3 +105,125 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
         console.error('Erreur lors de l\'envoi de la notification Resend:', error);
     }
 }
+
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED';
+
+interface UserEmailData {
+    email: string;
+    name: string;
+    details?: string;
+    amount?: number;
+}
+
+export async function sendUserEmail(type: UserNotificationType, data: UserEmailData) {
+    if (!process.env.RESEND_API_KEY) return;
+
+    let subject = '';
+    let html = '';
+    const formattedAmount = data.amount ? new Intl.NumberFormat('fr-FR').format(data.amount) + ' FCFA' : '';
+
+    const colors = {
+        success: '#059669',
+        error: '#dc2626',
+        info: '#2563eb'
+    };
+
+    switch (type) {
+        case 'KYC_APPROVED':
+            subject = `✅ Compte Activé - Bienvenue chez Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.success}; text-transform: uppercase; font-size: 18px;">Vérification Terminée</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>Bonne nouvelle ! Vos documents d'identité ont été validés avec succès.</p>
+                    <p>Votre compte est désormais <strong>ACTIF</strong>. Vous pouvez dès à présent souscrire à une offre de financement et effectuer votre première demande de prêt.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: ${colors.success}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Accéder à mon Espace</a>
+                    <p style="font-size: 12px; color: #888; margin-top: 30px;">Merci de votre confiance.</p>
+                </div>
+            `;
+            break;
+
+        case 'KYC_REJECTED':
+            subject = `⚠️ Action Requise : Dossier KYC Refusé`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.error}; text-transform: uppercase; font-size: 18px;">Documents Non Conformes</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>Nous n'avons pas pu valider votre identité pour la raison suivante :</p>
+                    <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid ${colors.error}20;">
+                        <p style="color: ${colors.error}; font-weight: bold; font-style: italic;">"${data.details}"</p>
+                    </div>
+                    <p>Veuillez soumettre à nouveau des documents clairs et lisibles pour activer votre compte.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/kyc" style="display: inline-block; background-color: ${colors.error}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Corriger mon Dossier</a>
+                </div>
+            `;
+            break;
+
+        case 'LOAN_APPROVED': // Approved but waiting for payout
+        case 'LOAN_ACTIVE':   // Active (Paid out)
+            subject = `🎉 Financement Accordé ! - ${formattedAmount}`;
+            html = `
+                 <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.info}; text-transform: uppercase; font-size: 18px;">Félicitations</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>Votre demande de prêt de <strong>${formattedAmount}</strong> a été validée par notre comité financier.</p>
+                    <p>Les fonds sont en cours de transfert vers votre compte Mobile Money indiqué.</p>
+                    <p>Consultez votre échéancier de remboursement directement dans votre espace client.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: ${colors.info}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon Prêt</a>
+                </div>
+            `;
+            break;
+
+        case 'LOAN_REJECTED':
+            subject = `❌ Mise à jour concernant votre demande de prêt`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.error}; text-transform: uppercase; font-size: 18px;">Demande Refusée</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>Votre demande de financement n'a pas été acceptée pour le moment.</p>
+                    ${data.details ? `
+                    <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Motif :</strong> ${data.details}</p>
+                    </div>` : ''}
+                    <p>Vous pouvez contacter le support pour plus d'informations ou tenter une nouvelle demande ultérieurement.</p>
+                </div>
+            `;
+            break;
+
+        case 'REPAYMENT_VALIDATED':
+            subject = `✅ Paiement Confirmé - Merci !`;
+            html = `
+                 <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.success}; text-transform: uppercase; font-size: 18px;">Remboursement Reçu</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>Nous avons bien reçu votre remboursement de <strong>${formattedAmount}</strong>.</p>
+                    <p>Votre solde restant a été mis à jour.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: ${colors.success}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Mon Tableau de Bord</a>
+                </div>
+            `;
+            break;
+
+        case 'REPAYMENT_REJECTED':
+            subject = `⚠️ Problème avec votre remboursement`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: ${colors.error}; text-transform: uppercase; font-size: 18px;">Paiement Non Validé</h2>
+                    <p>Bonjour ${data.name},</p>
+                    <p>La preuve de paiement que vous avez fournie n'a pas pu être validée.</p>
+                    <p>Merci de vérifier les informations et de contacter le support si vous pensez qu'il s'agit d'une erreur.</p>
+                </div>
+            `;
+            break;
+    }
+
+    try {
+        await resend.emails.send({
+            from: 'Creditly <notifications@resend.dev>',
+            to: data.email,
+            subject: subject,
+            html: html,
+        });
+    } catch (error) {
+        console.error('Erreur sendUserEmail:', error);
+    }
+}
