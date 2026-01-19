@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { updateOffer, createOffer } from './actions'
+import { SubmitButton } from '@/app/components/ui/SubmitButton'
 
 export default async function OffersPage() {
     const supabase = await createClient()
@@ -63,9 +64,13 @@ export default async function OffersPage() {
                                 </div>
 
                                 <div className="pt-4 flex justify-end">
-                                    <button type="submit" className="glass-panel px-6 py-3 bg-blue-600/10 text-blue-400 border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest">
+                                    <SubmitButton
+                                        loadingText="Enregistrement..."
+                                        className="glass-panel px-6 py-3 bg-blue-600/10 text-blue-400 border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+                                        variant="glass"
+                                    >
                                         Enregistrer Modifications
-                                    </button>
+                                    </SubmitButton>
                                 </div>
                             </form>
                         </div>
@@ -110,9 +115,13 @@ export default async function OffersPage() {
                                 </div>
                             </div>
                             <div className="pt-4 flex justify-end">
-                                <button type="submit" className="glass-panel px-6 py-3 bg-emerald-600/10 text-emerald-400 border-emerald-600/20 hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest">
+                                <SubmitButton
+                                    loadingText="Création..."
+                                    className="glass-panel px-6 py-3 bg-emerald-600/10 text-emerald-400 border-emerald-600/20 hover:bg-emerald-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+                                    variant="glass"
+                                >
                                     Créer l'offre
-                                </button>
+                                </SubmitButton>
                             </div>
                         </form>
                     </div>

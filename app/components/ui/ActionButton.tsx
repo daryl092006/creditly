@@ -22,7 +22,7 @@ export function ActionButton({ children, variant = 'premium', loading, loadingTe
 
     return (
         <button
-            className={`${selectedClass} ${loading ? 'loading cursor-not-allowed opacity-80' : ''} ${className || ''}`}
+            className={`${selectedClass} ${loading ? 'cursor-not-allowed opacity-80' : ''} ${className || ''}`}
             disabled={loading || props.disabled}
             {...props}
         >

@@ -21,7 +21,7 @@ export default function AdminRepaymentTable({
     }>
 }) {
     const [loading, setLoading] = useState<string | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [preview, setPreview] = useState<{ url: string, type: 'image' | 'pdf' } | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
@@ -47,7 +47,8 @@ export default function AdminRepaymentTable({
     const handlePreview = async (path: string) => {
         const res = await getSignedProofUrl(path, 'repayment-proofs')
         if (res.url) {
-            setPreviewUrl(res.url)
+            const isPdf = path.toLowerCase().endsWith('.pdf')
+            setPreview({ url: res.url, type: isPdf ? 'pdf' : 'image' })
         } else {
             alert("Impossible d'ouvrir le document.")
         }
@@ -249,25 +250,25 @@ export default function AdminRepaymentTable({
             </div>
 
             {/* Preview Modal */}
-            {previewUrl && (
+            {preview && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fade-in">
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPreviewUrl(null)}></div>
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPreview(null)}></div>
                     <div className="glass-panel w-full max-w-4xl max-h-full overflow-hidden flex flex-col relative z-10 animate-slide-up bg-slate-900 border-slate-800">
                         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                             <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Preuve de paiement</h3>
-                            <button onClick={() => setPreviewUrl(null)} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
+                            <button onClick={() => setPreview(null)} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                         <div className="flex-1 overflow-auto bg-black/40 p-4 flex items-center justify-center">
-                            {previewUrl.toLowerCase().includes('.pdf') ? (
-                                <iframe src={previewUrl} className="w-full h-[50vh] md:h-[70vh] rounded-xl" />
+                            {preview.type === 'pdf' ? (
+                                <iframe src={preview.url} className="w-full h-[50vh] md:h-[70vh] rounded-xl" />
                             ) : (
-                                <img src={previewUrl} alt="Preuve" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+                                <img src={preview.url} alt="Preuve" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
                             )}
                         </div>
                         <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end gap-4">
-                            <a href={previewUrl} download target="_blank" className="px-6 py-3 bg-white text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-blue-50 transition-colors">
+                            <a href={preview.url} download target="_blank" className="px-6 py-3 bg-white text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-blue-50 transition-colors">
                                 Télécharger
                             </a>
                         </div>

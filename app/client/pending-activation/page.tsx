@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Identification, Hourglass, ArrowRight, Logout } from '@carbon/icons-react'
 import Link from 'next/link'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 
 export default function PendingActivationPage() {
     const [kycStatus, setKycStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null)
     const [adminNotes, setAdminNotes] = useState<string | null>(null)
+    const [isSigningOut, setIsSigningOut] = useState(false)
     const supabase = createClient()
 
     useEffect(() => {
@@ -102,15 +104,17 @@ export default function PendingActivationPage() {
                     <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic group hover:text-blue-500 transition-colors cursor-help underline underline-offset-4 decoration-slate-800 hover:decoration-blue-500/30">
                         Besoin d'assistance ? Conciergerie WhatsApp disponible 24/7.
                     </p>
-                    <form action="/auth/actions" method="POST">
+                    <form action="/auth/actions" method="POST" onSubmit={() => setIsSigningOut(true)}>
                         <input type="hidden" name="action" value="signout" />
-                        <button
+                        <ActionButton
                             type="submit"
-                            className="flex items-center gap-2 text-slate-600 hover:text-red-500 font-black text-[10px] uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                            loading={isSigningOut}
+                            loadingText="Déconnexion..."
+                            className="!bg-transparent !shadow-none !border-none !p-0 !text-slate-600 hover:!text-red-500 font-black text-[10px] uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
                         >
                             <Logout size={16} />
                             Quitter la session sécurisée
-                        </button>
+                        </ActionButton>
                     </form>
                 </div>
             </div>
