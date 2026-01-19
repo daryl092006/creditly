@@ -251,23 +251,25 @@ export default function AdminRepaymentTable({
 
             {/* Preview Modal */}
             {preview && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fade-in">
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPreview(null)}></div>
-                    <div className="glass-panel w-full max-w-4xl max-h-full overflow-hidden flex flex-col relative z-10 animate-slide-up bg-slate-900 border-slate-800">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                            <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Preuve de paiement</h3>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" onClick={() => setPreview(null)}></div>
+                    <div className="glass-panel w-full max-w-7xl h-[90vh] flex flex-col relative z-10 animate-scale-in bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden">
+                        <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center bg-white/5 shrink-0">
+                            <h3 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tight">Preuve de paiement</h3>
                             <button onClick={() => setPreview(null)} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <div className="flex-1 overflow-auto bg-black/40 p-4 flex items-center justify-center">
+                        <div className="flex-1 bg-black/40 relative overflow-hidden flex flex-col">
                             {preview.type === 'pdf' ? (
-                                <iframe src={preview.url} className="w-full h-[50vh] md:h-[70vh] rounded-xl" />
+                                <iframe src={preview.url} className="w-full h-full border-none" />
                             ) : (
-                                <img src={preview.url} alt="Preuve" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+                                <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                                    <img src={preview.url} alt="Preuve" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+                                </div>
                             )}
                         </div>
-                        <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end gap-4">
+                        <div className="p-4 md:p-6 bg-white/5 border-t border-white/10 flex justify-end gap-4 shrink-0">
                             <a href={preview.url} download target="_blank" className="px-6 py-3 bg-white text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-blue-50 transition-colors">
                                 Télécharger
                             </a>
