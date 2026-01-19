@@ -26,23 +26,12 @@ export function ActionButton({ children, variant = 'premium', loading, loadingTe
             disabled={loading || props.disabled}
             {...props}
         >
-            {loading && loadingText ? (
-                <div className="flex items-center justify-center gap-3">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    <span>{loadingText}</span>
-                </div>
-            ) : (
-                <>
-                    <span className={loading ? 'invisible' : 'flex items-center gap-3'}>
-                        {children}
-                    </span>
-                    {loading && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                        </div>
-                    )}
-                </>
-            )}
+            <div className="flex items-center justify-center gap-3">
+                {loading && (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin flex-shrink-0"></div>
+                )}
+                <span>{loading && loadingText ? loadingText : children}</span>
+            </div>
         </button>
     )
 }

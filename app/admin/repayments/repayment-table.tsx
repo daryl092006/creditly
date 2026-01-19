@@ -260,7 +260,11 @@ export default function AdminRepaymentTable({
                             </button>
                         </div>
                         <div className="flex-1 overflow-auto bg-black/40 p-4 flex items-center justify-center">
-                            <img src={previewUrl} alt="Preuve" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+                            {previewUrl.toLowerCase().includes('.pdf') ? (
+                                <iframe src={previewUrl} className="w-full h-[50vh] md:h-[70vh] rounded-xl" />
+                            ) : (
+                                <img src={previewUrl} alt="Preuve" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl" />
+                            )}
                         </div>
                         <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end gap-4">
                             <a href={previewUrl} download target="_blank" className="px-6 py-3 bg-white text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-blue-50 transition-colors">

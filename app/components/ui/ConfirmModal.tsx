@@ -115,7 +115,7 @@ export default function ConfirmModal({
                         <ActionButton
                             onClick={onConfirm}
                             loading={isLoading}
-                            loadingText="Traitement..."
+                            loadingText={confirmText}
                             disabled={disabled}
                             className={`py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
                         >
