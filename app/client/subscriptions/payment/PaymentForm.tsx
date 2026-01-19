@@ -5,14 +5,18 @@ import { useState, useTransition } from 'react'
 import { subscribeToPlan } from '../actions'
 import { useRouter } from 'next/navigation'
 
+import { ActionButton } from '@/app/components/ui/ActionButton'
+
 export default function SubscriptionPaymentForm({ planId, planPrice }: { planId: string; planPrice: number }) {
     const router = useRouter()
+    // ... no changes to state hooks ...
     const [file, setFile] = useState<File | null>(null)
     const [amount, setAmount] = useState(planPrice.toString())
     const [error, setError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 
     const handleSubmit = async () => {
+        // ... (rest of handleSubmit) ...
         if (!file || !amount) return
         setError(null)
 
@@ -93,14 +97,16 @@ export default function SubscriptionPaymentForm({ planId, planPrice }: { planId:
                     </div>
                 </div>
 
-                <button
+                <ActionButton
                     onClick={handleSubmit}
-                    disabled={!file || !amount || isPending}
-                    className="premium-button w-full py-6 text-sm active:scale-[0.98] group/btn"
+                    disabled={!file || !amount}
+                    loading={isPending}
+                    loadingText="Envoi en cours..."
+                    className="w-full py-6 text-sm active:scale-[0.98] group/btn"
                 >
                     <Upload size={20} className="group-hover/btn:-translate-y-1 transition-transform" />
-                    {isPending ? 'Envoi en cours...' : 'Envoyer pour Validation'}
-                </button>
+                    Envoyer pour Validation
+                </ActionButton>
             </div>
         </div>
     )

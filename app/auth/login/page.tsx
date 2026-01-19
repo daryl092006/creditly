@@ -5,8 +5,8 @@ import { login } from '../actions'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-
 import { Suspense } from 'react'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 
 function LoginForm() {
     const searchParams = useSearchParams()
@@ -81,23 +81,15 @@ function LoginForm() {
                         </div>
                     </div>
 
-                    <button
+                    <ActionButton
                         type="submit"
-                        disabled={isSubmitting}
-                        className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
+                        loading={isSubmitting}
+                        loadingText="Connexion sécurisée..."
+                        className="w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
-                        {isSubmitting ? (
-                            <div className="flex items-center justify-center gap-3">
-                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                <span>Connexion sécurisée...</span>
-                            </div>
-                        ) : (
-                            <>
-                                <span className="font-black uppercase tracking-widest text-xs">Se connecter</span>
-                                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </button>
+                        <span className="font-black uppercase tracking-widest text-xs">Se connecter</span>
+                        <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                    </ActionButton>
 
                     <div className="text-center mt-6">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">

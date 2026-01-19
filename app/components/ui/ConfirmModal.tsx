@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Warning, CheckmarkFilled, ErrorFilled, InformationFilled } from '@carbon/icons-react'
+import { ActionButton } from './ActionButton'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -111,17 +112,15 @@ export default function ConfirmModal({
                         >
                             {cancelText}
                         </button>
-                        <button
+                        <ActionButton
                             onClick={onConfirm}
-                            disabled={isLoading || disabled}
-                            className={`premium-button py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
+                            loading={isLoading}
+                            loadingText="Traitement..."
+                            disabled={disabled}
+                            className={`py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
                         >
-                            {isLoading ? (
-                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <span>{confirmText}</span>
-                            )}
-                        </button>
+                            <span>{confirmText}</span>
+                        </ActionButton>
                     </div>
                 </div>
             </div>

@@ -4,6 +4,7 @@ import { Upload, CheckmarkOutline, Warning } from '@carbon/icons-react'
 import { useState, useTransition } from 'react'
 import { submitRepayment } from '../actions'
 import { useRouter } from 'next/navigation'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 
 export default function RepaymentForm({ loanId, remainingBalance }: { loanId: string; remainingBalance: number }) {
     const router = useRouter()
@@ -101,14 +102,16 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                     </div>
                 </div>
 
-                <button
+                <ActionButton
                     onClick={handleAction}
-                    disabled={!file || !amount || isPending}
-                    className="premium-button w-full py-6 text-sm bg-emerald-600 border-emerald-500 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-[0.98] group/btn"
+                    disabled={!file || !amount}
+                    loading={isPending}
+                    loadingText="Sécurisation du transfert..."
+                    className="w-full py-6 text-sm bg-emerald-600 border-emerald-500 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-[0.98] group/btn"
                 >
                     <Upload size={20} className="group-hover/btn:-translate-y-1 transition-transform" />
-                    {isPending ? 'Sécurisation du transfert...' : 'Soumettre à l\'Analyse Administrative'}
-                </button>
+                    Soumettre à l&apos;Analyse Administrative
+                </ActionButton>
             </div>
 
             <p className="mt-8 text-center text-[9px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Votre paiement sera audité et validé sous un délai de 4h maximum.</p>

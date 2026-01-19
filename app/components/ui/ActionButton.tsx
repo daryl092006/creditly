@@ -8,7 +8,7 @@ interface ActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
     loading?: boolean
 }
 
-export function ActionButton({ children, variant = 'premium', loading, className, ...props }: ActionButtonProps) {
+export function ActionButton({ children, variant = 'premium', loading, loadingText, className, ...props }: ActionButtonProps & { loadingText?: string }) {
     // Note: We don't use useFormStatus here to keep it generic, 
     // but users can pass the loading prop from their state or parent.
 
@@ -22,17 +22,26 @@ export function ActionButton({ children, variant = 'premium', loading, className
 
     return (
         <button
-            className={`${selectedClass} ${loading ? 'loading' : ''} ${className || ''}`}
+            className={`${selectedClass} ${loading ? 'loading cursor-not-allowed opacity-80' : ''} ${className || ''}`}
             disabled={loading || props.disabled}
             {...props}
         >
-            <span className={loading ? 'invisible' : 'flex items-center gap-3'}>
-                {children}
-            </span>
-            {loading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            {loading && loadingText ? (
+                <div className="flex items-center justify-center gap-3">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    <span>{loadingText}</span>
                 </div>
+            ) : (
+                <>
+                    <span className={loading ? 'invisible' : 'flex items-center gap-3'}>
+                        {children}
+                    </span>
+                    {loading && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                        </div>
+                    )}
+                </>
             )}
         </button>
     )

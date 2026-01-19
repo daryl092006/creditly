@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { requestPasswordReset } from '../actions'
 import Link from 'next/link'
 import { ArrowRight, ArrowLeft, Email, Warning, CheckmarkFilled } from '@carbon/icons-react'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 import { Suspense } from 'react'
 
 const initialState: { message: string | null; error: string | null } = {
@@ -57,23 +58,15 @@ function ForgotPasswordForm() {
                         </div>
                     </div>
 
-                    <button
+                    <ActionButton
                         type="submit"
-                        disabled={isPending}
-                        className="premium-button w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
+                        loading={isPending}
+                        loadingText="Envoi en cours..."
+                        className="w-full py-5 flex items-center justify-center gap-3 active:scale-95 group transition-all"
                     >
-                        {isPending ? (
-                            <div className="flex items-center justify-center gap-3">
-                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                <span>Envoi en cours...</span>
-                            </div>
-                        ) : (
-                            <>
-                                <span className="font-black uppercase tracking-widest text-xs">Envoyer le lien</span>
-                                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </button>
+                        <span className="font-black uppercase tracking-widest text-xs">Envoyer le lien</span>
+                        <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                    </ActionButton>
 
                     <div className="text-center mt-6">
                         <Link href="/auth/login" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">

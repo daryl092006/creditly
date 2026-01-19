@@ -4,6 +4,7 @@ import { Money, Information, CloseFilled } from '@carbon/icons-react'
 import { useState } from 'react'
 import { requestLoan } from '../actions'
 import { useRouter } from 'next/navigation'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 
 interface Subscription {
     plan: {
@@ -144,14 +145,15 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
                     />
                 </div>
 
-                <button
+                <ActionButton
                     onClick={handleSubmit}
-                    disabled={loading}
-                    className="premium-button w-full py-6 text-sm active:scale-[0.98] group/btn mt-4"
+                    loading={loading}
+                    loadingText="Traitement Instantané..."
+                    className="w-full py-6 text-sm active:scale-[0.98] group/btn mt-4"
                 >
                     <Money size={20} className="group-hover/btn:rotate-12 transition-transform" />
-                    {loading ? 'Traitement Instantané...' : 'Engager le Financement'}
-                </button>
+                    Engager le Financement
+                </ActionButton>
             </div>
         </div>
     )

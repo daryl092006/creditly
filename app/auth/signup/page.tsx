@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowRight, View, ViewOff } from '@carbon/icons-react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 
 import { Suspense } from 'react'
 
@@ -154,23 +155,15 @@ function SignupForm() {
                         </div>
                     </div>
 
-                    <button
+                    <ActionButton
                         type="submit"
-                        disabled={isSubmitting}
-                        className="premium-button w-full py-6 active:scale-95 group transition-all"
+                        loading={isSubmitting}
+                        loadingText="Création en cours..."
+                        className="w-full py-6 active:scale-95 group transition-all"
                     >
-                        {isSubmitting ? (
-                            <div className="flex items-center justify-center gap-3">
-                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                <span>Création en cours...</span>
-                            </div>
-                        ) : (
-                            <>
-                                <span>Créer mon Espace</span>
-                                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </button>
+                        <span>Créer mon Espace</span>
+                        <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                    </ActionButton>
 
                     <p className="text-[9px] font-bold text-slate-500 text-center uppercase tracking-widest px-4 italic leading-relaxed">
                         En cliquant sur "Créer mon Espace", vous acceptez nos{' '}

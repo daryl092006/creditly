@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Identification, Camera, ArrowRight, ArrowLeft, CheckmarkFilled, Warning } from '@carbon/icons-react'
+import { ActionButton } from '@/app/components/ui/ActionButton'
 import { submitKyc } from './actions'
 
 export default function KYCPage() {
@@ -194,23 +195,16 @@ export default function KYCPage() {
                                 </div>
                             </div>
 
-                            <button
+                            <ActionButton
                                 type="submit"
+                                loading={isSubmitting}
+                                loadingText="Envoi du dossier en cours..."
                                 disabled={isSubmitting || !files.idCard || !files.selfie || !files.residence}
-                                className="premium-button w-full py-6 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+                                className="w-full py-6 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
                             >
-                                {isSubmitting ? (
-                                    <div className="flex items-center justify-center gap-3">
-                                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                        <span>Envoi du dossier en cours...</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span>Procéder à la soumission</span>
-                                        <ArrowRight size={20} />
-                                    </>
-                                )}
-                            </button>
+                                <span>Procéder à la soumission</span>
+                                <ArrowRight size={20} />
+                            </ActionButton>
                         </form>
                     </div>
                 </div>
