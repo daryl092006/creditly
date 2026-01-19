@@ -16,18 +16,21 @@ export async function getSignedProofUrl(path: string, bucket: string) {
     return { url: data.signedUrl }
 }
 
+async function safeSendUserEmail(type: any, data: any) {
+    try {
+        await sendUserEmail(type, data)
+    } catch (e) {
+        console.error("Failed to send user email:", e)
+        // Don't throw, so we don't block the main action
+    }
+}
+
 export async function updateKycStatus(submissionId: string, status: 'approved' | 'rejected', notes?: string) {
     const supabase = await createClient()
-
     const user = await supabase.auth.getUser()
     const adminId = user.data.user?.id
 
-    // Fetch user details for notification first
-    const { data: submission } = await supabase.from('kyc_submissions').select('user_id, users(email, prenom, nom)').eq('id', submissionId).single()
-    const userData = submission?.users as any
-    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
-    const userEmail = userData?.email
-
+    // 1. Perform Update
     const { error } = await supabase
         .from('kyc_submissions')
         .update({
@@ -40,15 +43,17 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
 
-    // Notify User
-    if (userEmail) {
-        if (status === 'rejected') {
-            await sendUserEmail('KYC_REJECTED', { email: userEmail, name: userName, details: notes })
+    // 2. Fetch User for Notification (Safe Mode)
+    const { data: submission } = await supabase.from('kyc_submissions').select('user_id').eq('id', submissionId).single()
+    if (submission?.user_id) {
+        const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', submission.user_id).single()
+
+        if (userData?.email) {
+            const userName = `${userData.prenom} ${userData.nom}`;
+            if (status === 'rejected') {
+                await safeSendUserEmail('KYC_REJECTED', { email: userData.email, name: userName, details: notes })
+            }
         }
-        // Approval email is sent in activateUserAccount if done together, or here?
-        // Usually approval happens with activation. But let's send it here if just status update.
-        // Actually, logic below handles activation separately. So we might delay approval email to activation?
-        // But let's keep it safe. If specific status update to rejected, we sent it.
     }
 
     revalidatePath('/admin/kyc')
@@ -75,12 +80,14 @@ export async function activateUserAccount(userId: string) {
         return { error: "Erreur : Impossible d'activer le compte. Utilisateur introuvable ou mise à jour échouée." }
     }
 
-    // Notify User of Approval & Activation
-    const user = data[0]
-    await sendUserEmail('KYC_APPROVED', {
-        email: user.email,
-        name: `${user.prenom} ${user.nom}`
-    })
+    // Notify User
+    const userData = data[0]
+    if (userData.email) {
+        await safeSendUserEmail('KYC_APPROVED', {
+            email: userData.email,
+            name: `${userData.prenom} ${userData.nom}`
+        })
+    }
 
     revalidatePath('/admin/kyc')
     return { success: true }
@@ -91,19 +98,17 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
 
     const user = await supabase.auth.getUser()
     const adminId = user.data.user?.id || null
+
+    // Initial fetch for validation checks (capacity, logic)
+    const { data: loan, error: fetchError } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*)').eq('id', loanId).single()
+
+    if (fetchError || !loan) return { error: 'Prêt introuvable' }
+
     const updates: Record<string, string | number | boolean | null> = {
         status,
         admin_decision_date: new Date().toISOString(),
         admin_id: adminId
     }
-
-    // Fetch loan & user details for notification
-    const { data: loan, error: fetchError } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*), users(email, prenom, nom)').eq('id', loanId).single()
-    if (fetchError || !loan) return { error: 'Prêt introuvable' }
-
-    const userData = loan.users as any
-    const userEmail = userData?.email
-    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
 
     if (status === 'approved' || status === 'active') {
         if (loan.snapshot) {
@@ -119,7 +124,7 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
 
             if (currentDebt + Number(loan.amount) > maxAmount) {
                 const available = Math.max(0, maxAmount - currentDebt)
-                return { error: `Impossible d'approuver : Cela dépasserait le plafond de l'utilisateur (${maxAmount} FCFA). Disponible : ${available} FCFA.` }
+                return { error: `Impossible d'approuver : Cela dépasserait le plafond (${maxAmount} F). Disponible : ${available} F.` }
             }
 
             const days = loan.snapshot.repayment_delay_days || 7
@@ -130,23 +135,23 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
         }
     }
 
-    if (reason) {
-        updates.rejection_reason = reason
-    }
+    if (reason) updates.rejection_reason = reason
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
         .from('prets')
         .update(updates)
         .eq('id', loanId)
 
-    if (error) return { error: getUserFriendlyErrorMessage(error) }
+    if (updateError) return { error: getUserFriendlyErrorMessage(updateError) }
 
-    // Notify User
-    if (userEmail) {
+    // Notify User safely
+    const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', loan.user_id).single()
+    if (userData?.email) {
+        const userName = `${userData.prenom} ${userData.nom}`
         if (status === 'rejected') {
-            await sendUserEmail('LOAN_REJECTED', { email: userEmail, name: userName, details: reason })
+            await safeSendUserEmail('LOAN_REJECTED', { email: userData.email, name: userName, details: reason })
         } else if (status === 'active' || status === 'approved') {
-            await sendUserEmail('LOAN_ACTIVE', { email: userEmail, name: userName, amount: Number(loan.amount) })
+            await safeSendUserEmail('LOAN_ACTIVE', { email: userData.email, name: userName, amount: Number(loan.amount) })
         }
     }
 
@@ -160,7 +165,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     const user = await supabase.auth.getUser()
     const adminId = user.data.user?.id
 
-    const { data: repayment, error: repError } = await supabase
+    // 1. Update Repayment
+    const { error: repError } = await supabase
         .from('remboursements')
         .update({
             status,
@@ -168,48 +174,42 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             admin_id: adminId
         })
         .eq('id', repaymentId)
-        .select('*, users(email, prenom, nom)') // Fetch user info
-        .single()
 
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
 
-    // Notify User
-    const userData = repayment.users as any
-    const userEmail = userData?.email
-    const userName = userData ? `${userData.prenom} ${userData.nom}` : 'Utilisateur'
+    // 2. Fetch details for Logic & Notification
+    const { data: repayment } = await supabase.from('remboursements').select('*').eq('id', repaymentId).single()
+    if (!repayment) return { success: true } // Should not happen, but safe
 
-    if (userEmail) {
-        if (status === 'verified') {
-            await sendUserEmail('REPAYMENT_VALIDATED', { email: userEmail, name: userName, amount: repayment.amount_declared })
-        } else if (status === 'rejected') {
-            await sendUserEmail('REPAYMENT_REJECTED', { email: userEmail, name: userName })
+    // 3. Update Loan Balance if Verified
+    if (status === 'verified') {
+        const amountVerified = repayment.amount_declared
+        const { data: loan } = await supabase.from('prets').select('amount, amount_paid').eq('id', repayment.loan_id).single()
+
+        if (loan) {
+            const currentPaid = Number(loan.amount_paid) || 0
+            const newTotalPaid = currentPaid + amountVerified
+            const isFullyPaid = newTotalPaid >= Number(loan.amount)
+
+            await supabase
+                .from('prets')
+                .update({
+                    amount_paid: newTotalPaid,
+                    status: isFullyPaid ? 'paid' : undefined
+                })
+                .eq('id', repayment.loan_id)
         }
     }
 
-    if (status === 'verified') {
-        const amountVerified = repayment.amount_declared
-
-        const { data: loan, error: fetchLoanError } = await supabase
-            .from('prets')
-            .select('amount, amount_paid')
-            .eq('id', repayment.loan_id)
-            .single()
-
-        if (fetchLoanError || !loan) return { error: 'Prêt introuvable' }
-
-        const currentPaid = Number(loan.amount_paid) || 0
-        const newTotalPaid = currentPaid + amountVerified
-        const isFullyPaid = newTotalPaid >= Number(loan.amount)
-
-        const { error: loanError } = await supabase
-            .from('prets')
-            .update({
-                amount_paid: newTotalPaid,
-                status: isFullyPaid ? 'paid' : undefined
-            })
-            .eq('id', repayment.loan_id)
-
-        if (loanError) return { error: getUserFriendlyErrorMessage(loanError) }
+    // 4. Notify User safely
+    const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', repayment.user_id).single()
+    if (userData?.email) {
+        const userName = `${userData.prenom} ${userData.nom}`;
+        if (status === 'verified') {
+            await safeSendUserEmail('REPAYMENT_VALIDATED', { email: userData.email, name: userName, amount: repayment.amount_declared })
+        } else if (status === 'rejected') {
+            await safeSendUserEmail('REPAYMENT_REJECTED', { email: userData.email, name: userName })
+        }
     }
 
     revalidatePath('/admin/repayments')
@@ -235,6 +235,21 @@ export async function activateSubscription(subId: string) {
         .eq('id', subId)
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    // Safe Notification
+    const { data: sub } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(name)').eq('id', subId).single()
+    if (sub?.user_id) {
+        const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', sub.user_id).single()
+        if (userData?.email) {
+            // Check if we have a template for this? Yes SUBSCRIPTION.
+            await safeSendUserEmail('SUBSCRIPTION', {
+                email: userData.email,
+                name: `${userData.prenom} ${userData.nom}`,
+                planName: sub.plan?.name || 'Abonnement'
+            })
+        }
+    }
+
     revalidatePath('/admin/super')
     revalidatePath('/admin/super/subscriptions')
     revalidatePath('/client/dashboard')
