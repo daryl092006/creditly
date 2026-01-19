@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { updateKycStatus, activateUserAccount, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
+import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 
 export default function AdminKycClientTable({ submissions }: {
     submissions: Array<{
@@ -188,34 +189,14 @@ export default function AdminKycClientTable({ submissions }: {
             </div>
 
             {/* Document Preview Modal */}
-            {previewDoc && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
-                    <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" onClick={() => setPreviewDoc(null)}></div>
-                    <div className="glass-panel w-full max-w-6xl max-h-[95vh] flex flex-col relative z-10 animate-scale-in bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden">
-                        <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center bg-white/5 shrink-0">
-                            <div>
-                                <h3 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tight">{previewDoc.type.replace(/_/g, ' ')}</h3>
-                                <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{previewDoc.name}</p>
-                            </div>
-                            <button onClick={() => setPreviewDoc(null)} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-auto bg-black/40 relative p-4 flex items-center justify-center">
-                            {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
-                                <iframe src={previewDoc.url} className="w-full h-[75vh] rounded-xl border-none" />
-                            ) : (
-                                <img src={previewDoc.url} alt="Document preview" className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl" />
-                            )}
-                        </div>
-                        <div className="p-4 md:p-6 bg-white/5 border-t border-white/10 flex justify-end shrink-0">
-                            <a href={previewDoc.url} download target="_blank" className="px-6 py-3 bg-white text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-blue-50 transition-colors shadow-lg active:scale-95">
-                                Télécharger l'original
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DocumentPreviewModal
+                isOpen={!!previewDoc}
+                onClose={() => setPreviewDoc(null)}
+                url={previewDoc?.url || null}
+                type={previewDoc?.type || 'image'}
+                title={previewDoc?.type.replace(/_/g, ' ') || 'Document'}
+                subtitle={previewDoc?.name}
+            />
 
             {/* Confirmation Modal */}
             <ConfirmModal
