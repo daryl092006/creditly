@@ -191,7 +191,7 @@ export default function AdminKycClientTable({ submissions }: {
             {previewDoc && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
                     <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" onClick={() => setPreviewDoc(null)}></div>
-                    <div className="glass-panel w-full max-w-7xl h-[90vh] flex flex-col relative z-10 animate-scale-in bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden">
+                    <div className="glass-panel w-full max-w-6xl max-h-[95vh] flex flex-col relative z-10 animate-scale-in bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden">
                         <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center bg-white/5 shrink-0">
                             <div>
                                 <h3 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tight">{previewDoc.type.replace(/_/g, ' ')}</h3>
@@ -201,13 +201,11 @@ export default function AdminKycClientTable({ submissions }: {
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <div className="flex-1 bg-black/40 relative overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-auto bg-black/40 relative p-4 flex items-center justify-center">
                             {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
-                                <iframe src={previewDoc.url} className="w-full h-full border-none" />
+                                <iframe src={previewDoc.url} className="w-full h-[75vh] rounded-xl border-none" />
                             ) : (
-                                <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
-                                    <img src={previewDoc.url} alt="Document preview" className="max-w-full max-h-full object-contain shadow-2xl" />
-                                </div>
+                                <img src={previewDoc.url} alt="Document preview" className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl" />
                             )}
                         </div>
                         <div className="p-4 md:p-6 bg-white/5 border-t border-white/10 flex justify-end shrink-0">
