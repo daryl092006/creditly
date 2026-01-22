@@ -30,7 +30,7 @@ export function ActionButton({ children, variant = 'premium', loading, loadingTe
                 {loading && (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
                 )}
-                <span>{loading && loadingText ? loadingText : children}</span>
+                <div className="flex items-center gap-2 whitespace-nowrap">{loading && loadingText ? loadingText : children}</div>
             </div>
         </button>
     )

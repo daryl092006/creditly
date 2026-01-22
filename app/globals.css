@@ -107,7 +107,7 @@
 
   /* Action Premium Button */
   .premium-button {
-    @apply relative px-8 py-4 overflow-hidden rounded-2xl font-black uppercase tracking-widest text-xs transition-all duration-500 flex items-center justify-center gap-3 active:scale-95;
+    @apply relative px-6 py-3 sm:px-8 sm:py-4 overflow-hidden rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all duration-500 flex items-center justify-center gap-3 active:scale-95;
     background-color: var(--action-main);
     color: white;
     box-shadow: 0 8px 25px -5px rgba(16, 185, 129, 0.4);
