@@ -198,12 +198,14 @@ export default function KYCPage() {
                             <ActionButton
                                 type="submit"
                                 loading={isSubmitting}
-                                loadingText="Envoi du dossier en cours..."
+                                loadingText="Traitement de votre dossier..."
                                 disabled={isSubmitting || !files.idCard || !files.selfie || !files.residence}
-                                className="w-full py-6 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+                                className="w-full py-6 disabled:opacity-50 disabled:grayscale transition-all active:scale-95 shadow-2xl shadow-blue-500/20"
                             >
-                                <span>Procéder à la soumission</span>
-                                <ArrowRight size={20} />
+                                <div className="flex items-center gap-3">
+                                    <span>Vérifier et soumettre le dossier</span>
+                                    <ArrowRight size={20} className={isSubmitting ? 'opacity-0' : 'animate-bounce-x'} />
+                                </div>
                             </ActionButton>
                         </form>
                     </div>

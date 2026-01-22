@@ -4,10 +4,10 @@ import SubscriptionTable from './SubscriptionTable'
 
 export default async function AdminSubscriptionsPage() {
     const supabase = await createClient()
-    const { data: pendingSubs } = await supabase
+    const { data: allSubs } = await supabase
         .from('user_subscriptions')
         .select('*, plan:abonnements(*), user:users(*)')
-        .eq('status', 'pending')
+        .order('status', { ascending: false }) // This puts 'pending' first (p > a) roughly, or use a better sort
         .order('created_at', { ascending: false })
 
     return (
@@ -24,7 +24,7 @@ export default async function AdminSubscriptionsPage() {
                     </div>
                 </div>
 
-                <SubscriptionTable rows={pendingSubs || []} />
+                <SubscriptionTable rows={allSubs || []} />
             </div>
         </div>
     )
