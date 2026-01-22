@@ -4,6 +4,37 @@ import Link from 'next/link'
 import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
 
+interface SubscriptionPlan {
+    name: string
+}
+
+interface UserSubscription {
+    is_active: boolean
+    status: string
+    rejection_reason?: string | null
+    plan_id: string
+    end_date: string
+    created_at: string
+    abonnements: SubscriptionPlan
+}
+
+interface Loan {
+    id: string
+    amount: number
+    status: string
+    created_at: string
+    admin_decision_date?: string
+    amount_paid?: number
+}
+
+interface Repayment {
+    id: string
+    amount_declared: number
+    status: string
+    created_at: string
+    validated_at?: string
+}
+
 export default async function ClientDashboard() {
     const supabase = await createClient()
 
@@ -34,12 +65,14 @@ export default async function ClientDashboard() {
 
     const now = new Date().toISOString()
     // Find a subscription that is active and not expired
-    const activeSub = profile?.user_subscriptions?.find((sub: any) =>
+    // Find a subscription that is active and not expired
+    const activeSub = profile?.user_subscriptions?.find((sub: UserSubscription) =>
         sub.status === 'active' && sub.end_date && sub.end_date > now
     )
 
     // Find if there's an expired but previously active subscription
-    const expiredSub = !activeSub ? profile?.user_subscriptions?.find((sub: any) =>
+    // Find if there's an expired but previously active subscription
+    const expiredSub = !activeSub ? profile?.user_subscriptions?.find((sub: UserSubscription) =>
         (sub.status === 'expired' || sub.status === 'active') && sub.end_date && sub.end_date <= now
     ) : null
 
@@ -70,14 +103,14 @@ export default async function ClientDashboard() {
     // Fetch latest for Status Hub
     const latestLoan = recentLoans?.[0]
     const latestRepayment = recentRepayments?.[0]
-    const latestSubscription = profile?.user_subscriptions?.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+    const latestSubscription = profile?.user_subscriptions?.sort((a: UserSubscription, b: UserSubscription) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
 
     // Check if KYC docs exist
     const { data: kycDocs } = await supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
 
     // Combine and format notifications
     const notifications = [
-        ...(profile?.user_subscriptions?.map((s: any) => ({
+        ...(profile?.user_subscriptions?.map((s: UserSubscription) => ({
             id: `sub-${s.created_at}`,
             text: s.status === 'pending' ? `Paiement abonnement ${s.abonnements.name} en cours de validation` :
                 s.status === 'active' ? `Abonnement ${s.abonnements.name} actif` :
