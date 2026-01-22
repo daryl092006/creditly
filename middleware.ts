@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
             if (!error && data) {
                 user = data.user
             }
-        } catch (e) {
+        } catch {
             // Silently fail if fetch fails to avoid blocking the user experience
         }
     }

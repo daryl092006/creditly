@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Locked, Security, Document } from '@carbon/icons-react';
+import { ArrowLeft, Security } from '@carbon/icons-react';
 
 export default function PolitiquesPage() {
     const articles = [

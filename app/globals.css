@@ -176,6 +176,15 @@
   .premium-gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-br from-primary-light via-emerald-400 to-action font-black;
   }
+
+  /* Utility to hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 .page-transition {
