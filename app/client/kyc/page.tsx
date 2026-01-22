@@ -107,7 +107,15 @@ export default function KYCPage() {
                             </div>
                         )}
 
-                        <form action={handleSubmit} className="space-y-10" encType="multipart/form-data">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault()
+                                const formData = new FormData(e.currentTarget)
+                                handleSubmit(formData)
+                            }}
+                            className="space-y-10"
+                            encType="multipart/form-data"
+                        >
                             <div className="space-y-4">
                                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">Pièce d&apos;Identité Officielle</label>
                                 <div className="relative group">
