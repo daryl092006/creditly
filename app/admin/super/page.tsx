@@ -64,7 +64,7 @@ export default async function SuperAdminPage({
     const { data: allActiveLoans } = await supabase
         .from('prets')
         .select('amount, amount_paid, due_date')
-        .in('status', ['active', 'overdue'])
+        .in('status', ['active', 'overdue', 'paid'])
 
     const totalActiveCapital = allActiveLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
     const totalAlreadyRecovered = allActiveLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
