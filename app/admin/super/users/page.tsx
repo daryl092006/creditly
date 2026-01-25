@@ -6,10 +6,14 @@ import { ChevronLeft } from '@carbon/icons-react'
 export default async function UserManagementPage() {
     const supabase = await createClient()
 
-    const { data: users } = await supabase
+    const { data: users, error } = await supabase
         .from('users')
-        .select('*, prets(id, status)')
+        .select('*')
         .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching users:', error)
+    }
 
     const rows = users?.map(u => ({
         id: u.id,
@@ -18,7 +22,7 @@ export default async function UserManagementPage() {
         whatsapp: u.whatsapp,
         role: u.role,
         is_active: u.is_account_active,
-        has_active_loans: u.prets?.some((p: any) => p.status === 'active' || p.status === 'overdue') || false
+        has_active_loans: false // Temporarily disabled join
     })) || []
 
     return (
