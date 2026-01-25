@@ -20,35 +20,34 @@ export async function updateUserRole(userId: string, role: 'client' | 'admin_kyc
 export async function deleteUserAccount(userId: string) {
     const adminSupabase = await createAdminClient()
 
-    // 1. Delete from auth.users (Cascades to public.users via RLS or DB references usually)
-    const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId)
+    try {
+        // 1. Manually cleanup children in order of dependency
+        // Remboursements first (they depend on loans and users)
+        await adminSupabase.from('remboursements').delete().eq('user_id', userId)
 
-    if (authError) {
-        const msg = authError.message.toLowerCase()
+        // Loans next
+        await adminSupabase.from('prets').delete().eq('user_id', userId)
 
-        // Map technical database constraints to clear, human reasons
-        if (msg.includes('23503') || msg.includes('foreign key constraint')) {
-            if (msg.includes('prets_user_id_fkey')) {
-                return { error: "Action Impossible : Cet utilisateur possède des dossiers de prêts actifs." }
-            }
-            if (msg.includes('remboursements_user_id_fkey')) {
-                return { error: "Action Impossible : Des remboursements sont liés à ce compte." }
-            }
-            if (msg.includes('kyc_submissions_user_id_fkey')) {
-                return { error: "Action Impossible : Un dossier de vérification d'identité (KYC) est en cours." }
-            }
-            if (msg.includes('user_subscriptions_user_id_fkey')) {
-                return { error: "Action Impossible : L'utilisateur possède un historique d'abonnements." }
-            }
-            return { error: "Action Impossible : L'utilisateur est lié à des activités administratives qui empêchent sa suppression." }
+        // KYC next
+        await adminSupabase.from('kyc_submissions').delete().eq('user_id', userId)
+
+        // Subscriptions next
+        await adminSupabase.from('user_subscriptions').delete().eq('user_id', userId)
+
+        // 2. Delete from auth.users (Cascades to public.users via 'on delete cascade' on public.users table)
+        const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId)
+
+        if (authError) {
+            console.error('Auth deletion error:', authError)
+            return { error: "Erreur lors de la suppression du compte d'authentification." }
         }
 
-        // Generic friendly fallback
-        return { error: "Impossible de supprimer ce compte pour le moment. Veuillez vérifier s'il possède des prêts ou des paiements en cours." }
+        revalidatePath('/admin/super/users')
+        return { success: true }
+    } catch (e: any) {
+        console.error('Full wipe error:', e)
+        return { error: "Une erreur critique est survenue lors du nettoyage des données." }
     }
-
-    revalidatePath('/admin/super/users')
-    return { success: true }
 }
 
 /**

@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react'
 import { updateUserRole, deleteUserAccount, blacklistUserAccount } from './actions'
-import { TrashCan, User, Switcher, Misuse } from '@carbon/icons-react'
+import { TrashCan, User, Switcher, Misuse, InformationFilled } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
+import Link from 'next/link'
 
-export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string }> }) {
+export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string; has_active_loans?: boolean }> }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [processingId, setProcessingId] = useState<string | null>(null)
-    const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist' } | null>(null)
+    const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist', hasLoans?: boolean } | null>(null)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleRoleChange = async (userId: string, newRole: string) => {
@@ -25,11 +26,11 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
 
     const handleExecuteAction = async () => {
         if (!confirmAction) return
-        const { id, email, type } = confirmAction
+        const { id, type } = confirmAction
         setProcessingId(id)
 
         const result = type === 'blacklist'
-            ? await blacklistUserAccount(id, email)
+            ? await blacklistUserAccount(id, confirmAction.email)
             : await deleteUserAccount(id)
 
         if (result?.error) {
@@ -117,8 +118,15 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 </td>
                                 <td className="px-8 py-6 text-right">
                                     <div className="flex items-center justify-end gap-2">
+                                        <Link
+                                            href={`/admin/super/users/${row.id}`}
+                                            className="p-3 bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:text-blue-500 border border-white/5 hover:border-blue-500/20 rounded-xl transition-all"
+                                            title="Détails de l'utilisateur"
+                                        >
+                                            <InformationFilled size={18} />
+                                        </Link>
                                         <button
-                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete' })}
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
                                             disabled={!!processingId || loading === row.id}
                                             className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'delete' ? 'bg-amber-500/20 text-amber-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-amber-500/10 hover:text-amber-500 border border-white/5 hover:border-amber-500/20'}`}
                                             title="Supprimer le compte uniquement"
@@ -126,7 +134,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                             <TrashCan size={18} />
                                         </button>
                                         <button
-                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
                                             disabled={!!processingId || loading === row.id}
                                             className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'blacklist' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
                                             title="Bannir & Supprimer"
@@ -161,15 +169,22 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 </div>
                             </div>
                             <div className="flex gap-2">
+                                <Link
+                                    href={`/admin/super/users/${row.id}`}
+                                    className="w-10 h-10 bg-slate-800 text-blue-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                    title="Détails"
+                                >
+                                    <InformationFilled size={18} />
+                                </Link>
                                 <button
-                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete' })}
+                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
                                     className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
                                     title="Supprimer"
                                 >
                                     <TrashCan size={18} />
                                 </button>
                                 <button
-                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist' })}
+                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
                                     className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
                                     title="Bannir"
                                 >
@@ -219,13 +234,13 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                 onClose={() => setConfirmAction(null)}
                 onConfirm={handleExecuteAction}
                 title={confirmAction?.type === 'blacklist' ? "Bannissement Définitif" : "Suppression Simple"}
-                message={confirmAction?.type === 'blacklist'
-                    ? `ATTENTION : Vous allez bannir ${confirmAction?.email}. Son compte sera effacé et toute réinscription future sera bloquée.`
-                    : `Vous allez supprimer le compte de ${confirmAction?.email}. Ses données seront effacées, mais il pourra se réinscrire ultérieurement.`}
+                message={`${confirmAction?.hasLoans ? "ATTENTION : Cette personne a des prêts en cours. " : ""}${confirmAction?.type === 'blacklist'
+                    ? `Vous allez bannir ${confirmAction?.email}. Son compte sera effacé et toute réinscription future sera bloquée.`
+                    : `Vous allez supprimer le compte de ${confirmAction?.email}. Ses données seront effacées, mais il pourra se réinscrire ultérieurement.`}`}
                 confirmText={confirmAction?.type === 'blacklist' ? "Bannir & Supprimer" : "Supprimer le compte"}
-                variant={confirmAction?.type === 'blacklist' ? "danger" : "warning"}
+                variant={confirmAction?.type === 'blacklist' ? "danger" : (confirmAction?.hasLoans ? "danger" : "warning")}
                 isLoading={processingId === confirmAction?.id}
-                customIcon={confirmAction?.type === 'blacklist' ? <Misuse size={32} className="text-red-500" /> : <TrashCan size={32} className="text-amber-500" />}
+                customIcon={confirmAction?.type === 'blacklist' ? <Misuse size={32} className="text-red-500" /> : <TrashCan size={32} className={confirmAction?.hasLoans ? "text-red-500" : "text-amber-500"} />}
             />
 
             {/* Error Modal (Implicitly informed from Server Action) */}

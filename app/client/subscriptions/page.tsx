@@ -140,7 +140,11 @@ export default async function SubscriptionsPage() {
                             </div>
 
                             <div className="relative z-10 w-full">
-                                <SubscribeButton planId={plan.id} disabled={!!activeSub || !!pendingSub} />
+                                <SubscribeButton
+                                    planId={plan.id}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id)}
+                                    isModification={!!activeSub && activeSub.plan_id !== plan.id}
+                                />
                             </div>
                         </div>
                     ))}

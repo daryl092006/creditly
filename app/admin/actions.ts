@@ -223,6 +223,17 @@ export async function activateSubscription(subId: string) {
     const endDate = new Date()
     endDate.setDate(startDate.getDate() + 30)
 
+    const { data: currentSub } = await supabase.from('user_subscriptions').select('user_id').eq('id', subId).single()
+    if (currentSub) {
+        // Expire all other active subscriptions for this user
+        await supabase
+            .from('user_subscriptions')
+            .update({ status: 'expired', is_active: false })
+            .eq('user_id', currentSub.user_id)
+            .eq('status', 'active')
+            .neq('id', subId)
+    }
+
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
@@ -245,7 +256,7 @@ export async function activateSubscription(subId: string) {
             await safeSendUserEmail('SUBSCRIPTION', {
                 email: userData.email,
                 name: `${userData.prenom} ${userData.nom}`,
-                planName: sub.plan?.name || 'Abonnement'
+                planName: (sub.plan as any)?.name || 'Abonnement'
             })
         }
     }

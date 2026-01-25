@@ -42,11 +42,19 @@ export default async function Home() {
                             <Link href="/auth/login" className="hidden sm:block text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
                                 Connexion
                             </Link>
+                            {/* Desktop: Commencer (Signup) */}
                             <Link
                                 href="/auth/signup"
-                                className="premium-button scale-90 sm:scale-100"
+                                className="premium-button scale-90 sm:scale-100 hidden sm:flex"
                             >
                                 Commencer
+                            </Link>
+                            {/* Mobile: Se connecter (Login) */}
+                            <Link
+                                href="/auth/login"
+                                className="premium-button scale-90 sm:hidden"
+                            >
+                                Se connecter
                             </Link>
                         </div>
                     </div>

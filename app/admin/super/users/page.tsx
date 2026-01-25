@@ -6,7 +6,10 @@ import { ChevronLeft } from '@carbon/icons-react'
 export default async function UserManagementPage() {
     const supabase = await createClient()
 
-    const { data: users } = await supabase.from('users').select('*').order('created_at', { ascending: false })
+    const { data: users } = await supabase
+        .from('users')
+        .select('*, prets(id, status)')
+        .order('created_at', { ascending: false })
 
     const rows = users?.map(u => ({
         id: u.id,
@@ -14,7 +17,8 @@ export default async function UserManagementPage() {
         name: `${u.prenom || ''} ${u.nom || ''}`,
         whatsapp: u.whatsapp,
         role: u.role,
-        is_active: u.is_account_active
+        is_active: u.is_account_active,
+        has_active_loans: u.prets?.some((p: any) => p.status === 'active' || p.status === 'overdue') || false
     })) || []
 
     return (
@@ -32,9 +36,18 @@ export default async function UserManagementPage() {
                         </p>
                     </div>
 
-                    <div className="px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl">
-                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1 italic">Membres</p>
-                        <p className="text-white font-black text-xl italic leading-none">{rows.length}</p>
+                    <div className="flex gap-4">
+                        <div className="px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl">
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1 italic">Membres</p>
+                            <p className="text-white font-black text-xl italic leading-none">{rows.length}</p>
+                        </div>
+
+                        <Link href="/admin/super/users/active-loans" className="px-6 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all group">
+                            <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none mb-1 italic group-hover:scale-105 transition-transform">Prêts Actifs</p>
+                            <p className="text-white font-black text-xl italic leading-none">
+                                {rows.filter(r => r.has_active_loans).length}
+                            </p>
+                        </Link>
                     </div>
                 </div>
 

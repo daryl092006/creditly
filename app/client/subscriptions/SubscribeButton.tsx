@@ -4,7 +4,15 @@
 import Link from 'next/link'
 import { Flash } from '@carbon/icons-react'
 
-export default function SubscribeButton({ planId, disabled }: { planId: string, disabled: boolean }) {
+export default function SubscribeButton({
+    planId,
+    disabled,
+    isModification
+}: {
+    planId: string,
+    disabled: boolean,
+    isModification?: boolean
+}) {
     return (
         <div className="space-y-3">
             {disabled ? (
@@ -12,14 +20,14 @@ export default function SubscribeButton({ planId, disabled }: { planId: string, 
                     className="premium-button w-full py-5 !rounded-2xl bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
                     disabled
                 >
-                    Statut : Payé / En attente
+                    {isModification ? 'Déjà Actif' : 'Payé / En attente'}
                 </button>
             ) : (
                 <Link
                     href={`/client/subscriptions/payment?planId=${planId}`}
                     className="premium-button w-full py-5 !rounded-2xl group"
                 >
-                    <span>Choisir ce plan</span>
+                    <span>{isModification ? 'Changer pour ce plan' : 'Choisir ce plan'}</span>
                     <Flash className="group-hover:rotate-12 transition-transform" />
                 </Link>
             )}
