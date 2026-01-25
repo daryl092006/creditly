@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { ChevronLeft, User, Identification, Document, Money, Time, CheckmarkFilled, Misuse, Flash, Star } from '@carbon/icons-react'
 import { notFound } from 'next/navigation'
+import { getSignedProofUrl } from '@/app/admin/actions'
 
 export default async function UserDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -20,10 +21,10 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
     // Fetch Subscriptions
     const { data: subs } = await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', id).order('created_at', { ascending: false })
 
-    const getFullUrl = (path: string, bucket: string = 'repayment-proofs') => {
-        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        return `${baseUrl}/storage/v1/object/public/${bucket}/${path}`
-    }
+    // Get Signed URLs for KYC docs if they exist
+    const idCardUrl = kyc?.id_card_url ? (await getSignedProofUrl(kyc.id_card_url, 'kyc-documents')).url : null
+    const selfieUrl = kyc?.selfie_url ? (await getSignedProofUrl(kyc.selfie_url, 'kyc-documents')).url : null
+    const residenceUrl = kyc?.proof_of_residence_url ? (await getSignedProofUrl(kyc.proof_of_residence_url, 'kyc-documents')).url : null
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
@@ -80,20 +81,20 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                 {kyc ? (
                                     <div className="grid grid-cols-1 gap-4">
                                         {[
-                                            { label: 'Pièce d\'Identité', url: kyc.id_card_url },
-                                            { label: 'Selfie de Vérification', url: kyc.selfie_url },
-                                            { label: 'Preuve de Résidence', url: kyc.proof_of_residence_url }
+                                            { label: 'Pièce d\'Identité', url: idCardUrl },
+                                            { label: 'Selfie de Vérification', url: selfieUrl },
+                                            { label: 'Preuve de Résidence', url: residenceUrl }
                                         ].map((doc, i) => (
                                             <a
                                                 key={i}
-                                                href={getFullUrl(doc.url, 'repayment-proofs')}
+                                                href={doc.url || '#'}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="block glass-panel p-4 bg-slate-950 border-white/5 hover:border-blue-500/30 transition-all group"
+                                                className={`block glass-panel p-4 bg-slate-950 border-white/5 transition-all group ${!doc.url ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500/30'}`}
                                             >
                                                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-2">{doc.label}</p>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-blue-400 uppercase italic">Visualiser</span>
+                                                    <span className="text-[10px] font-bold text-blue-400 uppercase italic">{doc.url ? 'Visualiser' : 'Non disponible'}</span>
                                                     <Identification size={16} className="text-slate-700 group-hover:text-blue-500 transition-colors" />
                                                 </div>
                                             </a>
@@ -160,9 +161,9 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                                 <p className="text-[10px] font-black text-emerald-500 italic">{Number(loan.amount_paid || 0).toLocaleString()} F</p>
                                             </div>
                                             <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${loan.status === 'paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                    loan.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                        loan.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                loan.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                    loan.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                        'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                                 }`}>
                                                 {loan.status}
                                             </div>
@@ -189,8 +190,8 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                             </div>
                                         </div>
                                         <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${sub.status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                sub.status === 'expired' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
-                                                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                            sub.status === 'expired' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
+                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                             }`}>
                                             {sub.status}
                                         </div>

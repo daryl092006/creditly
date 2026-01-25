@@ -11,9 +11,12 @@ export default async function UserManagementPage() {
         .select('*')
         .order('created_at', { ascending: false })
 
-    if (error) {
-        console.error('Error fetching users:', error)
-    }
+    const { data: activeLoans } = await supabase
+        .from('prets')
+        .select('user_id')
+        .in('status', ['active', 'overdue'])
+
+    const activeLoanUserIds = new Set(activeLoans?.map(l => l.user_id) || [])
 
     const rows = users?.map(u => ({
         id: u.id,
@@ -22,7 +25,7 @@ export default async function UserManagementPage() {
         whatsapp: u.whatsapp,
         role: u.role,
         is_active: u.is_account_active,
-        has_active_loans: false // Temporarily disabled join
+        has_active_loans: activeLoanUserIds.has(u.id)
     })) || []
 
     return (
