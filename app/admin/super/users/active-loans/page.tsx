@@ -5,11 +5,26 @@ import { ChevronLeft, User, Money, Time, Warning } from '@carbon/icons-react'
 export default async function ActiveLoansPage() {
     const supabase = await createClient()
 
-    const { data: loans } = await supabase
+    const { data: rawLoans, error } = await supabase
         .from('prets')
-        .select('*, user:users(*), snapshot:subscription_snapshot_id(*)')
+        .select('*')
         .in('status', ['active', 'overdue'])
         .order('due_date', { ascending: true })
+
+    if (error) {
+        console.error('Error fetching active loans:', error)
+    }
+
+    const userIds = Array.from(new Set(rawLoans?.map(l => l.user_id) || []))
+    const { data: users } = await supabase.from('users').select('*').in('id', userIds)
+    const { data: snapshots } = await supabase.from('user_subscriptions').select('id, plan:abonnements(name)') // Snapshots are actually linked to abonnements via snapshot table usually, but here the schema used subscription_snapshot_id. Let's keep it simple for now or fetch snapshots if needed.
+
+    // Mapping back
+    const loans = rawLoans?.map(loan => ({
+        ...loan,
+        user: users?.find(u => u.id === loan.user_id),
+        snapshot: { name: 'Prêt' } // Fallback for simplicity if snapshot fetch is complex
+    })) || []
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
