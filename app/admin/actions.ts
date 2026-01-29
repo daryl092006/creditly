@@ -26,9 +26,14 @@ async function safeSendUserEmail(type: any, data: any) {
 }
 
 export async function updateKycStatus(submissionId: string, status: 'approved' | 'rejected', notes?: string) {
-    const supabase = await createClient()
-    const user = await supabase.auth.getUser()
-    const adminId = user.data.user?.id
+    const role = await getCurrentUserRole()
+    if (!role || !['admin_kyc', 'superadmin'].includes(role)) {
+        return { error: "Accès refusé." }
+    }
+
+    const supabase = await createAdminClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id
 
     // 1. Pre-Fetch for Deletion (if rejected)
     const { data: currentData } = await supabase.from('kyc_submissions').select('*').eq('id', submissionId).single()
@@ -116,10 +121,14 @@ export async function activateUserAccount(userId: string) {
 }
 
 export async function updateLoanStatus(loanId: string, status: 'approved' | 'rejected' | 'active' | 'paid', reason?: string) {
-    const supabase = await createClient()
+    const role = await getCurrentUserRole()
+    if (!role || !['admin_loan', 'superadmin'].includes(role)) {
+        return { error: "Accès refusé." }
+    }
 
-    const user = await supabase.auth.getUser()
-    const adminId = user.data.user?.id || null
+    const supabase = await createAdminClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id || null
 
     // Initial fetch for validation checks (capacity, logic)
     const { data: loan, error: fetchError } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*)').eq('id', loanId).single()
@@ -182,10 +191,14 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
 }
 
 export async function updateRepaymentStatus(repaymentId: string, status: 'verified' | 'rejected') {
-    const supabase = await createClient()
+    const role = await getCurrentUserRole()
+    if (!role || !['admin_repayment', 'superadmin'].includes(role)) {
+        return { error: "Accès refusé." }
+    }
 
-    const user = await supabase.auth.getUser()
-    const adminId = user.data.user?.id
+    const supabase = await createAdminClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id
 
     // 1. Update Repayment
     const { error: repError } = await supabase
@@ -239,7 +252,12 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 }
 
 export async function activateSubscription(subId: string) {
-    const supabase = await createClient()
+    const role = await getCurrentUserRole()
+    if (!role || role !== 'superadmin') {
+        return { error: "Accès refusé. Seul le Super Admin peut activer des abonnements." }
+    }
+
+    const supabase = await createAdminClient()
 
     const startDate = new Date()
     const endDate = new Date()
@@ -256,8 +274,8 @@ export async function activateSubscription(subId: string) {
             .neq('id', subId)
     }
 
-    const user = await supabase.auth.getUser()
-    const adminId = user.data.user?.id
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id
 
     const { error } = await supabase
         .from('user_subscriptions')
@@ -294,10 +312,14 @@ export async function activateSubscription(subId: string) {
 }
 
 export async function rejectSubscription(subId: string, reason: string) {
-    const supabase = await createClient()
+    const role = await getCurrentUserRole()
+    if (!role || role !== 'superadmin') {
+        return { error: "Accès refusé." }
+    }
 
-    const user = await supabase.auth.getUser()
-    const adminId = user.data.user?.id
+    const supabase = await createAdminClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id
 
     const { error } = await supabase
         .from('user_subscriptions')
