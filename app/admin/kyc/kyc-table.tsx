@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { updateKycStatus, activateUserAccount, getSignedProofUrl } from '../actions'
+import { createClient } from '@/utils/supabase/client'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 
@@ -21,6 +22,7 @@ export default function AdminKycClientTable({ submissions }: {
     const [confirmAction, setConfirmAction] = useState<{ id: string, userId?: string, status: 'approved' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const supabase = createClient()
 
     const handleAction = async () => {
         if (!confirmAction) return
@@ -41,6 +43,10 @@ export default function AdminKycClientTable({ submissions }: {
                 if (actRes?.error) result = actRes
             }
         } else if (status === 'rejected') {
+            // STRICT DEACTIVATION ON REJECTION
+            if (userId) {
+                await supabase.from('users').update({ is_account_active: false }).eq('id', userId)
+            }
             result = await updateKycStatus(id, 'rejected', rejectionReason)
         }
 

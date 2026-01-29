@@ -112,6 +112,14 @@ export default async function ClientLoansPage() {
                                                         >
                                                             Details
                                                         </Link>
+                                                        {loan.status === 'rejected' && (
+                                                            <Link
+                                                                href="/client/loans/request"
+                                                                className="px-6 py-2 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-700 transition-all border border-white/10"
+                                                            >
+                                                                Ressayer
+                                                            </Link>
+                                                        )}
                                                         {loan.status === 'active' && (
                                                             <Link
                                                                 href={`/client/loans/repayment?loanId=${loan.id}`}
@@ -185,6 +193,14 @@ export default async function ClientLoansPage() {
                                             >
                                                 Details
                                             </Link>
+                                            {loan.status === 'rejected' && (
+                                                <Link
+                                                    href="/client/loans/request"
+                                                    className="px-4 py-2 bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10"
+                                                >
+                                                    Ressayer
+                                                </Link>
+                                            )}
                                             {loan.status === 'active' && (
                                                 <Link
                                                     href={`/client/loans/repayment?loanId=${loan.id}`}
