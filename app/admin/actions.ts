@@ -30,15 +30,37 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
     const user = await supabase.auth.getUser()
     const adminId = user.data.user?.id
 
-    // 1. Perform Update
+    // 1. Pre-Fetch for Deletion (if rejected)
+    const { data: currentData } = await supabase.from('kyc_submissions').select('*').eq('id', submissionId).single()
+
+    const updateData: any = {
+        status,
+        admin_notes: notes,
+        admin_id: adminId,
+        reviewed_at: new Date().toISOString()
+    }
+
+    if (status === 'rejected' && currentData) {
+        const adminSupabase = await createAdminClient()
+        const filesToDelete = []
+        if (currentData.id_card_url) filesToDelete.push(currentData.id_card_url)
+        if (currentData.selfie_url) filesToDelete.push(currentData.selfie_url)
+        if (currentData.proof_of_residence_url) filesToDelete.push(currentData.proof_of_residence_url)
+
+        if (filesToDelete.length > 0) {
+            await adminSupabase.storage.from('kyc-documents').remove(filesToDelete)
+        }
+
+        // Clear references
+        updateData.id_card_url = null
+        updateData.selfie_url = null
+        updateData.proof_of_residence_url = null
+    }
+
+    // 2. Perform Update
     const { error } = await supabase
         .from('kyc_submissions')
-        .update({
-            status,
-            admin_notes: notes,
-            admin_id: adminId,
-            reviewed_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', submissionId)
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
