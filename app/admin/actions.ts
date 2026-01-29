@@ -256,6 +256,9 @@ export async function activateSubscription(subId: string) {
             .neq('id', subId)
     }
 
+    const user = await supabase.auth.getUser()
+    const adminId = user.data.user?.id
+
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
@@ -263,7 +266,8 @@ export async function activateSubscription(subId: string) {
             status: 'active',
             start_date: startDate.toISOString(),
             end_date: endDate.toISOString(),
-            rejection_reason: null
+            rejection_reason: null,
+            admin_id: adminId
         })
         .eq('id', subId)
 
@@ -292,12 +296,16 @@ export async function activateSubscription(subId: string) {
 export async function rejectSubscription(subId: string, reason: string) {
     const supabase = await createClient()
 
+    const user = await supabase.auth.getUser()
+    const adminId = user.data.user?.id
+
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
             status: 'rejected',
             is_active: false,
-            rejection_reason: reason
+            rejection_reason: reason,
+            admin_id: adminId
         })
         .eq('id', subId)
 
