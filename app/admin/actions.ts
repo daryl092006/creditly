@@ -77,7 +77,7 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
         .update(updateData)
         .eq('id', submissionId)
 
-    if (error) return { error: getUserFriendlyErrorMessage(error) }
+    if (error) return { error: `DEBUG DB ERROR: ${error.message} - Details: ${error.details} - Hint: ${error.hint}` }
 
     // 2. Fetch User for Notification (Safe Mode)
     const { data: submission } = await supabase.from('kyc_submissions').select('user_id').eq('id', submissionId).single()
