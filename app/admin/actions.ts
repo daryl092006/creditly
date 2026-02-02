@@ -32,7 +32,8 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
     }
 
     const supabase = await createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
     // 1. Pre-Fetch for Deletion (if rejected)
@@ -154,7 +155,8 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
     }
 
     const supabase = await createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id || null
 
     // Initial fetch for validation checks (capacity, logic)
@@ -224,7 +226,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     }
 
     const supabase = await createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
     // 1. Update Repayment
@@ -301,7 +304,7 @@ export async function activateSubscription(subId: string) {
             .neq('id', subId)
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await (await createClient()).auth.getUser()
     const adminId = user?.id
 
     const { error } = await supabase
@@ -345,7 +348,8 @@ export async function rejectSubscription(subId: string, reason: string) {
     }
 
     const supabase = await createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
     const { error } = await supabase
