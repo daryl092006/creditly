@@ -65,10 +65,9 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
             }
         }
 
-        // Clear references
-        updateData.id_card_url = null
-        updateData.selfie_url = null
-        updateData.proof_of_residence_url = null
+        // Clear references - REMOVED to avoid NOT NULL constraint violation
+        // We keep the old URLs in DB even if files are deleted. 
+        // Identify them as deleted? No, just leave them. The status 'rejected' is enough.
     }
 
     // 2. Perform Update
@@ -77,7 +76,7 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
         .update(updateData)
         .eq('id', submissionId)
 
-    if (error) return { error: `DEBUG DB ERROR: ${error.message} - Details: ${error.details} - Hint: ${error.hint}` }
+    if (error) return { error: getUserFriendlyErrorMessage(error) }
 
     // 2. Fetch User for Notification (Safe Mode)
     const { data: submission } = await supabase.from('kyc_submissions').select('user_id').eq('id', submissionId).single()
