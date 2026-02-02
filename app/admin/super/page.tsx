@@ -96,17 +96,17 @@ export default async function SuperAdminPage({
     const kycActions = await supabase.from('kyc_submissions').select('admin_id, status').not('admin_id', 'is', null)
     const loanActions = await supabase.from('prets').select('admin_id, status').not('admin_id', 'is', null)
     const repaymentActions = await supabase.from('remboursements').select('admin_id, status').not('admin_id', 'is', null)
-    const subActions = await supabase.from('user_subscriptions').select('admin_id, status').not('admin_id', 'is', null)
+    // Removed subscription actions from audit as per request
 
     const adminPerformance = admins?.map(admin => {
         const kycCount = kycActions.data?.filter(a => a.admin_id === admin.id).length || 0
         const loanCount = loanActions.data?.filter(a => a.admin_id === admin.id).length || 0
         const repaymentCount = repaymentActions.data?.filter(a => a.admin_id === admin.id).length || 0
-        const subCount = subActions.data?.filter(a => a.admin_id === admin.id).length || 0
+        // const subCount = subActions.data?.filter(a => a.admin_id === admin.id).length || 0
         return {
             ...admin,
-            totalActions: kycCount + loanCount + repaymentCount + subCount,
-            details: { kycCount, loanCount, repaymentCount, subCount }
+            totalActions: kycCount + loanCount + repaymentCount, // Adjusted total
+            details: { kycCount, loanCount, repaymentCount } // Adjusted details
         }
     }).sort((a, b) => b.totalActions - a.totalActions)
 
@@ -357,12 +357,6 @@ export default async function SuperAdminPage({
                                                 <div className="flex-1 text-center p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
                                                     <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Remb.</p>
                                                     <p className="text-[10px] font-black text-slate-300">{admin.details.repaymentCount}</p>
-                                                </div>
-                                            )}
-                                            {admin.role === 'superadmin' && (
-                                                <div className="flex-1 text-center p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                                                    <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Abos</p>
-                                                    <p className="text-[10px] font-black text-slate-300">{admin.details.subCount}</p>
                                                 </div>
                                             )}
                                         </div>
