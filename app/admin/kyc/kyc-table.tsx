@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateKycStatus, activateUserAccount, getSignedProofUrl } from '../actions'
+import { updateKycStatus, activateUserAccount, deactivateUserAccount, getSignedProofUrl } from '../actions'
 import { createClient } from '@/utils/supabase/client'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
@@ -45,7 +45,13 @@ export default function AdminKycClientTable({ submissions }: {
         } else if (status === 'rejected') {
             // STRICT DEACTIVATION ON REJECTION
             if (userId) {
-                await supabase.from('users').update({ is_account_active: false }).eq('id', userId)
+                const deactRes = await deactivateUserAccount(userId)
+                if (deactRes?.error) {
+                    // Si on ne peut pas désactiver, on ne continue pas ou on avertit ?
+                    // On choisit de continuer le rejet KYC mais on capture l'erreur de désactivation
+                    console.error("Erreur désactivation:", deactRes.error)
+                    // Optionnel: result.error = deactRes.error (si on veut bloquer)
+                }
             }
             result = await updateKycStatus(id, 'rejected', rejectionReason)
         }
@@ -53,7 +59,7 @@ export default function AdminKycClientTable({ submissions }: {
         if (result?.error) {
             setErrorAction({
                 title: "Erreur de Dossier",
-                message: result.error
+                message: typeof result.error === 'string' ? result.error : JSON.stringify(result.error)
             })
             setLoading(null)
         } else {

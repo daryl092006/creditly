@@ -48,12 +48,21 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
     if (status === 'rejected' && currentData) {
         const adminSupabase = await createAdminClient()
         const filesToDelete = []
-        if (currentData.id_card_url) filesToDelete.push(currentData.id_card_url)
-        if (currentData.selfie_url) filesToDelete.push(currentData.selfie_url)
-        if (currentData.proof_of_residence_url) filesToDelete.push(currentData.proof_of_residence_url)
+
+        // Ensure we only try to delete if we have valid paths
+        if (currentData.id_card_url && typeof currentData.id_card_url === 'string') filesToDelete.push(currentData.id_card_url)
+        if (currentData.selfie_url && typeof currentData.selfie_url === 'string') filesToDelete.push(currentData.selfie_url)
+        if (currentData.proof_of_residence_url && typeof currentData.proof_of_residence_url === 'string') filesToDelete.push(currentData.proof_of_residence_url)
 
         if (filesToDelete.length > 0) {
-            await adminSupabase.storage.from('kyc-documents').remove(filesToDelete)
+            try {
+                const { error: deleteError } = await adminSupabase.storage.from('kyc-documents').remove(filesToDelete)
+                if (deleteError) {
+                    console.error("Erreur lors de la suppression des fichiers (non bloquant):", deleteError)
+                }
+            } catch (e) {
+                console.error("Exception lors de la suppression des fichiers (non bloquant):", e)
+            }
         }
 
         // Clear references
@@ -101,7 +110,7 @@ export async function activateUserAccount(userId: string) {
         .eq('id', userId)
         .select()
 
-    if (error) return { error: getUserFriendlyErrorMessage(error) }
+    if (error) return { error: `Erreur d'activation : ${error.message}` }
 
     if (!data || data.length === 0) {
         return { error: "Erreur : Impossible d'activer le compte. Utilisateur introuvable ou mise à jour échouée." }
@@ -115,6 +124,25 @@ export async function activateUserAccount(userId: string) {
             name: `${userData.prenom} ${userData.nom}`
         })
     }
+
+    revalidatePath('/admin/kyc')
+    return { success: true }
+}
+
+export async function deactivateUserAccount(userId: string) {
+    const role = await getCurrentUserRole()
+    if (!role || !['admin_kyc', 'superadmin'].includes(role)) {
+        return { error: "Accès refusé : Vous n'avez pas les droits de modification." }
+    }
+
+    const supabase = await createAdminClient()
+
+    const { error } = await supabase
+        .from('users')
+        .update({ is_account_active: false })
+        .eq('id', userId)
+
+    if (error) return { error: `Erreur de désactivation : ${error.message}` }
 
     revalidatePath('/admin/kyc')
     return { success: true }
