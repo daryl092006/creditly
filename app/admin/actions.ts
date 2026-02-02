@@ -304,12 +304,6 @@ export async function activateSubscription(subId: string) {
             .neq('id', subId)
     }
 
-    const { data: { user } } = await (await createClient()).auth.getUser()
-    const adminId = user?.id
-
-    // Debug Log
-    console.log('[activateSubscription] AdminID:', adminId, 'Role:', role)
-
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
@@ -317,15 +311,11 @@ export async function activateSubscription(subId: string) {
             status: 'active',
             start_date: startDate.toISOString(),
             end_date: endDate.toISOString(),
-            rejection_reason: null,
-            admin_id: adminId
+            rejection_reason: null
         })
         .eq('id', subId)
 
-    if (error) {
-        console.error('[activateSubscription] DB Error:', error)
-        return { error: `Erreur DB: ${error.message} (Code: ${error.code})` }
-    }
+    if (error) return { error: getUserFriendlyErrorMessage(error) }
 
     // Safe Notification
     const { data: sub } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(name)').eq('id', subId).single()
@@ -354,17 +344,12 @@ export async function rejectSubscription(subId: string, reason: string) {
     }
 
     const supabase = await createAdminClient()
-    const supabaseUser = await createClient()
-    const { data: { user } } = await supabaseUser.auth.getUser()
-    const adminId = user?.id
-
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
             status: 'rejected',
             is_active: false,
-            rejection_reason: reason,
-            admin_id: adminId
+            rejection_reason: reason
         })
         .eq('id', subId)
 
