@@ -284,7 +284,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 export async function activateSubscription(subId: string) {
     const role = await getCurrentUserRole()
     if (!role || role !== 'superadmin') {
-        return { error: "Accès refusé. Seul le Super Admin peut activer des abonnements." }
+        return { error: `Accès refusé. Seul le Super Admin peut activer des abonnements. (Votre rôle: ${role || 'Aucun'})` }
     }
 
     const supabase = await createAdminClient()
@@ -307,6 +307,9 @@ export async function activateSubscription(subId: string) {
     const { data: { user } } = await (await createClient()).auth.getUser()
     const adminId = user?.id
 
+    // Debug Log
+    console.log('[activateSubscription] AdminID:', adminId, 'Role:', role)
+
     const { error } = await supabase
         .from('user_subscriptions')
         .update({
@@ -319,7 +322,10 @@ export async function activateSubscription(subId: string) {
         })
         .eq('id', subId)
 
-    if (error) return { error: getUserFriendlyErrorMessage(error) }
+    if (error) {
+        console.error('[activateSubscription] DB Error:', error)
+        return { error: `Erreur DB: ${error.message} (Code: ${error.code})` }
+    }
 
     // Safe Notification
     const { data: sub } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(name)').eq('id', subId).single()
