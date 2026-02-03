@@ -28,11 +28,26 @@ export async function submitKyc(formData: FormData) {
     const adminSupabase = await createAdminClient()
 
     const uploadDoc = async (file: File, type: string) => {
-        const fileExt = file.name.split('.').pop()
+        // Robustesse Safari : ne pas se fier uniquement à file.name qui peut être "image" sans extension
+        // Extraire l'extension depuis le type MIME s'il existe
+        let fileExt = file.name.split('.').pop()
+        if (!fileExt || fileExt.length > 5 || fileExt === file.name) {
+            fileExt = file.type.split('/').pop() || 'jpg'
+        }
+
+        // Normalisation HEIC pour Safari/iOS -> JPG
+        if (fileExt.toLowerCase() === 'heic' || fileExt.toLowerCase() === 'heif') {
+            fileExt = 'jpg'
+        }
+
         const fileName = `${userId}/${type}_${Date.now()}.${fileExt}`
 
+        if (file.size === 0) {
+            throw new Error(`Le fichier ${file.name} est vide (possible problème de synchronisation iCloud).`)
+        }
+
         if (file.size > 10 * 1024 * 1024) {
-            throw new Error(`Le fichier ${file.name} est trop volumineux (max 10MB).`)
+            throw new Error(`Le fichier ${file.name} dépasse 10Mo.`)
         }
 
         const { data, error } = await adminSupabase.storage
@@ -50,9 +65,12 @@ export async function submitKyc(formData: FormData) {
     }
 
     try {
-        const idCardPath = await uploadDoc(idCard, 'id_card')
-        const selfiePath = await uploadDoc(selfie, 'selfie')
-        const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence')
+        // Upload en parallèle pour éviter les timeouts (3x plus rapide)
+        const [idCardPath, selfiePath, proofPath] = await Promise.all([
+            uploadDoc(idCard, 'id_card'),
+            uploadDoc(selfie, 'selfie'),
+            uploadDoc(proofOfResidence, 'proof_of_residence')
+        ])
 
         // Insertion ou Mise à jour du dossier (Upsert sur user_id)
         const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(

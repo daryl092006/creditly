@@ -51,9 +51,12 @@ export function DocumentPreviewModal({
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
-                <div className="flex-1 overflow-auto bg-black/40 relative p-4 flex items-center justify-center">
+                <div className="flex-1 overflow-auto bg-black/40 relative p-4 flex flex-col items-center justify-center">
                     {isPdf ? (
-                        <iframe src={url} className="w-full h-[75vh] rounded-xl border-none" />
+                        <div className="w-full h-full flex flex-col items-center">
+                            <iframe src={url} className="w-full h-[65vh] rounded-xl border-none mb-4" />
+                            <p className="text-[10px] text-slate-500 italic mb-4">Note Safari : Si le document ne s'affiche pas, utilisez le bouton ci-dessous.</p>
+                        </div>
                     ) : (
                         <img src={url} alt="Document preview" className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl" />
                     )}

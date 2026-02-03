@@ -29,13 +29,32 @@ export default function KYCPage() {
         setIsSubmitting(true)
         setError(null)
 
-        const result = await submitKyc(formData)
+        try {
+            // Validation client de la taille totale (Max 10Mo pour Next.js Server Actions par défaut)
+            const idCard = formData.get('id_card') as File
+            const selfie = formData.get('selfie') as File
+            const residence = formData.get('proof_of_residence') as File
 
-        if (result?.error) {
-            setError(result.error)
+            const totalSize = (idCard?.size || 0) + (selfie?.size || 0) + (residence?.size || 0)
+            const MAX_SIZE = 9.8 * 1024 * 1024 // 9.8 Mo de marge
+
+            if (totalSize > MAX_SIZE) {
+                setError("La taille totale des documents dépasse 10Mo. Veuillez réduire la qualité de vos photos ou compresser les fichiers avant de réessayer.")
+                setIsSubmitting(false)
+                return
+            }
+
+            const result = await submitKyc(formData)
+
+            if (result?.error) {
+                setError(result.error)
+            } else {
+                router.push('/client/dashboard?success=DossierSoumis')
+            }
+        } catch (err: any) {
+            setError("Une erreur inattendue est survenue. Veuillez vérifier votre connexion et l'extension des fichiers.")
+        } finally {
             setIsSubmitting(false)
-        } else {
-            router.push('/client/dashboard?success=DossierSoumis')
         }
     }
 
