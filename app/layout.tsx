@@ -6,6 +6,7 @@ import LoadingBar from "./components/LoadingBar";
 
 
 import { Outfit } from "next/font/google";
+import Script from "next/script";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -25,6 +26,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${outfit.variable} dark`} suppressHydrationWarning>
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8933090351597750"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="antialiased selection:bg-blue-600/20" suppressHydrationWarning>
         <Suspense fallback={null}>
           <LoadingBar />
