@@ -25,7 +25,6 @@ export default function AdminKycClientTable({ submissions }: {
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const router = useRouter()
-    useRealtimeRefresh('kyc_submissions')
     const supabase = createClient()
 
     const handleAction = async () => {

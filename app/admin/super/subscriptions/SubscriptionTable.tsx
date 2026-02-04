@@ -6,7 +6,6 @@ import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 import { Calendar, User, Identification, Checkmark, Close, View } from '@carbon/icons-react'
 import { useRouter } from 'next/navigation'
-import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
 
 interface Subscription {
     id: string
@@ -33,7 +32,6 @@ interface Subscription {
 
 export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const router = useRouter()
-    useRealtimeRefresh('user_subscriptions')
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [confirmSub, setConfirmSub] = useState<Subscription | null>(null)
     const [rejectSub, setRejectSub] = useState<Subscription | null>(null)

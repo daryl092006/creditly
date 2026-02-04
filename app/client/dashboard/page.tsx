@@ -416,7 +416,7 @@ export default async function ClientDashboard() {
                         <div className="glass-panel p-8 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
                             <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Mes <br /> Informations</h4>
-                            <ContactInfoForm defaultWhatsapp={profile?.whatsapp} userId={user.id} />
+                            <ContactInfoForm defaultWhatsapp={profile?.whatsapp} />
                         </div>
 
                         {/* Support & Help */}

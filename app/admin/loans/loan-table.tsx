@@ -27,7 +27,6 @@ export default function AdminLoanTable({ rows }: {
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const router = useRouter()
-    useRealtimeRefresh('prets')
 
     const handleAction = async () => {
         if (!confirmAction) return

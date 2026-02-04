@@ -28,7 +28,6 @@ export default function AdminRepaymentTable({
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const router = useRouter()
-    useRealtimeRefresh('remboursements')
 
     const handleAction = async () => {
         if (!confirmAction) return
