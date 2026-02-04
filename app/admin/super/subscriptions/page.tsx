@@ -24,7 +24,9 @@ export default async function AdminSubscriptionsPage() {
                     </div>
                 </div>
 
-                <SubscriptionTable rows={allSubs || []} />
+                <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
+                    <SubscriptionTable rows={allSubs || []} />
+                </div>
             </div>
         </div>
     )
