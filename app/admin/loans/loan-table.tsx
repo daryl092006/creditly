@@ -3,7 +3,6 @@
 import React, { useState } from 'react'
 import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
-import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
 import { useRouter } from 'next/navigation'
 
 export default function AdminLoanTable({ rows }: {

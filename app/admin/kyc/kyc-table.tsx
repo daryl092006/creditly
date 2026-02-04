@@ -5,7 +5,6 @@ import { updateKycStatus, activateUserAccount, deactivateUserAccount, getSignedP
 import { createClient } from '@/utils/supabase/client'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
-import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
 import { useRouter } from 'next/navigation'
 
 export default function AdminKycClientTable({ submissions }: {

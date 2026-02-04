@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-export function useRealtimeRefresh(tableName: string, filter?: string) {
+export function useRealtimeRefresh(tableName: string, filter?: string, disabled?: boolean) {
     const router = useRouter()
 
     useEffect(() => {
+        if (disabled) return
+
         const supabase = createClient()
 
         const channel = supabase
@@ -28,5 +30,5 @@ export function useRealtimeRefresh(tableName: string, filter?: string) {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [tableName, filter, router])
+    }, [tableName, filter, disabled, router])
 }

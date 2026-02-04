@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import { updateRepaymentStatus, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
-import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
 import { useRouter } from 'next/navigation'
 
 export default function AdminRepaymentTable({
