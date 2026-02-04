@@ -51,10 +51,10 @@ export default function KYCPage() {
             }
 
             const totalSize = (idCard?.size || 0) + (selfie?.size || 0) + (residence?.size || 0)
-            const MAX_SIZE = 9.8 * 1024 * 1024 // 9.8 Mo de marge
+            const MAX_SIZE = 25 * 1024 * 1024 // 25 Mo pour plus de flexibilité
 
             if (totalSize > MAX_SIZE) {
-                setError("La taille totale des documents dépasse 10Mo. Veuillez compresser vos photos (max 3Mo par image) avant de réessayer.")
+                setError("La taille totale des documents dépasse 25Mo. Veuillez réduire la taille de vos fichiers avant de réessayer.")
                 setIsSubmitting(false)
                 clearTimeout(timeoutId)
                 return
@@ -159,7 +159,7 @@ export default function KYCPage() {
                                     <input
                                         name="id_card"
                                         type="file"
-                                        accept="image/*"
+                                        accept="*"
                                         required
                                         onChange={(e) => handleFileChange(e, 'idCard')}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
@@ -188,7 +188,7 @@ export default function KYCPage() {
                                     <input
                                         name="selfie"
                                         type="file"
-                                        accept="image/*"
+                                        accept="*"
                                         required
                                         onChange={(e) => handleFileChange(e, 'selfie')}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
@@ -217,7 +217,7 @@ export default function KYCPage() {
                                     <input
                                         name="proof_of_residence"
                                         type="file"
-                                        accept="image/*,application/pdf"
+                                        accept="*"
                                         required
                                         onChange={(e) => handleFileChange(e, 'residence')}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"

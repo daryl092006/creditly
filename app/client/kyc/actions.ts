@@ -28,26 +28,31 @@ export async function submitKyc(formData: FormData) {
     const adminSupabase = await createAdminClient()
 
     const uploadDoc = async (file: File, type: string) => {
-        // Robustesse Safari : ne pas se fier uniquement à file.name qui peut être "image" sans extension
-        // Extraire l'extension depuis le type MIME s'il existe
-        let fileExt = file.name.split('.').pop()
-        if (!fileExt || fileExt.length > 5 || fileExt === file.name) {
-            fileExt = file.type.split('/').pop() || 'jpg'
+        // Robustesse Safari/Navigateurs Mobiles : détection d'extension améliorée
+        let fileExt = 'jpg' // Valeur par défaut si rien n'est trouvé
+        const originalName = file.name || ''
+
+        if (originalName.includes('.')) {
+            fileExt = originalName.split('.').pop()?.toLowerCase() || 'jpg'
+        } else if (file.type) {
+            // Utilisation du type MIME si le nom de fichier est générique
+            fileExt = file.type.split('/').pop()?.toLowerCase() || 'jpg'
         }
 
-        // Normalisation HEIC pour Safari/iOS -> JPG
-        if (fileExt.toLowerCase() === 'heic' || fileExt.toLowerCase() === 'heif') {
-            fileExt = 'jpg'
-        }
+        // Cas particuliers et normalisations
+        if (fileExt === 'jpeg') fileExt = 'jpg'
+        if (fileExt === 'heic' || fileExt === 'heif') fileExt = 'jpg'
+        if (fileExt === 'octet-stream') fileExt = 'bin' // Fichiers binaires génériques
 
         const fileName = `${userId}/${type}_${Date.now()}.${fileExt}`
 
         if (file.size === 0) {
-            throw new Error(`Le fichier ${file.name} est vide (possible problème de synchronisation iCloud).`)
+            throw new Error(`Le fichier téléchargé est vide.`)
         }
 
+        // Limite fixée à 10Mo par fichier
         if (file.size > 10 * 1024 * 1024) {
-            throw new Error(`Le fichier ${file.name} dépasse 10Mo.`)
+            throw new Error(`Le fichier ${originalName || type} dépasse la limite autorisée de 10Mo.`)
         }
 
         const { data, error } = await adminSupabase.storage
