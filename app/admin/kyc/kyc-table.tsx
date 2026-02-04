@@ -32,38 +32,46 @@ export default function AdminKycClientTable({ submissions }: {
 
         setLoading(id)
 
-        let result: any = { success: true }
+        try {
+            let result: any = { success: true }
 
-        if (status === 'approved' && userId) {
-            const kycRes = await updateKycStatus(id, 'approved')
-            if (kycRes?.error) {
-                result = kycRes
-            } else {
-                const actRes = await activateUserAccount(userId)
-                if (actRes?.error) result = actRes
-            }
-        } else if (status === 'rejected') {
-            // STRICT DEACTIVATION ON REJECTION
-            if (userId) {
-                const deactRes = await deactivateUserAccount(userId)
-                if (deactRes?.error) {
-                    // Si on ne peut pas désactiver, on ne continue pas ou on avertit ?
-                    // On choisit de continuer le rejet KYC mais on capture l'erreur de désactivation
-                    console.error("Erreur désactivation:", deactRes.error)
-                    // Optionnel: result.error = deactRes.error (si on veut bloquer)
+            if (status === 'approved' && userId) {
+                // Step 1: Update KYC Status
+                const kycRes = await updateKycStatus(id, 'approved')
+                if (kycRes?.error) {
+                    result = kycRes
+                } else {
+                    // Step 2: Activate Account
+                    const actRes = await activateUserAccount(userId)
+                    if (actRes?.error) result = actRes
                 }
+            } else if (status === 'rejected') {
+                // STRICT DEACTIVATION ON REJECTION
+                if (userId) {
+                    await deactivateUserAccount(userId)
+                }
+                result = await updateKycStatus(id, 'rejected', rejectionReason)
             }
-            result = await updateKycStatus(id, 'rejected', rejectionReason)
-        }
 
-        if (result?.error) {
+            if (result?.error) {
+                setErrorAction({
+                    title: "Erreur de Dossier",
+                    message: typeof result.error === 'string' ? result.error : JSON.stringify(result.error)
+                })
+                setLoading(null)
+            } else {
+                // Give a small delay for DB consistency before reload
+                setTimeout(() => {
+                    window.location.reload()
+                }, 500)
+            }
+        } catch (err) {
+            console.error("KYC Action Error:", err)
             setErrorAction({
-                title: "Erreur de Dossier",
-                message: typeof result.error === 'string' ? result.error : JSON.stringify(result.error)
+                title: "Erreur Critique",
+                message: "Une erreur inattendue est survenue lors de la validation."
             })
             setLoading(null)
-        } else {
-            window.location.reload()
         }
     }
 

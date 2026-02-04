@@ -30,21 +30,38 @@ export default function KYCPage() {
         setError(null)
 
         try {
-            // Validation client de la taille totale (Max 10Mo pour Next.js Server Actions par défaut)
-            const idCard = formData.get('id_card') as File
-            const selfie = formData.get('selfie') as File
-            const residence = formData.get('proof_of_residence') as File
+            // Safety timeout to reset loading state if server hangs (30s)
+            const timeoutId = setTimeout(() => {
+                if (isSubmitting) {
+                    setIsSubmitting(false)
+                    setError("Le serveur met trop de temps à répondre. Veuillez vérifier votre connexion ou essayer avec des images plus petites.")
+                }
+            }, 30000)
+
+            // Validation client de la taille totale
+            const idCard = formData.get('id_card') as File | null
+            const selfie = formData.get('selfie') as File | null
+            const residence = formData.get('proof_of_residence') as File | null
+
+            if (!idCard || !selfie || !residence) {
+                setError("Tous les documents sont requis.")
+                setIsSubmitting(false)
+                clearTimeout(timeoutId)
+                return
+            }
 
             const totalSize = (idCard?.size || 0) + (selfie?.size || 0) + (residence?.size || 0)
             const MAX_SIZE = 9.8 * 1024 * 1024 // 9.8 Mo de marge
 
             if (totalSize > MAX_SIZE) {
-                setError("La taille totale des documents dépasse 10Mo. Veuillez réduire la qualité de vos photos ou compresser les fichiers avant de réessayer.")
+                setError("La taille totale des documents dépasse 10Mo. Veuillez compresser vos photos (max 3Mo par image) avant de réessayer.")
                 setIsSubmitting(false)
+                clearTimeout(timeoutId)
                 return
             }
 
             const result = await submitKyc(formData)
+            clearTimeout(timeoutId)
 
             if (result?.error) {
                 setError(result.error)
@@ -52,7 +69,8 @@ export default function KYCPage() {
                 router.push('/client/dashboard?success=DossierSoumis')
             }
         } catch (err: any) {
-            setError("Une erreur inattendue est survenue. Veuillez vérifier votre connexion et l'extension des fichiers.")
+            console.error("Client KYC Submission Error:", err)
+            setError("Une erreur de communication est survenue. Assurez-vous que vos images ne sont pas trop lourdes.")
         } finally {
             setIsSubmitting(false)
         }

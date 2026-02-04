@@ -36,6 +36,10 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
     const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
+    if (!adminId) {
+        console.warn("KYC Update: adminId is null. Actions might be recorded as 'System'.")
+    }
+
     // 1. Pre-Fetch for Deletion (if rejected)
     const { data: currentData } = await supabase.from('kyc_submissions').select('*').eq('id', submissionId).single()
 
@@ -187,10 +191,20 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 return { error: `Impossible d'approuver : Cela dépasserait le plafond (${maxAmount} F). Disponible : ${available} F.` }
             }
 
-            const days = loan.snapshot.repayment_delay_days || 7
-            const dueDate = new Date()
-            dueDate.setDate(dueDate.getDate() + days)
-            updates.due_date = dueDate.toISOString()
+            // Sync maturity with subscription expiry
+            const { data: activeSub } = await supabase
+                .from('user_subscriptions')
+                .select('end_date')
+                .eq('user_id', loan.user_id)
+                .eq('status', 'active')
+                .gt('end_date', new Date().toISOString())
+                .single()
+
+            if (!activeSub || !activeSub.end_date) {
+                return { error: "L'utilisateur n'a pas d'abonnement actif pour porter cette échéance." }
+            }
+
+            updates.due_date = activeSub.end_date
             updates.status = 'active'
         }
     }

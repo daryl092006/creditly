@@ -134,6 +134,16 @@ export default function LoanRequestForm({ subscription }: { subscription: Subscr
                     </div>
                 </div>
 
+                <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl space-y-2">
+                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                        <Information size={14} />
+                        Avertissement Responsabilité
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-400 italic leading-relaxed">
+                        Veuillez renseigner correctement votre numéro et votre réseau. En cas d&apos;erreur, vous en assumerez l&apos;entière responsabilité.
+                    </p>
+                </div>
+
                 <div className="space-y-3">
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Nom complet du compte</label>
                     <input

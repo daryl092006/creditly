@@ -215,10 +215,10 @@ export default async function ClientDashboard() {
                                         {activeSub ? 'Actif' : expiredSub ? 'Expiré' : latestSubscription && !latestSubscription.is_active ? 'Validation' : 'Aucun'}
                                     </span>
                                 </div>
-                                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                                <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest animate-pulse">
                                     {activeSub
-                                        ? `Expire le ${new Date(activeSub.end_date).toLocaleDateString('fr-FR')}`
-                                        : expiredSub ? 'Abonnement expiré' : 'Services restreints'}
+                                        ? `Échéance : ${new Date(activeSub.end_date).toLocaleDateString('fr-FR')}`
+                                        : expiredSub ? '⚠️ Abonnement expiré' : 'Services restreints'}
                                 </p>
                             </div>
                         </div>
@@ -316,6 +316,11 @@ export default async function ClientDashboard() {
                                     <h3 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
                                         {activeSub ? activeSub.abonnements.name : (expiredSub ? expiredSub.abonnements.name : 'Aucun Plan')}
                                     </h3>
+                                    {activeSub && (
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic">
+                                            Valide jusqu'au {new Date(activeSub.end_date).toLocaleDateString('fr-FR')}
+                                        </p>
+                                    )}
                                     <Link href="/client/subscriptions" className="inline-flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:gap-3 transition-all">
                                         Améliorer le Plan <Flash size={14} />
                                     </Link>

@@ -65,12 +65,19 @@ export async function submitKyc(formData: FormData) {
     }
 
     try {
-        // Upload en parallèle pour éviter les timeouts (3x plus rapide)
-        const [idCardPath, selfiePath, proofPath] = await Promise.all([
-            uploadDoc(idCard, 'id_card'),
-            uploadDoc(selfie, 'selfie'),
-            uploadDoc(proofOfResidence, 'proof_of_residence')
-        ])
+        console.log(`[KYC] Starting submission for user ${userId}`);
+
+        // Sequential uploads to avoid memory/timeout issues in some environments (Safari/Mobile)
+        console.log(`[KYC] Uploading ID card...`);
+        const idCardPath = await uploadDoc(idCard, 'id_card');
+
+        console.log(`[KYC] Uploading Selfie...`);
+        const selfiePath = await uploadDoc(selfie, 'selfie');
+
+        console.log(`[KYC] Uploading Proof of Residence...`);
+        const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence');
+
+        console.log(`[KYC] Documents uploaded successfully. Updating database...`);
 
         // Insertion ou Mise à jour du dossier (Upsert sur user_id)
         const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(
@@ -100,8 +107,11 @@ export async function submitKyc(formData: FormData) {
 
         revalidatePath('/client/dashboard')
         revalidatePath('/admin/kyc')
+
+        console.log(`[KYC] Submission completed successfully for user ${userId}`);
         return { success: true }
     } catch (e: any) {
+        console.error(`[KYC] Error during submission for user ${userId}:`, e);
         return { error: e.message || "Une erreur est survenue lors du téléversement." }
     }
 }

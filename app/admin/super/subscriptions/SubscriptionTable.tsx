@@ -16,6 +16,8 @@ interface Subscription {
     created_at: string
     is_active: boolean
     status: 'pending' | 'active' | 'rejected'
+    start_date?: string
+    end_date?: string
     plan: {
         name: string
         price: number
@@ -143,6 +145,16 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                         {sub.amount_paid?.toLocaleString() || '0'} F
                                     </p>
                                 </div>
+
+                                {/* Subscription Expiry */}
+                                {sub.status === 'active' && sub.end_date && (
+                                    <div className="space-y-1 shrink-0 px-6 border-l border-white/5">
+                                        <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest italic leading-none">Échéance</p>
+                                        <p className="text-xl font-black text-emerald-400 italic tracking-tighter leading-none tabular-nums">
+                                            {new Date(sub.end_date).toLocaleDateString('fr-FR')}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Proof Preview Button */}
                                 <div className="shrink-0 group/proof-container text-center">
