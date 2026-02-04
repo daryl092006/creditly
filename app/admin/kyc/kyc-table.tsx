@@ -5,6 +5,8 @@ import { updateKycStatus, activateUserAccount, deactivateUserAccount, getSignedP
 import { createClient } from '@/utils/supabase/client'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
+import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
+import { useRouter } from 'next/navigation'
 
 export default function AdminKycClientTable({ submissions }: {
     submissions: Array<{
@@ -22,6 +24,8 @@ export default function AdminKycClientTable({ submissions }: {
     const [confirmAction, setConfirmAction] = useState<{ id: string, userId?: string, status: 'approved' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const router = useRouter()
+    useRealtimeRefresh('kyc_submissions')
     const supabase = createClient()
 
     const handleAction = async () => {

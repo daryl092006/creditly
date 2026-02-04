@@ -3,6 +3,8 @@
 import React, { useState } from 'react'
 import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
+import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
+import { useRouter } from 'next/navigation'
 
 export default function AdminLoanTable({ rows }: {
     rows: Array<{
@@ -24,6 +26,8 @@ export default function AdminLoanTable({ rows }: {
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'active' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const router = useRouter()
+    useRealtimeRefresh('prets')
 
     const handleAction = async () => {
         if (!confirmAction) return
@@ -90,8 +94,8 @@ export default function AdminLoanTable({ rows }: {
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${row.payout_network === 'MTN' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
-                                                    row.payout_network === 'Moov' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                                                        'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                row.payout_network === 'Moov' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                                    'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                                                 }`}>
                                                 {row.payout_network || 'N/A'}
                                             </span>

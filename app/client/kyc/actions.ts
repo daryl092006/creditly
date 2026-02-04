@@ -70,19 +70,16 @@ export async function submitKyc(formData: FormData) {
     }
 
     try {
-        console.log(`[KYC] Starting submission for user ${userId}`);
+        console.log(`[KYC] Starting parallel submission for user ${userId}`);
 
-        // Sequential uploads to avoid memory/timeout issues in some environments (Safari/Mobile)
-        console.log(`[KYC] Uploading ID card...`);
-        const idCardPath = await uploadDoc(idCard, 'id_card');
+        // Parallel uploads for maximum speed
+        const [idCardPath, selfiePath, proofPath] = await Promise.all([
+            uploadDoc(idCard, 'id_card'),
+            uploadDoc(selfie, 'selfie'),
+            uploadDoc(proofOfResidence, 'proof_of_residence')
+        ]);
 
-        console.log(`[KYC] Uploading Selfie...`);
-        const selfiePath = await uploadDoc(selfie, 'selfie');
-
-        console.log(`[KYC] Uploading Proof of Residence...`);
-        const proofPath = await uploadDoc(proofOfResidence, 'proof_of_residence');
-
-        console.log(`[KYC] Documents uploaded successfully. Updating database...`);
+        console.log(`[KYC] All documents uploaded. Updating database...`);
 
         // Insertion ou Mise à jour du dossier (Upsert sur user_id)
         const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(

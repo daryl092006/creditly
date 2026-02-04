@@ -4,6 +4,8 @@ import React, { useState } from 'react'
 import { updateRepaymentStatus, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
+import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
+import { useRouter } from 'next/navigation'
 
 export default function AdminRepaymentTable({
     rows
@@ -25,6 +27,8 @@ export default function AdminRepaymentTable({
     const [preview, setPreview] = useState<{ url: string, type: 'image' | 'pdf' } | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const router = useRouter()
+    useRealtimeRefresh('remboursements')
 
     const handleAction = async () => {
         if (!confirmAction) return

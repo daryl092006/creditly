@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Identification, Camera, ArrowRight, ArrowLeft, CheckmarkFilled, Warning } from '@carbon/icons-react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { compressImage } from '@/utils/image-compression'
 import { submitKyc } from './actions'
 
 export default function KYCPage() {
@@ -30,13 +31,13 @@ export default function KYCPage() {
         setError(null)
 
         try {
-            // Safety timeout to reset loading state if server hangs (30s)
+            // Safety timeout to reset loading state if server hangs (120s)
             const timeoutId = setTimeout(() => {
                 if (isSubmitting) {
                     setIsSubmitting(false)
-                    setError("Le serveur met trop de temps à répondre. Veuillez vérifier votre connexion ou essayer avec des images plus petites.")
+                    setError("Le serveur met trop de temps à répondre. Cela est souvent dû à des fichiers très lourds sur une connexion mobile. Veuillez patienter ou essayer de réduire la taille des photos.")
                 }
-            }, 30000)
+            }, 120000)
 
             // Validation client de la taille totale
             const idCard = formData.get('id_card') as File | null
@@ -50,15 +51,17 @@ export default function KYCPage() {
                 return
             }
 
-            const totalSize = (idCard?.size || 0) + (selfie?.size || 0) + (residence?.size || 0)
-            const MAX_SIZE = 25 * 1024 * 1024 // 25 Mo pour plus de flexibilité
+            // Compression des images côté client (crucial pour le mobile)
+            const [cId, cSelfie, cRes] = await Promise.all([
+                compressImage(idCard),
+                compressImage(selfie),
+                compressImage(residence)
+            ])
 
-            if (totalSize > MAX_SIZE) {
-                setError("La taille totale des documents dépasse 25Mo. Veuillez réduire la taille de vos fichiers avant de réessayer.")
-                setIsSubmitting(false)
-                clearTimeout(timeoutId)
-                return
-            }
+            // Remplacement dans le FormData
+            formData.set('id_card', cId)
+            formData.set('selfie', cSelfie)
+            formData.set('proof_of_residence', cRes)
 
             const result = await submitKyc(formData)
             clearTimeout(timeoutId)

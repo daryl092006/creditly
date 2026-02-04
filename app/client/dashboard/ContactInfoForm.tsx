@@ -3,9 +3,18 @@
 import { useState } from 'react'
 import { updateContactInfo } from '../user-actions'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { useRealtimeRefresh } from '@/app/hooks/useRealtimeRefresh'
 
-export default function ContactInfoForm({ defaultWhatsapp }: { defaultWhatsapp?: string }) {
+export default function ContactInfoForm({ defaultWhatsapp, userId }: { defaultWhatsapp?: string, userId?: string }) {
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Dashboard Realtime Sync for this user
+    if (userId) {
+        useRealtimeRefresh('user_subscriptions', `user_id=eq.${userId}`)
+        useRealtimeRefresh('kyc_submissions', `user_id=eq.${userId}`)
+        useRealtimeRefresh('prets', `user_id=eq.${userId}`)
+        useRealtimeRefresh('remboursements', `user_id=eq.${userId}`)
+    }
 
     return (
         <form action={async (formData) => {
