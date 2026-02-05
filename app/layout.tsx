@@ -27,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${outfit.variable} dark`} suppressHydrationWarning>
       <head>
+        <meta name="google-adsense-account" content="ca-pub-7463108649392537" />
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8933090351597750"
