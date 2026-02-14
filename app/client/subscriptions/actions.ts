@@ -11,13 +11,23 @@ export async function subscribeToPlan(formData: FormData) {
 
     if (!user) return { error: 'Non authentifié' }
 
-    const planId = formData.get('planId') as string
-    const amount = formData.get('amount') as string
-    const file = formData.get('proof') as File
+    // 0. Input Validation
+    const { SubscriptionSchema } = await import('@/utils/validation-schemas');
 
-    if (!planId || !amount || !file || file.size === 0) {
-        return { error: 'Données incomplètes' }
+    const rawData = {
+        planId: formData.get('planId'),
+        amount: formData.get('amount'),
+        proof: formData.get('proof')
+    };
+
+    const validationResult = SubscriptionSchema.safeParse(rawData);
+
+    if (!validationResult.success) {
+        return { error: validationResult.error.issues[0].message };
     }
+
+    const { planId, amount: numAmount, proof: file } = validationResult.data;
+
 
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
@@ -49,7 +59,7 @@ export async function subscribeToPlan(formData: FormData) {
             .insert({
                 user_id: user.id,
                 plan_id: planId,
-                amount_paid: Number(amount),
+                amount_paid: numAmount,
                 proof_url: uploadData.path,
                 is_active: false,
                 status: 'pending',
@@ -69,7 +79,7 @@ export async function subscribeToPlan(formData: FormData) {
                 userEmail: user.email!,
                 userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 planName: plan?.name || 'Inconnu',
-                amount: Number(amount)
+                amount: numAmount
             })
         } catch (notifErr) {
             console.error('Erreur notification admin (non-bloquant):', notifErr)

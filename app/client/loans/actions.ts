@@ -11,73 +11,43 @@ export async function requestLoan(amount: number, payoutPhone: string, payoutNam
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
-    // 1. Check Active Subscription
-    const { data: sub } = await supabase
-        .from('user_subscriptions')
-        .select('*, plan:abonnements(*)')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .gt('end_date', new Date().toISOString())
-        .single()
+    // 0. Input Validation
+    const { LoanRequestSchema } = await import('@/utils/validation-schemas'); // Dynamic import to avoid build cycle if any
+    const validationResult = LoanRequestSchema.safeParse({
+        amount,
+        payoutPhone,
+        payoutName,
+        payoutNetwork
+    });
 
-    if (!sub) {
-        return { error: 'Aucun abonnement actif. Veuillez souscrire à une formule.' }
+    if (!validationResult.success) {
+        return { error: validationResult.error.issues[0].message };
     }
 
-    // 2. Check Active Loans (Capacity & Cumulative Amount)
-    const { data: activeLoans, count: activeLoansCount } = await supabase
-        .from('prets')
-        .select('amount', { count: 'exact' })
-        .eq('user_id', user.id)
-        .in('status', ['approved', 'active', 'overdue'])
+    // 1. Atomic Transaction (Race Condition Fix)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('request_loan_transaction', {
+        p_amount: amount,
+        p_payout_phone: payoutPhone,
+        p_payout_name: payoutName,
+        p_payout_network: payoutNetwork
+    });
 
-    const currentActiveCount = activeLoansCount || 0
-    const currentCumulativeDebt = activeLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0
-
-    // Check 1: Max Simultanous Loans (using stored plan limit, interpreted as capacity)
-    if (currentActiveCount >= sub.plan.max_loans_per_month) {
-        return { error: `Vous avez atteint votre limite de ${sub.plan.max_loans_per_month} prêts simultanés.` }
+    if (rpcError) {
+        console.error('RPC Error:', rpcError);
+        return { error: getUserFriendlyErrorMessage(rpcError) };
     }
 
-    // Check 2: Max Cumulative Amount
-    if (currentCumulativeDebt + amount > sub.plan.max_loan_amount) {
-        const remaining = sub.plan.max_loan_amount - currentCumulativeDebt
-        return { error: `Montant refusé. Votre plafond cumulé est de ${sub.plan.max_loan_amount} FCFA. Disponible: ${remaining > 0 ? remaining : 0} FCFA.` }
+    // RPC returns { success: boolean, loan_id: uuid, error: string }
+    // But typed as 'any' usually. Let's cast or check.
+    const result = rpcData as any;
+
+    if (result.error) {
+        return { error: result.error };
     }
 
-    // 3. (Optional) Check Monthly limit if enforced separately? 
-    // User verified: "c'est le cumulé on va dire". 
-    // We will assume the integer limit is simultaneous capacity as implemented above, 
-    // removing strictly monthly quota if it conflicts, but keeping it if it's meant to be frequency.
-    // Given "c'est le cumulé", the amount limit is vital. 
-    // The integer limit (1, 2, 3, 5) usually implies capacity in such systems.
-    // I will remove the monthly frequency check to strictly follow "cumulative capacity" interpretation unless explicitly needed.
-    // However, the column is named 'max_loans_per_month'. 
-    // I'll Stick to the capacity check I just added as the primary "User Rule" enforcer.
-
-    // 4. Automatic Rejection Logic (Redundant with above, but keeping structure if needed or removing)
-    // The above returns directly, so we can skip valid insertion logic below.
-
-
-
-    // 5. Create Valid Loan Request (Pending)
-    const { error: insertError } = await supabase
-        .from('prets')
-        .insert({
-            user_id: user.id,
-            amount: amount,
-            subscription_snapshot_id: sub.plan.id,
-            status: 'pending',
-            payout_phone: payoutPhone,
-            payout_name: payoutName,
-            payout_network: payoutNetwork
-        })
-
-    if (insertError) {
-        return { error: getUserFriendlyErrorMessage(insertError) }
-    }
-
-    // 6. Notify Admin (Async)
+    // 2. Notify Admin (Async)
+    // We fetch user details again or use what we have. 
+    // The RPC insert worked, so we proceed.
     const { data: profile } = await supabase.from('users').select('nom, prenom').eq('id', user.id).single()
     sendAdminNotification('LOAN_REQUEST', {
         userEmail: user.email!,
@@ -98,15 +68,23 @@ export async function submitRepayment(formData: FormData) {
 
     if (!user) return { error: 'Non authentifié' }
 
-    const loanId = formData.get('loanId') as string
-    const amount = formData.get('amount') as string
-    const file = formData.get('proof') as File
+    // 0. Input Validation
+    const { RepaymentSchema } = await import('@/utils/validation-schemas');
 
-    if (!loanId || !amount || !file || file.size === 0) {
-        return { error: 'Données incomplètes' }
+    // FormData parsing
+    const rawData = {
+        loanId: formData.get('loanId'),
+        amount: formData.get('amount'),
+        proof: formData.get('proof')
+    };
+
+    const validationResult = RepaymentSchema.safeParse(rawData);
+
+    if (!validationResult.success) {
+        return { error: validationResult.error.issues[0].message };
     }
 
-    const numAmount = Number(amount)
+    const { loanId, amount: numAmount, proof: file } = validationResult.data;
 
     // 0. Server-side validation of remaining balance
     const { data: loan, error: loanError } = await supabase
@@ -145,7 +123,7 @@ export async function submitRepayment(formData: FormData) {
             .insert({
                 loan_id: loanId,
                 user_id: user.id,
-                amount_declared: Number(amount),
+                amount_declared: numAmount,
                 proof_url: uploadData.path,
                 status: 'pending'
             })
@@ -159,7 +137,7 @@ export async function submitRepayment(formData: FormData) {
         sendAdminNotification('REPAYMENT', {
             userEmail: user.email!,
             userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: Number(amount)
+            amount: numAmount
         }).catch(err => console.error('Notification Error:', err))
 
         revalidatePath('/client/loans')

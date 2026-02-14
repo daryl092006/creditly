@@ -372,3 +372,64 @@ export async function rejectSubscription(subId: string, reason: string) {
     revalidatePath('/client/dashboard')
     return { success: true }
 }
+
+export async function deleteUserSecurely(userId: string) {
+    const role = await getCurrentUserRole()
+    if (!role || role !== 'superadmin') {
+        return { error: "Accès refusé. Réservé au Super Admin." }
+    }
+
+    const { createAdminClient } = await import('@/utils/supabase/server')
+    const supabase = await createAdminClient()
+
+    try {
+        // 1. Fetch KYC to clean storage & files
+        const { data: kyc } = await supabase.from('kyc_submissions').select('id_card_url, selfie_url, proof_of_residence_url').eq('user_id', userId).single()
+
+        if (kyc) {
+            const filesToDelete = [kyc.id_card_url, kyc.selfie_url, kyc.proof_of_residence_url].filter(url => url && typeof url === 'string') as string[]
+            if (filesToDelete.length > 0) {
+                const { error: storageError } = await supabase.storage.from('kyc-documents').remove(filesToDelete)
+                if (storageError) console.error('Storage Delete Error', storageError)
+            }
+            // Delete KYC Row
+            await supabase.from('kyc_submissions').delete().eq('user_id', userId)
+        }
+
+        // 2. Anonymize Public Profile first
+        const timestamp = Date.now()
+        const anonymizedEmail = `deleted_${userId.slice(0, 8)}_${timestamp}@creditly.anonymized`
+
+        const { error: publicError } = await supabase
+            .from('users')
+            .update({
+                email: anonymizedEmail,
+                nom: 'Utilisateur',
+                prenom: 'Supprimé',
+                whatsapp: '00000000',
+                is_account_active: false
+            })
+            .eq('id', userId)
+
+        if (publicError) throw new Error(`Public update failed: ${publicError.message}`)
+
+        // 3. Scramble Auth User (Prevent Login)
+        // We assume createAdminClient has service_role key to manage auth users
+        const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+            email: anonymizedEmail,
+            email_confirm: true,
+            password: crypto.randomUUID(),
+            user_metadata: { nom: 'Utilisateur', prenom: 'Supprimé' },
+            ban_duration: '876000h'
+        })
+
+        if (authError) throw new Error(`Auth update failed: ${authError.message}`)
+
+        revalidatePath('/admin/super')
+        return { success: true }
+
+    } catch (e: any) {
+        console.error("Delete User Error:", e)
+        return { error: e.message || "Erreur lors de la suppression sécurisée." }
+    }
+}
