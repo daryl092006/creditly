@@ -60,24 +60,33 @@ export default async function SuperAdminPage({
         .lte('request_date', endDate)
     const monthlyLoanVolume = monthlyLoans?.reduce((acc, loan) => acc + (Number(loan.amount) || 0), 0) || 0
 
-    // 3.1 Revenu Hebdo (Semaine en cours) - Reset le Dimanche à 00:00
-    const today = new Date()
-    const dayOfWeek = today.getDay()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - dayOfWeek)
+    // 3.1 Revenu Hebdo (Semaine en cours) - Reset le Dimanche à 00:00 (GMT+1)
+    const now = new Date()
+    // Ajustement pour être en GMT+1 (ajout de 1h au temps UTC actuel)
+    const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000)
+    const beninTime = new Date(utcNow + (3600000))
+
+    const dayOfWeek = beninTime.getDay()
+
+    // On recule jusqu'au Dimanche 00:00 (heure locale GMT+1)
+    const startOfWeek = new Date(beninTime)
+    startOfWeek.setDate(beninTime.getDate() - dayOfWeek)
     startOfWeek.setHours(0, 0, 0, 0)
+
+    // Pour la DB (ISO String), on doit retirer l'heure ajoutée pour revenir au vrai UTC correspondant
+    const startOfWeekISO = new Date(startOfWeek.getTime() - 3600000).toISOString()
 
     const { data: weeklySubsData } = await supabase
         .from('user_subscriptions')
         .select('amount_paid')
         .eq('is_active', true)
-        .gte('start_date', startOfWeek.toISOString())
+        .gte('start_date', startOfWeekISO)
 
     const { data: weeklyRepayData } = await supabase
         .from('remboursements')
         .select('amount_declared')
         .eq('status', 'verified')
-        .gte('validated_at', startOfWeek.toISOString())
+        .gte('validated_at', startOfWeekISO)
 
     const weeklyRevenue = (weeklySubsData?.reduce((acc, s) => acc + (s.amount_paid || 0), 0) || 0) +
         (weeklyRepayData?.reduce((acc, r) => acc + (Number(r.amount_declared) || 0), 0) || 0)
