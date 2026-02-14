@@ -161,7 +161,7 @@ create table public.prets (
   payout_phone text,
   payout_name text,
   payout_network text,
-  created_at timestamptz default now()
+  created_at timestamptz default now() 
 );
 
 alter table public.prets enable row level security;
