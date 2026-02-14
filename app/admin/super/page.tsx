@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { User, Currency, Document, ChevronRight, Filter, CheckmarkFilled, Misuse } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, CheckmarkFilled } from '@carbon/icons-react'
 
 export default async function SuperAdminPage({
     searchParams
@@ -41,56 +41,6 @@ export default async function SuperAdminPage({
         .gte('start_date', startDate)
         .lte('start_date', endDate)
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-
-    // Remboursements du mois
-    const { data: monthlyRepayments } = await supabase
-        .from('remboursements')
-        .select('amount_declared')
-        .eq('status', 'verified')
-        .gte('validated_at', startDate)
-        .lte('validated_at', endDate)
-    const monthlyRepaymentVolume = monthlyRepayments?.reduce((acc, r) => acc + (Number(r.amount_declared) || 0), 0) || 0
-
-    // Prêts du mois
-    const { data: monthlyLoans } = await supabase
-        .from('prets')
-        .select('amount, request_date')
-        .in('status', ['active', 'paid', 'overdue'])
-        .gte('request_date', startDate)
-        .lte('request_date', endDate)
-    const monthlyLoanVolume = monthlyLoans?.reduce((acc, loan) => acc + (Number(loan.amount) || 0), 0) || 0
-
-    // 3.1 Revenu Hebdo (Semaine en cours) - Reset le Dimanche à 00:00 (GMT+1)
-    const now = new Date()
-    // Ajustement pour être en GMT+1 (ajout de 1h au temps UTC actuel)
-    const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000)
-    const beninTime = new Date(utcNow + (3600000))
-
-    const dayOfWeek = beninTime.getDay()
-
-    // On recule jusqu'au Dimanche 00:00 (heure locale GMT+1)
-    const startOfWeek = new Date(beninTime)
-    startOfWeek.setDate(beninTime.getDate() - dayOfWeek)
-    startOfWeek.setHours(0, 0, 0, 0)
-
-    // Pour la DB (ISO String), on doit retirer l'heure ajoutée pour revenir au vrai UTC correspondant
-    const startOfWeekISO = new Date(startOfWeek.getTime() - 3600000).toISOString()
-
-    const { data: weeklySubsData } = await supabase
-        .from('user_subscriptions')
-        .select('amount_paid')
-        .eq('is_active', true)
-        .gte('start_date', startOfWeekISO)
-
-    const { data: weeklyRepayData } = await supabase
-        .from('remboursements')
-        .select('amount_declared')
-        .eq('status', 'verified')
-        .gte('validated_at', startOfWeekISO)
-
-    const weeklyRevenue = (weeklySubsData?.reduce((acc, s) => acc + (s.amount_paid || 0), 0) || 0) +
-        (weeklyRepayData?.reduce((acc, r) => acc + (Number(r.amount_declared) || 0), 0) || 0)
-
 
     // 4. Prêts Actifs & Finances (Détail)
     const { data: allActiveLoans } = await supabase
@@ -176,15 +126,8 @@ export default async function SuperAdminPage({
                 </div>
 
                 {/* KPI Grid - Temporal & Absolute */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
-                        {
-                            label: 'Revenu Semaine',
-                            value: weeklyRevenue,
-                            color: 'text-emerald-500',
-                            sub: `Depuis Dimanche ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`,
-                            icon: <Currency />
-                        },
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
                         { label: 'Volume Prêté', value: totalActiveCapital, color: 'text-white', sub: `${activeLoansCount || 0} dossiers actifs`, icon: <Document /> },
                         { label: 'Déjà Récupéré', value: totalAlreadyRecovered, color: 'text-blue-400', sub: `${Math.round((totalAlreadyRecovered / totalActiveCapital) * 100) || 0}% du total`, icon: <CheckmarkFilled /> },
