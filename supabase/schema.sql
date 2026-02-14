@@ -162,7 +162,7 @@ create table public.prets (
   payout_name text,
   payout_network text,
   created_at timestamptz default now() 
-);
+); 
 
 alter table public.prets enable row level security;
 create policy "Users view own loans" on public.prets for select using (auth.uid() = user_id);
