@@ -40,6 +40,7 @@ export default async function SuperAdminPage({
         .eq('is_active', true)
         .gte('start_date', startDate)
         .lte('start_date', endDate)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
 
     // 4. Prêts Actifs & Finances (Détail)
@@ -51,6 +52,28 @@ export default async function SuperAdminPage({
     const totalActiveCapital = allActiveLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
     const totalAlreadyRecovered = allActiveLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
     const totalRemainingToRecover = totalActiveCapital - totalAlreadyRecovered
+
+    // Calcul Revenu Hebdomadaire (Semaine courante)
+    const today = new Date()
+    const dayOfWeek = today.getDay()
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday=0, Sunday=6 relative to Mon
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - diffToMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    endOfWeek.setHours(23, 59, 59, 999)
+
+    const { data: weeklySubs } = await supabase
+        .from('user_subscriptions')
+        .select('plan:abonnements(price)')
+        .eq('status', 'active')
+        .gte('created_at', startOfWeek.toISOString())
+        .lte('created_at', endOfWeek.toISOString())
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const weeklyRevenue = weeklySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
 
     // 5. Abonnements récents (Historique)
     const { data: recentSubs } = await supabase
@@ -129,9 +152,9 @@ export default async function SuperAdminPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
+                        { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-purple-400', sub: 'Semaine en cours', icon: <Currency /> },
                         { label: 'Volume Prêté', value: totalActiveCapital, color: 'text-white', sub: `${activeLoansCount || 0} dossiers actifs`, icon: <Document /> },
-                        { label: 'Déjà Récupéré', value: totalAlreadyRecovered, color: 'text-blue-400', sub: `${Math.round((totalAlreadyRecovered / totalActiveCapital) * 100) || 0}% du total`, icon: <CheckmarkFilled /> },
-                        { label: 'Reste à Recouvrer', value: totalRemainingToRecover, color: 'text-amber-400', sub: 'Objectif recouvrement', icon: <Currency /> }
+                        { label: 'Reste à Recouvrer', value: totalRemainingToRecover, color: 'text-amber-400', sub: 'Objectif recouvrement', icon: <CheckmarkFilled /> }
                     ].map((kpi, i) => (
                         <div key={i} className="glass-panel p-8 group relative overflow-hidden bg-slate-900/50 border-slate-800">
                             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-all"></div>
@@ -366,7 +389,7 @@ export default async function SuperAdminPage({
                             <div className="glass-panel p-8 relative overflow-hidden group bg-slate-900/50 border-slate-800">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors"></div>
                                 <h4 className="text-xl font-black mb-2 text-white italic tracking-tighter uppercase relative z-10">Data Audit.</h4>
-                                <p className="text-slate-500 text-[10px] font-black relative z-10 mb-6 italic uppercase tracking-widest leading-relaxed">Génération de rapports d'activité consolidés.</p>
+                                <p className="text-slate-500 text-[10px] font-black relative z-10 mb-6 italic uppercase tracking-widest leading-relaxed">Génération de rapports d&apos;activité consolidés.</p>
                                 <button className="premium-button w-full py-4 relative z-10 active:scale-95 shadow-2xl text-[10px]">
                                     Télécharger Rapports
                                 </button>
