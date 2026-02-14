@@ -227,3 +227,67 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
         console.error('Erreur sendUserEmail:', error);
     }
 }
+
+interface WeeklyReportData {
+    startDate: string;
+    endDate: string;
+    totalRevenue: number;
+    subscriptionsRevenue: number;
+    repaymentsRevenue: number;
+    newSubscriptionsCount: number;
+    repaymentsCount: number;
+    monthToDateRevenue: number;
+}
+
+export async function sendWeeklyReport(data: WeeklyReportData) {
+    if (!process.env.RESEND_API_KEY) return;
+
+    const subject = `📊 Rapport Hebdomadaire - Semaine du ${data.startDate}`;
+    const formattedTotal = new Intl.NumberFormat('fr-FR').format(data.totalRevenue) + ' FCFA';
+    const formattedSubs = new Intl.NumberFormat('fr-FR').format(data.subscriptionsRevenue) + ' FCFA';
+    const formattedRepayments = new Intl.NumberFormat('fr-FR').format(data.repaymentsRevenue) + ' FCFA';
+    const formattedMTD = new Intl.NumberFormat('fr-FR').format(data.monthToDateRevenue) + ' FCFA';
+
+    const html = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #2563eb; text-transform: uppercase; font-size: 18px; text-align: center;">Rapport Financier Hebdomadaire</h2>
+            <p style="text-align: center; color: #666; font-size: 14px;">Période : ${data.startDate} au ${data.endDate}</p>
+            
+            <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px solid #bbf7d0;">
+                <p style="margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #166534;">Revenus Totaux (Semaine)</p>
+                <p style="margin: 10px 0 0 0; font-size: 32px; font-weight: bold; color: #16a34a;">${formattedTotal}</p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div style="flex: 1; background-color: #f8fafc; padding: 15px; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase;">Abonnements</p>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #334155;">${formattedSubs}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #94a3b8;">${data.newSubscriptionsCount} nouveaux</p>
+                </div>
+                <div style="flex: 1; background-color: #f8fafc; padding: 15px; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase;">Remboursements</p>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #334155;">${formattedRepayments}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #94a3b8;">${data.repaymentsCount} reçus</p>
+                </div>
+            </div>
+
+            <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #dbeafe;">
+                <p style="margin: 0; font-size: 12px; color: #1e40af; text-transform: uppercase; font-weight: bold;">Total Mois en cours</p>
+                <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #1e3a8a;">${formattedMTD}</p>
+            </div>
+
+            <p style="font-size: 12px; color: #888; margin-top: 30px; text-align: center;">Généré automatiquement par Creditly le ${new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
+    `;
+
+    try {
+        await resend.emails.send({
+            from: 'Creditly Reports <reports@resend.dev>',
+            to: 'darylggt24@gmail.com', // Compte cible demandé
+            subject: subject,
+            html: html,
+        });
+    } catch (error) {
+        console.error('Erreur rapport hebdo:', error);
+    }
+}
