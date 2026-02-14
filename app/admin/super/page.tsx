@@ -60,6 +60,29 @@ export default async function SuperAdminPage({
         .lte('request_date', endDate)
     const monthlyLoanVolume = monthlyLoans?.reduce((acc, loan) => acc + (Number(loan.amount) || 0), 0) || 0
 
+    // 3.1 Revenu Hebdo (Semaine en cours) - Reset le Dimanche à 00:00
+    const today = new Date()
+    const dayOfWeek = today.getDay()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - dayOfWeek)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const { data: weeklySubsData } = await supabase
+        .from('user_subscriptions')
+        .select('amount_paid')
+        .eq('is_active', true)
+        .gte('start_date', startOfWeek.toISOString())
+
+    const { data: weeklyRepayData } = await supabase
+        .from('remboursements')
+        .select('amount_declared')
+        .eq('status', 'verified')
+        .gte('validated_at', startOfWeek.toISOString())
+
+    const weeklyRevenue = (weeklySubsData?.reduce((acc, s) => acc + (s.amount_paid || 0), 0) || 0) +
+        (weeklyRepayData?.reduce((acc, r) => acc + (Number(r.amount_declared) || 0), 0) || 0)
+
+
     // 4. Prêts Actifs & Finances (Détail)
     const { data: allActiveLoans } = await supabase
         .from('prets')
@@ -144,8 +167,15 @@ export default async function SuperAdminPage({
                 </div>
 
                 {/* KPI Grid - Temporal & Absolute */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     {[
+                        {
+                            label: 'Revenu Semaine',
+                            value: weeklyRevenue,
+                            color: 'text-emerald-500',
+                            sub: `Depuis Dimanche ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`,
+                            icon: <Currency />
+                        },
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
                         { label: 'Volume Prêté', value: totalActiveCapital, color: 'text-white', sub: `${activeLoansCount || 0} dossiers actifs`, icon: <Document /> },
                         { label: 'Déjà Récupéré', value: totalAlreadyRecovered, color: 'text-blue-400', sub: `${Math.round((totalAlreadyRecovered / totalActiveCapital) * 100) || 0}% du total`, icon: <CheckmarkFilled /> },

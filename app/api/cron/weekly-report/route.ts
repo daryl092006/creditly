@@ -20,14 +20,11 @@ export async function GET(request: Request) {
             .gte('start_date', oneWeekAgo.toISOString()) // Assuming start_date is payment date approx
             .eq('status', 'active');
 
-        // 2. Weekly Repayments (Assuming we track payment date, using valid_at or updated_at for now if date column missing)
-        // schema.sql showed 'date' in repayment table in user request, let's check schema for repayment date.
-        // Recovering schema context: public.remboursements had date? Schema not fully visible.
-        // Assuming 'date' field exists or 'created_at'. Let's use created_at for simplicity if date is manual.
+        // 2. Weekly Repayments 
         const { data: weeklyRepayments } = await supabase
-            .from('remboursements') // Table name likely 'remboursements' based on context or 'repayments'
-            .select('amount')
-            .gte('date', oneWeekAgo.toISOString())
+            .from('remboursements')
+            .select('amount_declared')
+            .gte('validated_at', oneWeekAgo.toISOString())
             .eq('status', 'verified');
 
         // 3. Monthly Totals
@@ -39,8 +36,8 @@ export async function GET(request: Request) {
 
         const { data: monthlyRepayments } = await supabase
             .from('remboursements')
-            .select('amount')
-            .gte('date', startOfMonth.toISOString())
+            .select('amount_declared')
+            .gte('validated_at', startOfMonth.toISOString())
             .eq('status', 'verified');
 
 
@@ -48,11 +45,11 @@ export async function GET(request: Request) {
         const sumParams = (arr: any[], key: string) => arr?.reduce((acc, curr) => acc + (curr[key] || 0), 0) || 0;
 
         const subRevenue = sumParams(weeklySubs || [], 'amount_paid');
-        const repaymentRevenue = sumParams(weeklyRepayments || [], 'amount');
+        const repaymentRevenue = sumParams(weeklyRepayments || [], 'amount_declared');
         const totalRevenue = subRevenue + repaymentRevenue;
 
         const monthlySubRevenue = sumParams(monthlySubs || [], 'amount_paid');
-        const monthlyRepaymentRevenue = sumParams(monthlyRepayments || [], 'amount');
+        const monthlyRepaymentRevenue = sumParams(monthlyRepayments || [], 'amount_declared');
         const monthToDateRevenue = monthlySubRevenue + monthlyRepaymentRevenue;
 
         await sendWeeklyReport({
