@@ -22,9 +22,7 @@ export const LoanRequestSchema = z.object({
         .min(2, "Le nom complet est trop court")
         .max(100, "Le nom complet est trop long"),
 
-    payoutNetwork: z.enum(['MTN', 'Moov', 'Celtiis'], {
-        errorMap: () => ({ message: 'Réseau invalide' })
-    })
+    payoutNetwork: z.enum(['MTN', 'Moov', 'Celtiis'])
 });
 
 export const SubscriptionSchema = z.object({
