@@ -154,8 +154,8 @@ export async function deactivateUserAccount(userId: string) {
 
 export async function updateLoanStatus(loanId: string, status: 'approved' | 'rejected' | 'active' | 'paid', reason?: string) {
     const role = await getCurrentUserRole()
-    if (!role || !['admin_loan', 'superadmin'].includes(role)) {
-        return { error: "Accès refusé." }
+    if (!role || role !== 'admin_loan') {
+        return { error: "Accès refusé. Réservé uniquement aux administrateurs de prêts." }
     }
 
     const supabase = await createAdminClient()

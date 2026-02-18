@@ -59,20 +59,20 @@ export default function AdminLoanTable({ rows }: {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-900/50 border-b border-white/5">
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Demande</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Offre</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Réception des Fonds</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Approuvé Par</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Demande</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Offre</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Réception des Fonds</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Approuvé Par</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {rows.map((row) => (
                             <tr key={row.id} className="hover:bg-white/5 transition-colors group">
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1">
                                             <p className="font-black text-white leading-tight italic">{row.user.split('(')[0]}</p>
@@ -80,15 +80,15 @@ export default function AdminLoanTable({ rows }: {
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     <p className="font-black text-white text-lg tracking-tighter italic">{row.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600 uppercase tracking-widest">FCFA</span></p>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">
                                         {row.plan}
                                     </span>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${row.payout_network === 'MTN' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
@@ -104,10 +104,10 @@ export default function AdminLoanTable({ rows }: {
                                         </p>
                                     </div>
                                 </td>
-                                <td className="px-8 py-6 text-sm font-bold text-slate-500 italic">
+                                <td className="px-6 py-4 text-sm font-bold text-slate-500 italic">
                                     {new Date(row.date).toLocaleDateString()}
                                 </td>
-                                <td className="px-8 py-6 border-slate-800">
+                                <td className="px-6 py-4 border-slate-800">
                                     {row.admin ? (
                                         <div className="flex items-center gap-3">
                                             <div className="flex flex-col">
@@ -119,7 +119,7 @@ export default function AdminLoanTable({ rows }: {
                                         <span className="text-xs text-slate-600 italic font-black uppercase tracking-widest opacity-30">Non assigné</span>
                                     )}
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     {row.whatsapp ? (
                                         <a
                                             href={`https://wa.me/${row.whatsapp.replace(/\D/g, '')}`}
@@ -137,7 +137,7 @@ export default function AdminLoanTable({ rows }: {
                                         </div>
                                     )}
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         {row.status === 'pending' ? (
                                             <>
@@ -197,6 +197,18 @@ export default function AdminLoanTable({ rows }: {
                                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Réception ({row.payout_network})</p>
                                 <p className="text-sm font-black text-white italic leading-none">{row.payout_phone}</p>
                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight italic truncate">{row.payout_name}</p>
+                            </div>
+                            {/* Approved By Section for Mobile */}
+                            <div className="col-span-2 space-y-2 pt-4 border-t border-white/5">
+                                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Approuvé par</p>
+                                {row.admin ? (
+                                    <div>
+                                        <p className="text-sm font-black text-white italic leading-none">{row.admin.name}</p>
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight italic">{row.admin.role}</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] font-bold text-slate-700 italic uppercase">Non assigné</p>
+                                )}
                             </div>
                         </div>
 
