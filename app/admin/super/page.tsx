@@ -6,7 +6,7 @@ import { Currency, Document, ChevronRight, Filter, CheckmarkFilled } from '@carb
 export default async function SuperAdminPage({
     searchParams
 }: {
-    searchParams: Promise<{ month?: string; year?: string }>
+    searchParams: Promise<{ month?: string; year?: string; week?: string }>
 }) {
     // Security Check - STRICT SUPERADMIN
     await requireAdminRole(['superadmin'])
@@ -14,6 +14,31 @@ export default async function SuperAdminPage({
     const params = await searchParams
     const month = params.month ? parseInt(params.month) : new Date().getMonth() + 1
     const year = params.year ? parseInt(params.year) : new Date().getFullYear()
+
+    // Week Logic
+    const today = new Date()
+    // Default to current week's Sunday if no week param
+    let startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    if (params.week) {
+        startOfWeek = new Date(params.week)
+        // Ensure it's treated as start of day
+        startOfWeek.setHours(0, 0, 0, 0)
+    }
+
+    // Generate last 12 weeks for filter dropdown
+    const weeksList = []
+    const currentWeekStart = new Date()
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
+    currentWeekStart.setHours(0, 0, 0, 0)
+
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(currentWeekStart)
+        d.setDate(d.getDate() - (i * 7))
+        weeksList.push(d)
+    }
 
     const supabase = await createClient()
 
@@ -50,17 +75,14 @@ export default async function SuperAdminPage({
     const totalAlreadyRecovered = allActiveLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
     const totalRemainingToRecover = totalActiveCapital - totalAlreadyRecovered
 
-    // Calcul Revenu Hebdomadaire (Semaine courante)
-    const today = new Date()
-    const dayOfWeek = today.getDay()
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday=0, Sunday=6 relative to Mon
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - diffToMonday)
-    startOfWeek.setHours(0, 0, 0, 0)
+    // Calcul Revenu Hebdomadaire (Semaine courante ou séléctionnée)
+    // startOfWeek is already calculated above
 
     const endOfWeek = new Date(startOfWeek)
     endOfWeek.setDate(startOfWeek.getDate() + 6)
     endOfWeek.setHours(23, 59, 59, 999)
+
+
 
     const { data: weeklySubs } = await supabase
         .from('user_subscriptions')
@@ -139,6 +161,13 @@ export default async function SuperAdminPage({
                                 <option key={y} value={y} className="bg-slate-950">{y}</option>
                             ))}
                         </select>
+                        <select name="week" defaultValue={startOfWeek.toISOString().split('T')[0]} className="bg-transparent text-white font-black text-xs p-2 outline-none cursor-pointer border-l border-slate-800 ml-2 max-w-[100px] sm:max-w-none">
+                            {weeksList.map((w, i) => (
+                                <option key={i} value={w.toISOString().split('T')[0]} className="bg-slate-950">
+                                    Sem. {w.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                </option>
+                            ))}
+                        </select>
                         <button type="submit" className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all active:scale-90">
                             <ChevronRight size={16} />
                         </button>
@@ -149,7 +178,7 @@ export default async function SuperAdminPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
-                        { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-purple-400', sub: 'Semaine en cours', icon: <Currency /> },
+                        { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-purple-400', sub: `Depuis le ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`, icon: <Currency /> },
                         { label: 'Volume Prêté', value: totalActiveCapital, color: 'text-white', sub: `${activeLoansCount || 0} dossiers actifs`, icon: <Document /> },
                         { label: 'Reste à Recouvrer', value: totalRemainingToRecover, color: 'text-amber-400', sub: 'Objectif recouvrement', icon: <CheckmarkFilled /> }
                     ].map((kpi, i) => (
