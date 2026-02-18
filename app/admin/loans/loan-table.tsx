@@ -5,7 +5,7 @@ import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { useRouter } from 'next/navigation'
 
-export default function AdminLoanTable({ rows }: {
+export default function AdminLoanTable({ rows, currentUserRole }: {
     rows: Array<{
         id: string;
         user: string;
@@ -19,7 +19,8 @@ export default function AdminLoanTable({ rows }: {
         payout_network?: string;
         whatsapp?: string;
         admin: { name: string; role: string; whatsapp?: string } | null
-    }>
+    }>,
+    currentUserRole: string | null
 }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'active' | 'rejected' } | null>(null)
@@ -225,18 +226,26 @@ export default function AdminLoanTable({ rows }: {
                         </div>
 
                         <div className="flex gap-3 pt-6 border-t border-white/5">
-                            {row.status === 'pending' ? (
+                            {currentUserRole === 'admin_loan' ? (
                                 <>
-                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'active' })} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20">
-                                        Approuver
-                                    </button>
-                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
+                                    {row.status === 'pending' ? (
+                                        <>
+                                            <button onClick={() => setConfirmAction({ id: row.id, status: 'active' })} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20">
+                                                Approuver
+                                            </button>
+                                            <button onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
-                                <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
+                                <div className="w-full py-4 text-center rounded-2xl bg-slate-900/50 border border-slate-800">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 italic leading-none">Lecture Seule</span>
                                 </div>
                             )}
                         </div>

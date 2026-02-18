@@ -47,6 +47,10 @@ export default async function AdminLoanPage({
         } : null
     })) || []
 
+    // Get Current User Role for UI logic
+    const { getCurrentUserRole } = await import('@/utils/admin-security')
+    const currentUserRole = await getCurrentUserRole()
+
     return (
         <div className="py-10 md:py-16 animate-fade-in">
             <div className="admin-container">
@@ -75,7 +79,7 @@ export default async function AdminLoanPage({
                 </div>
 
                 <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                    <AdminLoanTable rows={rows} />
+                    <AdminLoanTable rows={rows} currentUserRole={currentUserRole} />
                 </div>
             </div>
         </div>
