@@ -58,7 +58,6 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
             {/* Desktop Table View */}
             <div className="overflow-x-auto hidden xl:block">
                 <table className="w-full text-left border-collapse">
-                    <caption className="text-white text-xs p-2">Debug Role: {currentUserRole}</caption>
                     <thead>
                         <tr className="bg-slate-900/50 border-b border-white/5">
                             <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat</th>
