@@ -10,7 +10,8 @@ export default async function AdminLoanPage({
 }) {
     const params = await searchParams
     const statusFilter = params.status || 'pending'
-
+ 
+    
     // Security Check
     await requireAdminRole(['admin_loan', 'superadmin'])
 
