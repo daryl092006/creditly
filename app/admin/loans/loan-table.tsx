@@ -140,7 +140,7 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        {row.status === 'pending' ? (
+                                        {currentUserRole === 'admin_loan' && row.status === 'pending' ? (
                                             <>
                                                 <button
                                                     onClick={() => setConfirmAction({ id: row.id, status: 'active' })}
@@ -157,6 +157,10 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                                                     Rejeter
                                                 </button>
                                             </>
+                                        ) : row.status === 'pending' ? (
+                                            <span className="text-[10px] font-black uppercase tracking-widest italic text-slate-600 px-3 py-1 rounded-lg border border-slate-800 bg-slate-900/50">
+                                                Lecture Seule
+                                            </span>
                                         ) : (
                                             <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${row.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                                 row.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
