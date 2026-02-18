@@ -18,10 +18,7 @@ export default async function SuperAdminPage({
     const supabase = await createClient()
 
     // 1. Statisiques Globales (Total)
-    const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'client')
     const { count: activeLoansCount } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'active')
-    const { count: overdueLoansCount } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'overdue')
-    const { count: totalLoansCount } = await supabase.from('prets').select('*', { count: 'exact', head: true }).in('status', ['active', 'paid', 'overdue'])
 
     // 2. Éléments en attente (Urgence)
     const { count: pendingKyc } = await supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
