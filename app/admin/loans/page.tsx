@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { requireAdminRole } from '@/utils/admin-security'
+import { requireAdminRole, getCurrentUserRole } from '@/utils/admin-security'
 import AdminLoanTable from './loan-table'
 import Link from 'next/link'
 
@@ -10,8 +10,8 @@ export default async function AdminLoanPage({
 }) {
     const params = await searchParams
     const statusFilter = params.status || 'pending'
- 
-    
+
+
     // Security Check
     await requireAdminRole(['admin_loan', 'superadmin'])
 
@@ -49,7 +49,6 @@ export default async function AdminLoanPage({
     })) || []
 
     // Get Current User Role for UI logic
-    const { getCurrentUserRole } = await import('@/utils/admin-security')
     const currentUserRole = await getCurrentUserRole()
 
     return (
