@@ -6,8 +6,13 @@ export default async function AdminSubscriptionsPage() {
     const supabase = await createClient()
     const { data: allSubs } = await supabase
         .from('user_subscriptions')
-        .select('*, plan:abonnements(*), user:users(*)')
-        .order('status', { ascending: false }) // This puts 'pending' first (p > a) roughly, or use a better sort
+        .select(`
+            *,
+            plan:abonnements(*),
+            user:user_id(*),
+            reviewer:admin_id(nom, prenom, role)
+        `)
+        .order('status', { ascending: false })
         .order('created_at', { ascending: false })
 
     return (

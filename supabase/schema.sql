@@ -114,6 +114,8 @@ create table public.user_subscriptions (
   rejection_reason text,
   proof_url text, -- Storage path to payment proof
   amount_paid numeric,
+  admin_id uuid references public.users(id),
+  reviewed_at timestamptz,
   created_at timestamptz default now()
 );
 

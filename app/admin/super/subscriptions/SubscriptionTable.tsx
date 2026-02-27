@@ -28,6 +28,11 @@ interface Subscription {
         email: string
         whatsapp?: string
     }
+    reviewer?: {
+        nom: string
+        prenom: string
+        role: string
+    }
 }
 
 export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
@@ -101,6 +106,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Preuve</th>
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact</th>
+                                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Traité Par</th>
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                                 </tr>
                             </thead>
@@ -170,6 +176,16 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                                     <div className="w-1 h-1 rounded-full bg-slate-800"></div>
                                                     <span className="text-[9px] font-black uppercase tracking-widest leading-none">Non renseigné</span>
                                                 </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-6 font-bold">
+                                            {sub.reviewer ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-300 group-hover:text-white transition-colors">{sub.reviewer.prenom} {sub.reviewer.nom}</span>
+                                                    <span className="text-[10px] text-slate-600 uppercase tracking-wider">{sub.reviewer.role}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-600 italic">En attente</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-6">
@@ -263,6 +279,21 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                         )}
                                     </div>
                                 </div>
+
+                                {sub.reviewer && (
+                                    <div className="pt-6 border-t border-white/5">
+                                        <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none mb-2">Traité par</p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/5 flex items-center justify-center text-slate-500">
+                                                <User size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black text-slate-300 italic leading-none">{sub.reviewer.prenom} {sub.reviewer.nom}</p>
+                                                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">{sub.reviewer.role}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="flex gap-3 pt-6 border-t border-white/5">
                                     {sub.status === 'pending' ? (
