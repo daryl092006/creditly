@@ -38,19 +38,8 @@ BEGIN
     return json_build_object('error', 'Non authentifié');
   end if;
 
-  -- 0. Global Quota Check
-  select count(*)
-  into v_global_count
-  from public.prets
-  where amount = p_amount
-    and status != 'rejected'
-    and created_at >= date_trunc('month', now());
-
-  select monthly_limit into v_global_limit from public.global_quotas where amount = p_amount;
-  
-  if v_global_limit is not null and v_global_count >= v_global_limit then
-     return json_build_object('error', 'Le quota mensuel pour ce montant (' || p_amount || ' F) est atteint pour tout le système. Revenez le mois prochain.');
-  end if;
+  -- 0. Global Quota Check (REMOVED: Now handled at subscription level)
+  -- select count(*) into v_global_count from public.prets where amount = p_amount ...
 
   -- 1. Check Active Subscription
   select s.*, p.max_loans_per_month, p.max_loan_amount, p.id as plan_snapshot_id

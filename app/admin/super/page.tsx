@@ -206,23 +206,23 @@ export default async function SuperAdminPage({
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-black text-white tracking-widest uppercase italic flex items-center gap-2">
                             <span className="w-6 h-6 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-[10px] font-black shadow-inner">Q</span>
-                            Quotas : {new Date(year, month - 1).toLocaleString('fr', { month: 'long' })} {year}
+                            Quotas Abonnements : {new Date(year, month - 1).toLocaleString('fr', { month: 'long' })} {year}
                         </h3>
-                        {/* <span className="text-[10px] font-black text-slate-600 uppercase italic">Statut Temps Réel</span> */}
                     </div>
                     <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 relative overflow-hidden group">
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6 relative z-10">
-                            {[5000, 10000, 25000, 50000, 100000].map(amt => {
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-6 relative z-10">
+                            {[5000, 10000, 25000, 50000, 100000, 250000, 500000].map(amt => {
                                 const q = quotasStatus[amt as keyof typeof quotasStatus];
-                                const remaining = q ? Math.max(0, q.limit - q.count) : 0;
-                                const exceeded = q ? q.count > q.limit : false;
-                                const percentage = q ? Math.min(100, (q.count / q.limit) * 100) : 0;
+                                if (!q) return null;
+                                const remaining = Math.max(0, q.limit - q.count);
+                                const exceeded = q.limit > 0 && q.count > q.limit;
+                                const percentage = q.limit > 0 ? Math.min(100, (q.count / q.limit) * 100) : 100;
                                 return (
                                     <div key={amt} className="space-y-2">
                                         <div className="flex justify-between items-end">
-                                            <p className="text-xs font-black text-slate-300 italic tracking-tighter">{amt.toLocaleString()} F</p>
-                                            <span className={`text-[9px] font-black uppercase tracking-widest ${remaining === 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                {remaining} dispo
+                                            <p className="text-[10px] font-black text-slate-300 italic tracking-tighter">{amt >= 1000 ? (amt / 1000) + 'K' : amt} F</p>
+                                            <span className={`text-[8px] font-black uppercase tracking-widest ${remaining === 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                {remaining}
                                             </span>
                                         </div>
                                         <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">

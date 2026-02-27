@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 import { sendAdminNotification } from '@/utils/email-service'
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export async function subscribeToPlan(formData: FormData) {
     const supabase = await createClient()
@@ -28,8 +29,18 @@ export async function subscribeToPlan(formData: FormData) {
 
     const { planId, amount: numAmount, proof: file } = validationResult.data;
 
-
     const adminSupabase = await createAdminClient()
+
+    // 0.5 Global Quota Check
+    const { data: planData } = await adminSupabase.from('abonnements').select('max_loan_amount, name').eq('id', planId).single();
+    if (planData) {
+        const quotas = await checkGlobalQuotasStatus();
+        const planQuota = quotas[Number(planData.max_loan_amount)];
+        if (planQuota && planQuota.reached) {
+            return { error: `Le quota mensuel pour le plan ${planData.name} est déjà atteint. Réessayez le mois prochain.` };
+        }
+    }
+
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/sub_${planId}_${Date.now()}.${fileExt}`
 

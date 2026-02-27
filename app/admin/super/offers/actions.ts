@@ -65,3 +65,30 @@ export async function createOffer(formData: FormData) {
     revalidatePath('/client/subscriptions')
     revalidatePath('/')
 }
+
+export async function updateQuotas(formData: FormData) {
+    const supabase = await createClient()
+
+    // Extract all keys that look like quota_XXXX
+    const entries = Array.from(formData.entries());
+    const quotaUpdates = entries
+        .filter(([key]) => key.startsWith('quota_'))
+        .map(([key, value]) => ({
+            amount: parseInt(key.replace('quota_', '')),
+            monthly_limit: parseInt(value as string)
+        }));
+
+    for (const update of quotaUpdates) {
+        const { error } = await supabase
+            .from('global_quotas')
+            .upsert(update, { onConflict: 'amount' });
+
+        if (error) {
+            throw new Error(`Erreur lors de la mise à jour du quota ${update.amount}: ${getUserFriendlyErrorMessage(error)}`);
+        }
+    }
+
+    revalidatePath('/admin/super/offers')
+    revalidatePath('/admin/super')
+    revalidatePath('/client/subscriptions')
+}
