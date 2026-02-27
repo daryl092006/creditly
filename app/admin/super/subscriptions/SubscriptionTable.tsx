@@ -43,6 +43,17 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const [rejectionReason, setRejectionReason] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'expired' | 'rejected'>('all')
+
+    const filteredRows = rows.filter(sub => {
+        const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'pending') return sub.status === 'pending';
+        if (statusFilter === 'active') return sub.status === 'active' && !isExpired;
+        if (statusFilter === 'expired') return isExpired;
+        if (statusFilter === 'rejected') return sub.status === 'rejected';
+        return true;
+    });
 
     const getFullUrl = (path: string) => {
         const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -84,7 +95,32 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
 
     return (
         <div className="relative animate-fade-in">
-            {rows.length === 0 ? (
+            {/* Filter Bar */}
+            <div className="flex flex-wrap gap-2 mb-8 bg-slate-900/50 p-2 rounded-2xl border border-white/5 backdrop-blur-sm">
+                {[
+                    { id: 'all', label: 'Tout', count: rows.length },
+                    { id: 'pending', label: 'En attente', count: rows.filter(r => r.status === 'pending').length },
+                    { id: 'active', label: 'Actifs', count: rows.filter(r => r.status === 'active' && (!r.end_date || new Date(r.end_date) >= new Date())).length },
+                    { id: 'expired', label: 'Expirés', count: rows.filter(r => r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()).length },
+                    { id: 'rejected', label: 'Refusés', count: rows.filter(r => r.status === 'rejected').length },
+                ].map((f) => (
+                    <button
+                        key={f.id}
+                        onClick={() => setStatusFilter(f.id as any)}
+                        className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-3 ${statusFilter === f.id
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 active:scale-95'
+                            : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
+                            }`}
+                    >
+                        {f.label}
+                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black ${statusFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                            {f.count}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {filteredRows.length === 0 ? (
                 <div className="glass-panel p-20 text-center bg-slate-900/50 border-slate-800">
                     <div className="w-20 h-20 bg-slate-950 border border-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Identification size={40} className="text-slate-700" />
@@ -111,7 +147,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {rows.map((sub) => (
+                                {filteredRows.map((sub) => (
                                     <tr key={sub.id} className="hover:bg-white/5 transition-colors group">
                                         <td className="px-6 py-6">
                                             <div className="flex items-center gap-2">
@@ -206,14 +242,23 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${sub.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                        sub.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            'bg-slate-800 text-slate-500 border-slate-700'
-                                                        }`}>
-                                                        {sub.status === 'active' ? 'Activé' :
-                                                            sub.status === 'rejected' ? 'Refusé' :
-                                                                sub.status}
-                                                    </span>
+                                                    (() => {
+                                                        const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+                                                        const displayStatus = isExpired ? 'expired' : sub.status;
+
+                                                        return (
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${displayStatus === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                                displayStatus === 'expired' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' :
+                                                                    displayStatus === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                                        'bg-slate-800 text-slate-500 border-slate-700'
+                                                                }`}>
+                                                                {displayStatus === 'active' ? 'Activé' :
+                                                                    displayStatus === 'expired' ? 'Expiré' :
+                                                                        displayStatus === 'rejected' ? 'Refusé' :
+                                                                            displayStatus}
+                                                            </span>
+                                                        );
+                                                    })()
                                                 )}
                                             </div>
                                         </td>
@@ -225,7 +270,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
 
                     {/* Mobile Cards View */}
                     <div className="space-y-4 xl:hidden">
-                        {rows.map((sub) => (
+                        {filteredRows.map((sub) => (
                             <div key={sub.id} className="glass-panel p-6 bg-slate-900 border-slate-800 space-y-6">
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -308,7 +353,13 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                                     ) : (
                                         <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">
-                                                {sub.status === 'active' ? 'Abonnement Actif' : sub.status === 'rejected' ? 'Paiement Refusé' : sub.status}
+                                                {(() => {
+                                                    const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+                                                    if (isExpired) return 'Abonnement Expiré';
+                                                    if (sub.status === 'active') return 'Abonnement Actif';
+                                                    if (sub.status === 'rejected') return 'Paiement Refusé';
+                                                    return sub.status;
+                                                })()}
                                             </span>
                                         </div>
                                     )}

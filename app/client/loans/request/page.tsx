@@ -1,12 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import LoanRequestForm from './loan-form'
-// import { Button } from '@carbon/react' (Disabled)
 import Link from 'next/link'
 import { ArrowLeft, CloseFilled, Information } from '@carbon/icons-react'
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export default async function LoanRequestPage() {
     const supabase = await createClient()
+    const quotasStatus = await checkGlobalQuotasStatus()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return redirect('/auth/login')
@@ -138,7 +139,7 @@ export default async function LoanRequestPage() {
                 </div>
             </div>
 
-            <LoanRequestForm subscription={sub} />
+            <LoanRequestForm subscription={sub} quotasStatus={quotasStatus} />
         </div>
     )
 }

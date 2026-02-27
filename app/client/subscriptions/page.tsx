@@ -1,20 +1,22 @@
 import { createClient } from '@/utils/supabase/server'
 import SubscribeButton from './SubscribeButton'
 import Link from 'next/link'
-import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse } from '@carbon/icons-react'
+import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt } from '@carbon/icons-react'
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export default async function SubscriptionsPage() {
     const supabase = await createClient()
     const { data: plans } = await supabase.from('abonnements').select('*').order('price')
+    const quotasStatus = await checkGlobalQuotasStatus()
 
     const { data: { user } } = await supabase.auth.getUser()
     const { data: allSubs } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id) : { data: [] }
 
     const now = new Date().toISOString()
-    const activeSub = allSubs?.find(s => s.status === 'active' && s.end_date && s.end_date > now)
-    const expiredSub = !activeSub ? allSubs?.find(s => s.status === 'expired' || (s.status === 'active' && s.end_date && s.end_date <= now)) : null
-    const pendingSub = allSubs?.find(s => s.status === 'pending')
-    const rejectedSub = allSubs?.find(s => s.status === 'rejected')
+    const activeSub = allSubs?.find((s: any) => s.status === 'active' && s.end_date && s.end_date > now)
+    const expiredSub = !activeSub ? allSubs?.find((s: any) => s.status === 'expired' || (s.status === 'active' && s.end_date && s.end_date <= now)) : null
+    const pendingSub = allSubs?.find((s: any) => s.status === 'pending')
+    const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
 
     const getPlanIcon = (name: string) => {
         if (name === 'Platinum') return <Rocket size={32} />
@@ -107,7 +109,7 @@ export default async function SubscriptionsPage() {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-10">
-                    {plans?.map((plan) => (
+                    {plans?.map((plan: any) => (
                         <div key={plan.id} className={`glass-panel p-10 flex flex-col items-center text-center relative overflow-hidden group transition-all duration-700 hover:-translate-y-4 bg-slate-900/50 border-slate-800 w-full max-w-[320px] ${plan.name === 'Platinum' ? 'border-blue-500/30 bg-blue-600/5' : ''}`}>
                             {plan.name === 'Platinum' && (
                                 <div className="absolute -right-12 top-10 rotate-45 bg-blue-600 text-white text-[8px] font-black px-12 py-1.5 uppercase tracking-[0.4em] z-20 shadow-lg shadow-blue-600/20">PREMIUM</div>
@@ -137,12 +139,19 @@ export default async function SubscriptionsPage() {
                                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-tight group-hover/feat:text-slate-200 transition-colors italic">{feature.text}</span>
                                     </div>
                                 ))}
+
+                                {quotasStatus[plan.max_loan_amount]?.reached && (
+                                    <div className="flex items-center justify-center gap-2 mt-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500">
+                                        <WarningAlt size={16} className="shrink-0" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-center">Quota mensuel atteint pour ce plan</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="relative z-10 w-full">
                                 <SubscribeButton
                                     planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id)}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || quotasStatus[plan.max_loan_amount]?.reached}
                                     isModification={!!activeSub && activeSub.plan_id !== plan.id}
                                 />
                             </div>

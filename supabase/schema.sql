@@ -223,6 +223,19 @@ create table public.email_blacklist (
   created_at timestamptz default now()
 );
 
+-- 9. GLOBAL QUOTAS
+create table public.global_quotas (
+  amount numeric primary key,
+  monthly_limit int not null
+);
+
+insert into public.global_quotas (amount, monthly_limit) values
+(5000, 4),
+(10000, 5),
+(25000, 10),
+(50000, 4),
+(100000, 1);
+
 alter table public.email_blacklist enable row level security;
 create policy "Admins can manage blacklist" on public.email_blacklist for all using (
     public.check_user_role(array['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin']::public.user_role[])
