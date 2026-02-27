@@ -82,6 +82,6 @@ export default async function AdminLoanPage({
                     <AdminLoanTable rows={rows} currentUserRole={currentUserRole} />
                 </div>
             </div>
-        </div>
+        </div> 
     )
 }
