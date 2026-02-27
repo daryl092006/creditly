@@ -8,19 +8,23 @@ export const GLOBAL_MONTHLY_QUOTAS: Record<number, number> = {
     100000: 1
 };
 
-export async function checkGlobalQuotasStatus() {
+export async function checkGlobalQuotasStatus(month?: number, year?: number) {
     const supabase = await createClient();
 
-    // Get counts for the current month for all amounts in our quotas
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // Determine target period
+    const targetDate = new Date();
+    const mm = month !== undefined ? month - 1 : targetDate.getMonth();
+    const yyyy = year !== undefined ? year : targetDate.getFullYear();
+
+    const startOfPeriod = new Date(yyyy, mm, 1, 0, 0, 0);
+    const endOfPeriod = new Date(yyyy, mm + 1, 0, 23, 59, 59);
 
     const { data: loans, error } = await supabase
         .from('prets')
         .select('amount')
         .neq('status', 'rejected')
-        .gte('created_at', startOfMonth.toISOString());
+        .gte('created_at', startOfPeriod.toISOString())
+        .lte('created_at', endOfPeriod.toISOString());
 
     if (error) {
         console.error('Error fetching global quotas:', error);
