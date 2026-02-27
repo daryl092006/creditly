@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, Money, Information, CheckmarkFilled, CloseFilled, 
 export default async function LoanDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const { id } = params;
-    const supabase = await createClient()
+    const supabase = await createClient() 
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return redirect('/auth/login')
