@@ -15,7 +15,7 @@ interface Subscription {
     proof_url: string
     created_at: string
     is_active: boolean
-    status: 'pending' | 'active' | 'rejected'
+    status: 'pending' | 'active' | 'rejected' | 'expired'
     start_date?: string
     end_date?: string
     plan: {
@@ -46,7 +46,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'expired' | 'rejected'>('all')
 
     const filteredRows = rows.filter(sub => {
-        const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+        const isExpired = (sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date()) || sub.status === 'expired';
         if (statusFilter === 'all') return true;
         if (statusFilter === 'pending') return sub.status === 'pending';
         if (statusFilter === 'active') return sub.status === 'active' && !isExpired;
@@ -101,7 +101,7 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
                     { id: 'all', label: 'Tout', count: rows.length },
                     { id: 'pending', label: 'En attente', count: rows.filter(r => r.status === 'pending').length },
                     { id: 'active', label: 'Actifs', count: rows.filter(r => r.status === 'active' && (!r.end_date || new Date(r.end_date) >= new Date())).length },
-                    { id: 'expired', label: 'Expirés', count: rows.filter(r => r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()).length },
+                    { id: 'expired', label: 'Expirés', count: rows.filter(r => (r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()) || r.status === 'expired').length },
                     { id: 'rejected', label: 'Refusés', count: rows.filter(r => r.status === 'rejected').length },
                 ].map((f) => (
                     <button

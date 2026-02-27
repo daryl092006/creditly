@@ -1,8 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add } from '@carbon/icons-react'
+import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 interface SubscriptionPlan {
     name: string
@@ -23,6 +24,7 @@ interface Loan {
     amount: number
     status: string
     created_at: string
+    due_date?: string
     admin_decision_date?: string
     amount_paid?: number
 }
@@ -37,6 +39,7 @@ interface Repayment {
 
 export default async function ClientDashboard() {
     const supabase = await createClient()
+    const quotasStatus = await checkGlobalQuotasStatus()
 
     const {
         data: { user },
@@ -88,7 +91,7 @@ export default async function ClientDashboard() {
     // Fetch recent activities for notifications
     const { data: recentLoans } = await supabase
         .from('prets')
-        .select('id, amount, status, created_at, admin_decision_date')
+        .select('id, amount, status, created_at, admin_decision_date, due_date')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3)
@@ -146,6 +149,14 @@ export default async function ClientDashboard() {
     const kycColor = profile?.is_account_active ? 'bg-emerald-500/10 text-emerald-500' : kycDocs?.status === 'rejected' ? 'bg-red-500/10 text-red-500/80 animate-pulse' : kycDocs ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
     const kycProgress = profile?.is_account_active ? '100' : kycDocs?.status === 'rejected' ? '33' : kycDocs ? '66' : '33'
 
+    // Calculate imminent deadlines (within 7 days)
+    const imminentDeadlines = recentLoans?.filter(l =>
+        l.status === 'active' &&
+        l.due_date &&
+        new Date(l.due_date).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000 &&
+        new Date(l.due_date).getTime() > new Date().getTime()
+    ) || []
+
 
     return (
         <div className="py-12 md:py-24 page-transition">
@@ -174,6 +185,58 @@ export default async function ClientDashboard() {
                             <Wallet size={20} className="text-slate-400" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-white">Mes Prêts</span>
                         </Link>
+                    </div>
+                </div>
+
+                {/* Imminent Deadlines Alert */}
+                {imminentDeadlines.length > 0 && (
+                    <div className="mb-12 animate-bounce-subtle">
+                        <Link href="/client/loans" className="flex items-center gap-4 p-6 bg-red-500/10 border border-red-500/20 rounded-3xl group hover:bg-red-500/20 transition-all">
+                            <div className="w-12 h-12 rounded-2xl bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-500/20">
+                                <Time size={24} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none mb-1">Attention : Échéance Imminente</p>
+                                <p className="text-sm font-bold text-white italic">
+                                    Vous avez {imminentDeadlines.length} prêt{imminentDeadlines.length > 1 ? 's' : ''} à rembourser sous peu. Soldéz-les pour éviter les pénalités.
+                                </p>
+                            </div>
+                            <div className="text-red-500 font-black italic uppercase text-[10px] tracking-widest group-hover:translate-x-2 transition-transform">
+                                Régulariser →
+                            </div>
+                        </Link>
+                    </div>
+                )}
+
+                {/* Quotas Monitor Bar */}
+                <div className="mb-16 glass-panel p-6 bg-slate-900/50 border-slate-800 overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                    <div className="flex items-center gap-4 mb-6 relative z-10">
+                        <div className="h-4 w-1 bg-emerald-500 rounded-full"></div>
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Disponibilité des Financements ce mois</h2>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 relative z-10">
+                        {[5000, 10000, 25000, 50000, 100000].map(amt => {
+                            const q = quotasStatus[amt];
+                            const remaining = q ? q.limit - q.count : 0;
+                            const percentage = q ? (q.count / q.limit) * 100 : 0;
+                            return (
+                                <div key={amt} className="space-y-3">
+                                    <div className="flex justify-between items-baseline">
+                                        <p className="text-lg font-black text-white italic tracking-tighter">{amt.toLocaleString()} <span className="text-[8px] not-italic text-slate-600">F</span></p>
+                                        <span className={`text-[8px] font-black uppercase ${remaining === 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                            {remaining} restants
+                                        </span>
+                                    </div>
+                                    <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-1000 ${remaining === 0 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
 
@@ -241,7 +304,9 @@ export default async function ClientDashboard() {
                                     </span>
                                 </div>
                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest truncate">
-                                    {latestLoan ? `Initiée le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Aucune demande'}
+                                    {latestLoan?.status === 'active' && latestLoan.due_date
+                                        ? `Échéance : ${new Date(latestLoan.due_date).toLocaleDateString('fr-FR')}`
+                                        : latestLoan ? `Initiée le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Aucune demande'}
                                 </p>
                             </div>
                         </div>
