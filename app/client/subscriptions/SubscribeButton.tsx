@@ -7,11 +7,13 @@ import { Flash } from '@carbon/icons-react'
 export default function SubscribeButton({
     planId,
     disabled,
-    isModification
+    isModification,
+    isQuotaFull
 }: {
     planId: string,
     disabled: boolean,
-    isModification?: boolean
+    isModification?: boolean,
+    isQuotaFull?: boolean
 }) {
     return (
         <div className="space-y-3">
@@ -20,7 +22,7 @@ export default function SubscribeButton({
                     className="premium-button w-full py-5 !rounded-2xl bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
                     disabled
                 >
-                    {isModification ? 'Déjà Actif' : 'Payé / En attente'}
+                    {isQuotaFull ? 'Limite Atteinte' : isModification ? 'Déjà Actif' : 'Payé / En attente'}
                 </button>
             ) : (
                 <Link

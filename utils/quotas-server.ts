@@ -1,7 +1,7 @@
-import { createClient } from './supabase/server';
+import { createAdminClient } from './supabase/server';
 
 export async function checkGlobalQuotasStatus(month?: number, year?: number) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Determine target period
     const targetDate = new Date();

@@ -42,7 +42,9 @@ export default async function SubscriptionsPage() {
                         {!activeSub && (
                             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 animate-fade-in shadow-lg shadow-amber-500/5">
                                 <Star size={20} className="animate-pulse" />
-                                <span className="text-xs font-black uppercase tracking-widest">Abonnement requis pour toute demande de prêt</span>
+                                <span className="text-xs font-black uppercase tracking-widest">
+                                    Financements mensuels limités par palier pour garantir la liquidité
+                                </span>
                             </div>
                         )}
                     </div>
@@ -141,9 +143,11 @@ export default async function SubscriptionsPage() {
                                 ))}
 
                                 {quotasStatus[plan.max_loan_amount]?.reached && (
-                                    <div className="flex items-center justify-center gap-2 mt-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500">
-                                        <WarningAlt size={16} className="shrink-0" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-center">Quota mensuel atteint pour ce plan</span>
+                                    <div className="mt-8 px-4 py-4 rounded-xl bg-slate-950/50 border border-amber-500/20 text-center animate-fade-in">
+                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed italic">
+                                            Capacité Mensuelle Atteinte <br />
+                                            <span className="text-[7px] text-slate-600 italic lowercase tracking-normal font-bold">Veuillez patienter jusqu'au 1er du mois prochain pour l'ouverture de nouveaux créneaux sur ce plan.</span>
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -151,8 +155,9 @@ export default async function SubscriptionsPage() {
                             <div className="relative z-10 w-full">
                                 <SubscribeButton
                                     planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || quotasStatus[plan.max_loan_amount]?.reached}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.max_loan_amount]?.reached}
                                     isModification={!!activeSub && activeSub.plan_id !== plan.id}
+                                    isQuotaFull={!!quotasStatus[plan.max_loan_amount]?.reached}
                                 />
                             </div>
                         </div>
