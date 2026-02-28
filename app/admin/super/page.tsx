@@ -217,8 +217,8 @@ export default async function SuperAdminPage({
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                        {[5000, 10000, 25000, 50000, 100000, 250000, 500000].map(amt => {
-                            const q = quotasStatus[amt as keyof typeof quotasStatus];
+                        {offers?.map(plan => {
+                            const q = quotasStatus[plan.id as keyof typeof quotasStatus];
                             if (!q) return null;
 
                             const remaining = Math.max(0, q.limit - q.count);
@@ -226,18 +226,8 @@ export default async function SuperAdminPage({
                             const isLocked = q.limit === 0;
                             const percentage = q.limit > 0 ? Math.min(100, (q.count / q.limit) * 100) : 100;
 
-                            const getLabel = (a: number) => {
-                                if (a === 5000) return 'Starter'
-                                if (a === 10000) return 'Bronze'
-                                if (a === 25000) return 'Silver'
-                                if (a === 50000) return 'Gold'
-                                if (a === 100000) return 'Platinum'
-                                if (a === 250000) return 'Diamond'
-                                return 'Elite'
-                            }
-
                             return (
-                                <div key={amt} className={`glass-panel p-4 bg-slate-950/40 border-slate-800/60 hover:scale-[1.02] transition-all duration-500 group relative overflow-hidden ${isLocked ? 'opacity-50 grayscale' : ''}`}>
+                                <div key={plan.id} className={`glass-panel p-4 bg-slate-950/40 border-slate-800/60 hover:scale-[1.02] transition-all duration-500 group relative overflow-hidden ${isLocked ? 'opacity-50 grayscale' : ''}`}>
                                     {/* Background glow for active items */}
                                     {!isLocked && !isFull && (
                                         <div className="absolute -right-4 -top-4 w-12 h-12 bg-emerald-600/5 rounded-full blur-xl group-hover:bg-emerald-600/10 transition-colors"></div>
@@ -245,7 +235,7 @@ export default async function SuperAdminPage({
 
                                     <div className="flex justify-between items-start mb-3">
                                         <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-slate-300 transition-colors">
-                                            {getLabel(amt)}
+                                            {plan.name}
                                         </span>
                                         <div className="flex items-center gap-1">
                                             <span className={`text-[10px] font-black italic tabular-nums ${isLocked ? 'text-slate-600' : isFull ? 'text-red-500' : 'text-emerald-500'}`}>
@@ -256,7 +246,7 @@ export default async function SuperAdminPage({
                                     </div>
 
                                     <div className="text-xl font-black text-white italic tracking-tighter leading-none mb-4 group-hover:translate-x-1 transition-transform tabular-nums">
-                                        {amt >= 1000 ? (amt / 1000) + 'K' : amt} <span className="text-[10px] not-italic text-slate-700">F</span>
+                                        {plan.max_loan_amount >= 1000 ? (plan.max_loan_amount / 1000) + 'K' : plan.max_loan_amount} <span className="text-[10px] not-italic text-slate-700">F</span>
                                     </div>
 
                                     <div className="relative h-1 w-full bg-slate-900 rounded-full overflow-hidden mb-1">

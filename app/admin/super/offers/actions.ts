@@ -74,17 +74,17 @@ export async function updateQuotas(formData: FormData) {
     const quotaUpdates = entries
         .filter(([key]) => key.startsWith('quota_'))
         .map(([key, value]) => ({
-            amount: parseInt(key.replace('quota_', '')),
+            plan_id: key.replace('quota_', ''),
             monthly_limit: parseInt(value as string)
         }));
 
     for (const update of quotaUpdates) {
         const { error } = await supabase
             .from('global_quotas')
-            .upsert(update, { onConflict: 'amount' });
+            .upsert(update, { onConflict: 'plan_id' });
 
         if (error) {
-            throw new Error(`Erreur lors de la mise à jour du quota ${update.amount}: ${getUserFriendlyErrorMessage(error)}`);
+            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
         }
     }
 

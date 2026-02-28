@@ -24,7 +24,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
     // 2. Get Subscriptions for period
     const { data: subs, error: subError } = await supabase
         .from('user_subscriptions')
-        .select('id, plan:abonnements(max_loan_amount)')
+        .select('plan_id')
         .neq('status', 'rejected')
         .gte('created_at', startOfPeriod.toISOString())
         .lte('created_at', endOfPeriod.toISOString());
@@ -34,24 +34,26 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         return {};
     }
 
-    const counts: Record<number, number> = {};
+    const counts: Record<string, number> = {};
     subs.forEach((sub: any) => {
-        const amt = Number(sub.plan?.max_loan_amount);
-        if (amt) {
-            counts[amt] = (counts[amt] || 0) + 1;
+        const pid = sub.plan_id;
+        if (pid) {
+            counts[pid] = (counts[pid] || 0) + 1;
         }
     });
 
-    const status: Record<number, { count: number, limit: number, reached: boolean }> = {};
+    const status: Record<string, { count: number, limit: number, reached: boolean, amount: number }> = {};
 
     quotaLimits.forEach((q: any) => {
-        const amt = Number(q.amount);
+        const pid = q.plan_id;
+        if (!pid) return;
         const limit = Number(q.monthly_limit);
-        const count = counts[amt] || 0;
-        status[amt] = {
+        const count = counts[pid] || 0;
+        status[pid] = {
             count,
             limit,
-            reached: limit > 0 && count >= limit
+            reached: limit > 0 && count >= limit,
+            amount: Number(q.amount)
         };
     });
 

@@ -142,7 +142,7 @@ export default async function SubscriptionsPage() {
                                     </div>
                                 ))}
 
-                                {quotasStatus[plan.max_loan_amount]?.reached && (
+                                {quotasStatus[plan.id]?.reached && (
                                     <div className="mt-8 px-4 py-4 rounded-xl bg-slate-950/50 border border-amber-500/20 text-center animate-fade-in">
                                         <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed italic">
                                             Capacité Mensuelle Atteinte <br />
@@ -155,9 +155,9 @@ export default async function SubscriptionsPage() {
                             <div className="relative z-10 w-full">
                                 <SubscribeButton
                                     planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.max_loan_amount]?.reached}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.id]?.reached}
                                     isModification={!!activeSub && activeSub.plan_id !== plan.id}
-                                    isQuotaFull={!!quotasStatus[plan.max_loan_amount]?.reached}
+                                    isQuotaFull={!!quotasStatus[plan.id]?.reached}
                                 />
                             </div>
                         </div>

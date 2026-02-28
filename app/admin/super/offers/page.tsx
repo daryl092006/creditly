@@ -7,7 +7,8 @@ import { SettingsAdjust, WarningAlt, Rocket, CheckmarkFilled } from '@carbon/ico
 export default async function OffersPage() {
     const supabase = await createClient()
     const { data: offers } = await supabase.from('abonnements').select('*').order('price')
-    const { data: quotas } = await supabase.from('global_quotas').select('*').order('amount')
+    const { data: quotas } = await supabase.from('global_quotas').select('*')
+    const quotaMap = (quotas || []).reduce((acc: any, q: any) => ({ ...acc, [q.plan_id]: q.monthly_limit }), {})
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
@@ -19,61 +20,9 @@ export default async function OffersPage() {
                             Retour au Centre de Contrôle
                         </Link>
                         <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase">Configuration Système</h1>
-                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed">Gérez les offres commerciales et les quotas de sécurité globaux</p>
+                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed">Gérez les offres commerciales et leurs plafonds d'abonnés mensuels</p>
                     </div>
                 </div>
-
-                {/* Global Quotas Management Section */}
-                <section className="space-y-8">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20">
-                            <SettingsAdjust size={24} />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Quotas de Sécurité Globaux</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Nombre maximum d'abonnements autorisés par mois et par palier</p>
-                        </div>
-                    </div>
-
-                    <div className="glass-panel p-8 bg-slate-900/50 border-slate-800">
-                        <form action={updateQuotas} className="space-y-8">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-6">
-                                {quotas?.map((q) => (
-                                    <div key={q.amount} className="space-y-3">
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Palier</label>
-                                            <span className="text-sm font-black text-white italic">{q.amount.toLocaleString()} F</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block italic">Limite / Mois</label>
-                                            <input
-                                                name={`quota_${q.amount}`}
-                                                type="number"
-                                                defaultValue={q.monthly_limit}
-                                                className="w-full bg-slate-950/50 border border-slate-800 rounded-lg p-2 text-sm font-bold text-emerald-500 focus:border-amber-500 transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-                                <div className="flex items-center gap-2 text-amber-500/60">
-                                    <WarningAlt size={16} />
-                                    <p className="text-[9px] font-bold uppercase italic tracking-widest">Une limite à 0 désactive les nouvelles souscriptions pour ce palier.</p>
-                                </div>
-                                <SubmitButton
-                                    loadingText="Mise à jour..."
-                                    className="glass-panel px-8 py-3 bg-emerald-600/10 text-emerald-400 border-emerald-600/20 hover:bg-emerald-600 hover:text-white transition-all text-xs font-black uppercase tracking-[0.2em]"
-                                >
-                                    Appliquer les Quotas
-                                </SubmitButton>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <div className="h-px bg-slate-800/50"></div>
 
                 {/* Subscription Plans Section */}
                 <section className="space-y-8">
@@ -82,8 +31,8 @@ export default async function OffersPage() {
                             <Rocket size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Catalogue des Offres</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Détails techniques et tarification des plans d'abonnement</p>
+                            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Catalogue des Offres & Quotas</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Définissez les prix et les limites d'abonnés pour chaque formule</p>
                         </div>
                     </div>
 
@@ -91,7 +40,11 @@ export default async function OffersPage() {
                         {offers?.map((offer) => (
                             <div key={offer.id} className="glass-panel p-8 bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-[60px] -mr-16 -mt-16 transition-all group-hover:bg-blue-600/10"></div>
-                                <form action={updateOffer} className="space-y-6 relative z-10">
+                                <form action={async (formData) => {
+                                    'use server'
+                                    await updateOffer(formData)
+                                    await updateQuotas(formData)
+                                }} className="space-y-6 relative z-10">
                                     <input type="hidden" name="id" value={offer.id} />
 
                                     <div className="flex items-center justify-between mb-6">
@@ -103,6 +56,17 @@ export default async function OffersPage() {
                                                 <h3 className="text-xl font-black text-white italic uppercase tracking-tighter leading-none mb-1">{offer.name}</h3>
                                                 <p className="text-[10px] font-bold text-slate-600 font-mono">ID: {offer.id.substring(0, 8)}...</p>
                                             </div>
+                                        </div>
+
+                                        {/* Quick Quota Display */}
+                                        <div className="flex flex-col items-end">
+                                            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Quota Mensuel</label>
+                                            <input
+                                                name={`quota_${offer.id}`}
+                                                type="number"
+                                                defaultValue={quotaMap[offer.id] || 0}
+                                                className="w-20 bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2 text-center text-xs font-black text-emerald-500 focus:border-emerald-500 transition-colors"
+                                            />
                                         </div>
                                     </div>
 

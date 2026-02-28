@@ -31,14 +31,10 @@ export async function subscribeToPlan(formData: FormData) {
 
     const adminSupabase = await createAdminClient()
 
-    // 0.5 Global Quota Check
-    const { data: planData } = await adminSupabase.from('abonnements').select('max_loan_amount, name').eq('id', planId).single();
-    if (planData) {
-        const quotas = await checkGlobalQuotasStatus();
-        const planQuota = quotas[Number(planData.max_loan_amount)];
-        if (planQuota && planQuota.reached) {
-            return { error: `Le quota mensuel pour le plan ${planData.name} est déjà atteint. Réessayez le mois prochain.` };
-        }
+    // Verify Global Quotas
+    const quotasStatus = await checkGlobalQuotasStatus()
+    if (quotasStatus[planId]?.reached) {
+        return { error: "Désolé, la capacité maximale d'abonnements pour cette offre ce mois-ci a été atteinte." }
     }
 
     const fileExt = file.name.split('.').pop()
