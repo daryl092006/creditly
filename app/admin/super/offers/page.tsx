@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { updateOffer, createOffer, updateQuotas } from './actions'
+import { updateOffer, createOffer, updateQuotas, deleteOffer } from './actions'
 import { SubmitButton } from '@/app/components/ui/SubmitButton'
 import { SettingsAdjust, WarningAlt, Rocket, CheckmarkFilled } from '@carbon/icons-react'
 
@@ -93,7 +93,17 @@ export default async function OffersPage() {
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 flex justify-end">
+                                    <div className="pt-6 flex justify-between items-center border-t border-slate-800/50">
+                                        <form action={deleteOffer} onSubmit={(e) => !confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cela peut échouer si des clients y sont déjà abonnés.') && e.preventDefault()}>
+                                            <input type="hidden" name="id" value={offer.id} />
+                                            <button
+                                                type="submit"
+                                                className="text-[9px] font-black text-rose-500/50 hover:text-rose-500 uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-rose-500/5 transition-all italic underline decoration-rose-500/20 underline-offset-4"
+                                            >
+                                                Supprimer l'offre
+                                            </button>
+                                        </form>
+
                                         <SubmitButton
                                             loadingText="Mise à jour..."
                                             className="glass-panel px-6 py-3 bg-blue-600/10 text-blue-400 border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"

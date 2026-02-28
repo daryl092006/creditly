@@ -66,6 +66,25 @@ export async function createOffer(formData: FormData) {
     revalidatePath('/')
 }
 
+export async function deleteOffer(formData: FormData) {
+    const supabase = await createClient()
+    const id = formData.get('id') as string
+
+    const { error } = await supabase
+        .from('abonnements')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        throw new Error(`Désolé, cette offre ne peut pas être supprimée car elle est probablement liée à des abonnements existants. ${getUserFriendlyErrorMessage(error)}`)
+    }
+
+    revalidatePath('/admin/super/offers')
+    revalidatePath('/admin/super')
+    revalidatePath('/client/subscriptions')
+    revalidatePath('/')
+}
+
 export async function updateQuotas(formData: FormData) {
     const supabase = await createClient()
 
