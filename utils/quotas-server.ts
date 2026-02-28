@@ -42,7 +42,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         }
     });
 
-    const status: Record<string, { count: number, limit: number, reached: boolean, amount: number }> = {};
+    const status: Record<string, { count: number, limit: number, reached: boolean }> = {};
 
     quotaLimits.forEach((q: any) => {
         const pid = q.plan_id;
@@ -52,8 +52,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         status[pid] = {
             count,
             limit,
-            reached: limit > 0 && count >= limit,
-            amount: Number(q.amount)
+            reached: limit > 0 && count >= limit
         };
     });
 

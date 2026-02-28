@@ -42,6 +42,7 @@ export default async function SuperAdminPage({
     }
 
     const supabase = await createClient()
+    const { data: offers } = await supabase.from('abonnements').select('*').order('price')
     const quotasStatus = await checkGlobalQuotasStatus(month, year)
 
     // 1. Statisiques Globales (Total)
@@ -252,8 +253,8 @@ export default async function SuperAdminPage({
                                     <div className="relative h-1 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
                                         <div
                                             className={`h-full transition-all duration-1000 rounded-full ${isLocked ? 'bg-slate-800' :
-                                                    isFull ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse' :
-                                                        'bg-gradient-to-r from-blue-600 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                                                isFull ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse' :
+                                                    'bg-gradient-to-r from-blue-600 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                                                 }`}
                                             style={{ width: `${percentage}%` }}
                                         ></div>
