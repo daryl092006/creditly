@@ -85,6 +85,11 @@ export async function deleteOffer(formData: FormData) {
     revalidatePath('/')
 }
 
+export async function updateOfferAndQuotas(formData: FormData) {
+    await updateOffer(formData)
+    await updateQuotas(formData)
+}
+
 export async function updateQuotas(formData: FormData) {
     const supabase = await createClient()
 

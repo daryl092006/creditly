@@ -52,7 +52,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         status[pid] = {
             count,
             limit,
-            reached: limit > 0 && count >= limit
+            reached: count >= limit
         };
     });
 

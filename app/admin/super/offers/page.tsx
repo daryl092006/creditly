@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { updateOffer, createOffer, updateQuotas, deleteOffer } from './actions'
+import { updateOffer, createOffer, updateQuotas, deleteOffer, updateOfferAndQuotas } from './actions'
 import { SubmitButton } from '@/app/components/ui/SubmitButton'
 import { SettingsAdjust, WarningAlt, Rocket, CheckmarkFilled } from '@carbon/icons-react'
 
@@ -40,11 +40,7 @@ export default async function OffersPage() {
                         {offers?.map((offer) => (
                             <div key={offer.id} className="glass-panel p-8 bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-[60px] -mr-16 -mt-16 transition-all group-hover:bg-blue-600/10"></div>
-                                <form action={async (formData) => {
-                                    'use server'
-                                    await updateOffer(formData)
-                                    await updateQuotas(formData)
-                                }} className="space-y-6 relative z-10">
+                                <form action={updateOfferAndQuotas} className="space-y-6 relative z-10">
                                     <input type="hidden" name="id" value={offer.id} />
 
                                     <div className="flex items-center justify-between mb-6">
@@ -94,25 +90,29 @@ export default async function OffersPage() {
                                     </div>
 
                                     <div className="pt-6 flex justify-between items-center border-t border-slate-800/50">
-                                        <form action={deleteOffer} onSubmit={(e) => !confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cela peut échouer si des clients y sont déjà abonnés.') && e.preventDefault()}>
-                                            <input type="hidden" name="id" value={offer.id} />
-                                            <button
-                                                type="submit"
-                                                className="text-[9px] font-black text-rose-500/50 hover:text-rose-500 uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-rose-500/5 transition-all italic underline decoration-rose-500/20 underline-offset-4"
+                                        <div className="flex gap-4 items-center">
+                                            <SubmitButton
+                                                loadingText="Mise à jour..."
+                                                className="glass-panel px-6 py-3 bg-blue-600/10 text-blue-400 border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+                                                variant="glass"
                                             >
-                                                Supprimer l'offre
-                                            </button>
-                                        </form>
-
-                                        <SubmitButton
-                                            loadingText="Mise à jour..."
-                                            className="glass-panel px-6 py-3 bg-blue-600/10 text-blue-400 border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
-                                            variant="glass"
-                                        >
-                                            Enregistrer
-                                        </SubmitButton>
+                                                Enregistrer
+                                            </SubmitButton>
+                                        </div>
                                     </div>
                                 </form>
+
+                                <div className="mt-4 flex justify-start">
+                                    <form action={deleteOffer} onSubmit={(e) => !confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cela peut échouer si des clients y sont déjà abonnés.') && e.preventDefault()}>
+                                        <input type="hidden" name="id" value={offer.id} />
+                                        <button
+                                            type="submit"
+                                            className="text-[9px] font-black text-rose-500/50 hover:text-rose-500 uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-rose-500/5 transition-all italic underline decoration-rose-500/20 underline-offset-4"
+                                        >
+                                            Supprimer l'offre
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         ))}
 
