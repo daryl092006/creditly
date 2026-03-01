@@ -1,11 +1,11 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 
 export async function updateOffer(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     const id = formData.get('id') as string
     if (!id) return;
@@ -32,13 +32,13 @@ export async function updateOffer(formData: FormData) {
         .eq('id', id)
 
     if (error) {
-        console.error('Database error in updateOffer:', error);
-        throw new Error(getUserFriendlyErrorMessage(error))
+        console.error('CRITICAL: Offer update failed for', id, ':', error);
+        throw new Error(`Erreur de modification du plan : ${getUserFriendlyErrorMessage(error)} (ID: ${id})`);
     }
 }
 
 export async function createOffer(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     const name = formData.get('name') as string
     const price = parseInt(formData.get('price') as string)
@@ -68,7 +68,7 @@ export async function createOffer(formData: FormData) {
 }
 
 export async function deleteOffer(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const id = formData.get('id') as string
 
     const { error } = await supabase
@@ -91,29 +91,32 @@ export async function updateOfferAndQuotas(formData: FormData) {
         await updateOffer(formData)
         await updateQuotas(formData)
 
+        // Consolidate revalidation
         revalidatePath('/admin/super/offers')
         revalidatePath('/admin/super')
-        revalidatePath('/client/subscriptions')
-        revalidatePath('/')
-    } catch (e) {
-        console.error('Critical error in updateOfferAndQuotas:', e);
-        throw e;
+    } catch (e: any) {
+        console.error('Critical failure in updateOfferAndQuotas:', e);
+        // We throw a descriptive error that will be caught by error.tsx
+        throw new Error(e.message || "Erreur de mise à jour système.");
     }
 }
 
 export async function updateQuotas(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     // Extract all keys that look like quota_XXXX
     const entries = Array.from(formData.entries());
     const quotaUpdates = entries
         .filter(([key]) => key.startsWith('quota_'))
-        .map(([key, value]) => ({
-            plan_id: key.replace('quota_', ''),
-            monthly_limit: parseInt(value as string)
-        }));
+        .map(([key, value]) => {
+            const val = parseInt(value as string);
+            return {
+                plan_id: key.replace('quota_', ''),
+                monthly_limit: isNaN(val) ? 0 : val
+            };
+        });
 
-    console.log('Processed quota updates:', quotaUpdates);
+    console.log('Final quota updates to apply:', quotaUpdates);
 
     for (const update of quotaUpdates) {
         const { error } = await supabase
@@ -121,8 +124,8 @@ export async function updateQuotas(formData: FormData) {
             .upsert(update, { onConflict: 'plan_id' });
 
         if (error) {
-            console.error('Quota update error:', error);
-            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
+            console.error('CRITICAL: Quota update failed for plan', update.plan_id, ':', error);
+            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)} (Plan: ${update.plan_id})`);
         }
     }
 }

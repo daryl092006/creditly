@@ -20,7 +20,7 @@ export function OfferCard({ offer, quota }: OfferCardProps) {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center font-black text-xl border border-blue-500/20 shadow-inner">
-                            {offer.name.charAt(0)}
+                            {(offer.name || 'P').charAt(0)}
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white italic uppercase tracking-tighter leading-none mb-1">{offer.name}</h3>

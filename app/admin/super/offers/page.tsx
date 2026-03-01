@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { createOffer } from './actions'
 import { SubmitButton } from '@/app/components/ui/SubmitButton'
@@ -6,7 +6,7 @@ import { Rocket } from '@carbon/icons-react'
 import { OfferCard } from './OfferCard'
 
 export default async function OffersPage() {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const { data: offers } = await supabase.from('abonnements').select('*').order('price')
     const { data: quotas } = await supabase.from('global_quotas').select('*')
     const quotaMap = (quotas || []).reduce((acc: any, q: any) => ({ ...acc, [q.plan_id]: q.monthly_limit }), {})
