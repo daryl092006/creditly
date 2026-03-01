@@ -218,8 +218,8 @@ export default async function ClientDashboard() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 relative z-10">
                         {[5000, 10000, 25000, 50000, 100000].map(amt => {
                             const q = quotasStatus[amt];
-                            const remaining = q ? q.limit - q.count : 0;
-                            const percentage = q ? (q.count / q.limit) * 100 : 0;
+                            const remaining = q ? Math.max(0, q.limit - q.count) : 0;
+                            const percentage = q && q.limit > 0 ? Math.min(100, (q.count / q.limit) * 100) : 0;
                             return (
                                 <div key={amt} className="space-y-3">
                                     <div className="flex justify-between items-baseline">
