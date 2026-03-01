@@ -115,19 +115,14 @@ export async function updateQuotas(formData: FormData) {
 
     console.log('Processed quota updates:', quotaUpdates);
 
-    try {
-        for (const update of quotaUpdates) {
-            const { error } = await supabase
-                .from('global_quotas')
-                .upsert(update, { onConflict: 'plan_id' });
+    for (const update of quotaUpdates) {
+        const { error } = await supabase
+            .from('global_quotas')
+            .upsert(update, { onConflict: 'plan_id' });
 
-            if (error) {
-                console.error('Quota update error:', error);
-                throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
-            }
+        if (error) {
+            console.error('Quota update error:', error);
+            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
         }
-    } catch (e) {
-        console.error('Action error in updateQuotas:', e);
-        throw e;
     }
 }
