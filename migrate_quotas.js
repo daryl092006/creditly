@@ -14,11 +14,20 @@ async function migrate() {
 
         console.log('Migrating global_quotas table to be plan-based...');
 
-        // 1. Drop old primary key and amount column dependency
-        await supabase.rpc('exec_sql', { sql_query: `
-            ALTER TABLE public.global_quotas DROP CONSTRAINT IF EXISTS global_quotas_pkey;
-            ALTER TABLE public.global_quotas ADD COLUMN IF NOT EXISTS plan_id uuid REFERENCES public.abonnements(id);
-        `}).catch(() => {}); // Fallback if RPC doesn't exist
+        // 1. Re-create or Update Table structure
+        console.log('Checking table structure...');
+        
+        // Use a simpler approach: check if we can select from the table
+        const { error: tableCheckError } = await supabase.from('global_quotas').select('plan_id').limit(1);
+        
+        if (tableCheckError && tableCheckError.message.includes('column "plan_id" does not exist')) {
+            console.log('Adding plan_id column...');
+            // This requires the 'exec_sql' RPC to be setup in Supabase
+            const { error: rpcError } = await supabase.rpc('exec_sql', { sql_query: `
+                ALTER TABLE public.global_quotas ADD COLUMN IF NOT EXISTS plan_id uuid REFERENCES public.abonnements(id);
+            `});
+            if (rpcError) console.error('Failed to add column via RPC:', rpcError.message);
+        }
 
         // 2. Map existing amounts to plans
         const { data: plans } = await supabase.from('abonnements').select('id, max_loan_amount');
