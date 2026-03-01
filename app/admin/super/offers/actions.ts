@@ -8,11 +8,15 @@ export async function updateOffer(formData: FormData) {
     const supabase = await createClient()
 
     const id = formData.get('id') as string
+    if (!id) return;
+
     const name = formData.get('name') as string
-    const price = parseInt(formData.get('price') as string)
-    const max_loans_per_month = parseInt(formData.get('max_loans_per_month') as string)
-    const max_loan_amount = parseFloat(formData.get('max_loan_amount') as string)
-    const repayment_delay_days = parseInt(formData.get('repayment_delay_days') as string)
+    const price = parseInt(formData.get('price') as string) || 0
+    const max_loans_per_month = parseInt(formData.get('max_loans_per_month') as string) || 0
+    const max_loan_amount = parseFloat(formData.get('max_loan_amount') as string) || 0
+    const repayment_delay_days = parseInt(formData.get('repayment_delay_days') as string) || 0
+
+    console.log('Updating offer:', id, { name, price });
 
     const updates = {
         name,
@@ -28,12 +32,9 @@ export async function updateOffer(formData: FormData) {
         .eq('id', id)
 
     if (error) {
+        console.error('Database error in updateOffer:', error);
         throw new Error(getUserFriendlyErrorMessage(error))
     }
-
-    revalidatePath('/admin/super/offers')
-    revalidatePath('/client/subscriptions')
-    revalidatePath('/')
 }
 
 export async function createOffer(formData: FormData) {
@@ -86,8 +87,18 @@ export async function deleteOffer(formData: FormData) {
 }
 
 export async function updateOfferAndQuotas(formData: FormData) {
-    await updateOffer(formData)
-    await updateQuotas(formData)
+    try {
+        await updateOffer(formData)
+        await updateQuotas(formData)
+
+        revalidatePath('/admin/super/offers')
+        revalidatePath('/admin/super')
+        revalidatePath('/client/subscriptions')
+        revalidatePath('/')
+    } catch (e) {
+        console.error('Critical error in updateOfferAndQuotas:', e);
+        throw e;
+    }
 }
 
 export async function updateQuotas(formData: FormData) {
@@ -102,17 +113,21 @@ export async function updateQuotas(formData: FormData) {
             monthly_limit: parseInt(value as string)
         }));
 
-    for (const update of quotaUpdates) {
-        const { error } = await supabase
-            .from('global_quotas')
-            .upsert(update, { onConflict: 'plan_id' });
+    console.log('Processed quota updates:', quotaUpdates);
 
-        if (error) {
-            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
+    try {
+        for (const update of quotaUpdates) {
+            const { error } = await supabase
+                .from('global_quotas')
+                .upsert(update, { onConflict: 'plan_id' });
+
+            if (error) {
+                console.error('Quota update error:', error);
+                throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
+            }
         }
+    } catch (e) {
+        console.error('Action error in updateQuotas:', e);
+        throw e;
     }
-
-    revalidatePath('/admin/super/offers')
-    revalidatePath('/admin/super')
-    revalidatePath('/client/subscriptions')
 }

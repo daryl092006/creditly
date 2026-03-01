@@ -21,6 +21,8 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         return {};
     }
 
+    if (!quotaLimits) return {};
+
     // 2. Get Subscriptions for period
     const { data: subs, error: subError } = await supabase
         .from('user_subscriptions')
