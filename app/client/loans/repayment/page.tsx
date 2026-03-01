@@ -58,7 +58,7 @@ export default async function RepaymentPage({
                             <div className="space-y-1 text-center md:text-left">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Solde Restant à Payer</p>
                                 <p className="text-4xl font-black text-white italic tracking-tighter">
-                                    {remainingBalance.toLocaleString()} <span className="text-xs not-italic text-slate-600">FCFA</span>
+                                    {(remainingBalance || 0).toLocaleString()} <span className="text-xs not-italic text-slate-600">FCFA</span>
                                 </p>
                             </div>
                             <div className="px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-center">
@@ -68,7 +68,7 @@ export default async function RepaymentPage({
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
-                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Capital Initial : {loan.amount.toLocaleString()} F</p>
+                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Capital Initial : {(loan.amount || 0).toLocaleString()} F</p>
                             <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest italic">Déjà réglé : {(loan.amount_paid || 0).toLocaleString()} F</p>
                         </div>
                     </div>

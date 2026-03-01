@@ -48,11 +48,12 @@ export default async function LoanRequestPage() {
     const currentActiveCount = activeLoansCount || 0
     const currentCumulativeDebt = activeLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0
 
-    const remainingAmount = Math.max(0, sub.plan.max_loan_amount - currentCumulativeDebt)
-    const remainingLoans = Math.max(0, sub.plan.max_loans_per_month - currentActiveCount)
+    const planData = sub?.plan || { max_loan_amount: 0, max_loans_per_month: 0, name: '...' }
+    const remainingAmount = Math.max(0, planData.max_loan_amount - currentCumulativeDebt)
+    const remainingLoans = Math.max(0, planData.max_loans_per_month - currentActiveCount)
 
     // Check 1: Max Simultanous Loans Capacity
-    if (currentActiveCount >= sub.plan.max_loans_per_month) {
+    if (currentActiveCount >= planData.max_loans_per_month) {
         return (
             <div className="p-12 text-center glass-panel bg-slate-900/50 border-slate-800 max-w-2xl mx-auto my-12 animate-fade-in relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
@@ -60,8 +61,8 @@ export default async function LoanRequestPage() {
                     <CloseFilled size={40} />
                 </div>
                 <h1 className="text-4xl font-black mb-4 text-white uppercase italic tracking-tighter">Capacité <span className="text-red-500">Atteinte.</span></h1>
-                <p className="mb-2 text-slate-400 font-bold italic">Vous avez atteint la limite de {sub.plan.max_loans_per_month} prêts simultanés incluse dans votre offre {sub.plan.name}.</p>
-                <div className="mb-10 text-xs font-black text-slate-600 uppercase tracking-widest">({currentActiveCount} / {sub.plan.max_loans_per_month} dossiers actifs)</div>
+                <p className="mb-2 text-slate-400 font-bold italic">Vous avez atteint la limite de {planData.max_loans_per_month} prêts simultanés incluse dans votre offre {planData.name}.</p>
+                <div className="mb-10 text-xs font-black text-slate-600 uppercase tracking-widest">({currentActiveCount} / {planData.max_loans_per_month} dossiers actifs)</div>
                 <Link href="/client/dashboard">
                     <button className="premium-button bg-slate-800 border-white/5 active:scale-95 px-10">
                         <ArrowLeft size={16} />
@@ -84,10 +85,10 @@ export default async function LoanRequestPage() {
                     <CloseFilled size={40} />
                 </div>
                 <h1 className="text-4xl font-black mb-4 text-white uppercase italic tracking-tighter">Plafond <span className="text-red-500">Atteint.</span></h1>
-                <p className="mb-2 text-slate-400 font-bold italic">Votre encours cumulé a atteint la limite de votre offre {sub.plan.name}.</p>
+                <p className="mb-2 text-slate-400 font-bold italic">Votre encours cumulé a atteint la limite de votre offre {planData.name}.</p>
                 <div className="mb-10 p-4 rounded-xl bg-slate-950 border border-white/5 inline-block">
                     <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Encours Actuel</div>
-                    <div className="text-xl font-black text-white italic">{currentCumulativeDebt.toLocaleString()} <span className="text-[10px] text-slate-600">/ {sub.plan.max_loan_amount.toLocaleString()} FCFA</span></div>
+                    <div className="text-xl font-black text-white italic">{currentCumulativeDebt.toLocaleString()} <span className="text-[10px] text-slate-600">/ {planData.max_loan_amount.toLocaleString()} FCFA</span></div>
                 </div>
                 <div>
                     <Link href="/client/dashboard">
@@ -116,11 +117,11 @@ export default async function LoanRequestPage() {
                         </p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] font-bold text-slate-600 uppercase">Plafond: {sub.plan.max_loan_amount.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase">Plafond: {planData.max_loan_amount.toLocaleString()}</p>
                         <div className="h-1 w-24 bg-slate-800 rounded-full mt-2 overflow-hidden">
                             <div
                                 className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${(currentCumulativeDebt / sub.plan.max_loan_amount) * 100}%` }}
+                                style={{ width: `${(currentCumulativeDebt / (planData.max_loan_amount || 1)) * 100}%` }}
                             ></div>
                         </div>
                     </div>
@@ -130,7 +131,7 @@ export default async function LoanRequestPage() {
                     <div>
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Dossiers Disponibles</p>
                         <p className="text-2xl font-black text-white italic tracking-tighter">
-                            {remainingLoans} <span className="text-[10px] not-italic text-slate-600">/ {sub.plan.max_loans_per_month}</span>
+                            {remainingLoans} <span className="text-[10px] not-italic text-slate-600">/ {planData.max_loans_per_month}</span>
                         </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black italic border border-emerald-500/20">

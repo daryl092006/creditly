@@ -77,7 +77,7 @@ export default async function ClientLoansPage() {
                                                 <td className="px-8 py-6">
                                                     <div className="flex flex-col gap-2">
                                                         <span className="text-xl font-black text-white tracking-tighter italic">
-                                                            {loan.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
+                                                            {(loan.amount || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
                                                         </span>
                                                         {loan.status === 'active' && (loan.amount_paid || 0) > 0 && (
                                                             <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
@@ -167,7 +167,7 @@ export default async function ClientLoansPage() {
 
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Montant Engagé</p>
-                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{loan.amount.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{(loan.amount || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
                                         {loan.status === 'active' && (loan.amount_paid || 0) > 0 && (
                                             <div className="pt-2">
                                                 <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
@@ -246,7 +246,7 @@ export default async function ClientLoansPage() {
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <span className="text-xl font-black text-white tracking-tighter italic">
-                                                        {repayment.amount_declared.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
+                                                        {(repayment.amount_declared || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-6 text-left">
@@ -297,7 +297,7 @@ export default async function ClientLoansPage() {
 
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Montant déclaré</p>
-                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{repayment.amount_declared.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{(repayment.amount_declared || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
                                     </div>
 
                                     <div className="pt-4 border-t border-white/5">

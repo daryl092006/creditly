@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, Money, Information, CheckmarkFilled, CloseFilled, 
 export default async function LoanDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const { id } = params;
-    const supabase = await createClient() 
+    const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return redirect('/auth/login')
@@ -89,7 +89,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Engagement Total</p>
-                            <p className="text-5xl font-black text-white tracking-tighter italic">{loan.amount.toLocaleString()} <span className="text-xs not-italic text-slate-700">FCFA</span></p>
+                            <p className="text-5xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} <span className="text-xs not-italic text-slate-700">FCFA</span></p>
                         </div>
                     </div>
                 </div>
@@ -146,7 +146,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                         <div className="grid grid-cols-1 gap-6">
                             <div className="p-6 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
                                 <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 italic">Capital Débloqué</p>
-                                <p className="text-3xl font-black text-white tracking-tighter italic">{loan.amount.toLocaleString()} FCFA</p>
+                                <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} FCFA</p>
                             </div>
                             <div className="p-6 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
                                 <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 italic">Frais de Dossier</p>
@@ -154,7 +154,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                             </div>
                             <div className="p-6 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
                                 <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic">Balance à Régler</p>
-                                <p className="text-3xl font-black text-white tracking-tighter italic">{loan.amount.toLocaleString()} FCFA</p>
+                                <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} FCFA</p>
                             </div>
                         </div>
                     </div>

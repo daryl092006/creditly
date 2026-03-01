@@ -46,7 +46,12 @@ export default async function DashboardPage() {
         profile = newProfile
     }
 
-    console.log('User profile found/created, role:', profile.role)
+    console.log('User profile found/created, role:', profile?.role)
+
+    if (!profile) {
+        console.error('CRITICAL: Profile is null after recovery attempts')
+        return redirect('/client/dashboard?error=ProfileRecoveryFailed')
+    }
 
     // Redirect based on role
     switch (profile.role) {

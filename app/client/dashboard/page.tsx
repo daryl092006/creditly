@@ -67,15 +67,15 @@ export default async function ClientDashboard() {
         .single()
 
     const now = new Date().toISOString()
+    const allSubs = profile?.user_subscriptions || []
+
     // Find a subscription that is active and not expired
-    // Find a subscription that is active and not expired
-    const activeSub = profile?.user_subscriptions?.find((sub: UserSubscription) =>
+    const activeSub = allSubs.find((sub: UserSubscription) =>
         sub.status === 'active' && sub.end_date && sub.end_date > now
     )
 
     // Find if there's an expired but previously active subscription
-    // Find if there's an expired but previously active subscription
-    const expiredSub = !activeSub ? profile?.user_subscriptions?.find((sub: UserSubscription) =>
+    const expiredSub = !activeSub ? allSubs.find((sub: UserSubscription) =>
         (sub.status === 'expired' || sub.status === 'active') && sub.end_date && sub.end_date <= now
     ) : null
 
@@ -106,38 +106,38 @@ export default async function ClientDashboard() {
     // Fetch latest for Status Hub
     const latestLoan = recentLoans?.[0]
     const latestRepayment = recentRepayments?.[0]
-    const latestSubscription = profile?.user_subscriptions?.sort((a: UserSubscription, b: UserSubscription) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+    const latestSubscription = [...allSubs].sort((a: UserSubscription, b: UserSubscription) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
 
     // Check if KYC docs exist
     const { data: kycDocs } = await supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
 
     // Combine and format notifications
     const notifications = [
-        ...(profile?.user_subscriptions?.map((s: UserSubscription) => ({
+        ...allSubs.map((s: UserSubscription) => ({
             id: `sub-${s.created_at}`,
-            text: s.status === 'pending' ? `Paiement abonnement ${s.abonnements.name} en cours de validation` :
-                s.status === 'active' ? `Abonnement ${s.abonnements.name} actif` :
-                    s.status === 'rejected' ? `Paiement ${s.abonnements.name} refusé : ${s.rejection_reason || 'Inconnu'}` :
-                        `Abonnement ${s.abonnements.name} expiré`,
+            text: s.status === 'pending' ? `Paiement abonnement ${s.abonnements?.name || '...'} en cours de validation` :
+                s.status === 'active' ? `Abonnement ${s.abonnements?.name || '...'} actif` :
+                    s.status === 'rejected' ? `Paiement ${s.abonnements?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                        `Abonnement ${s.abonnements?.name || '...'} expiré`,
             date: s.created_at,
             type: s.status === 'pending' ? 'pending' : 'status',
             status: s.status
-        })) || []),
+        })),
         ...(recentLoans?.map(l => ({
             id: `loan-${l.id}`,
-            text: l.status === 'pending' ? `Demande de prêt de ${l.amount.toLocaleString()} FCFA en attente` :
-                l.status === 'active' ? `Prêt de ${l.amount.toLocaleString()} FCFA approuvé` :
-                    l.status === 'paid' ? `Prêt de ${l.amount.toLocaleString()} FCFA entièrement remboursé` :
-                        `Demande de prêt de ${l.amount.toLocaleString()} FCFA rejetée`,
+            text: l.status === 'pending' ? `Demande de prêt de ${(l.amount || 0).toLocaleString()} FCFA en attente` :
+                l.status === 'active' ? `Prêt de ${(l.amount || 0).toLocaleString()} FCFA approuvé` :
+                    l.status === 'paid' ? `Prêt de ${(l.amount || 0).toLocaleString()} FCFA entièrement remboursé` :
+                        `Demande de prêt de ${(l.amount || 0).toLocaleString()} FCFA rejetée`,
             date: l.admin_decision_date || l.created_at,
             type: l.status === 'pending' ? 'pending' : 'status',
             status: l.status
         })) || []),
         ...(recentRepayments?.map(r => ({
             id: `rep-${r.id}`,
-            text: r.status === 'pending' ? `Preuve de remboursement de ${r.amount_declared.toLocaleString()} FCFA en attente` :
-                r.status === 'verified' ? `Remboursement de ${r.amount_declared.toLocaleString()} FCFA validé` :
-                    `Remboursement de ${r.amount_declared.toLocaleString()} FCFA rejeté`,
+            text: r.status === 'pending' ? `Preuve de remboursement de ${(r.amount_declared || 0).toLocaleString()} FCFA en attente` :
+                r.status === 'verified' ? `Remboursement de ${(r.amount_declared || 0).toLocaleString()} FCFA validé` :
+                    `Remboursement de ${(r.amount_declared || 0).toLocaleString()} FCFA rejeté`,
             date: r.validated_at || r.created_at,
             type: r.status === 'pending' ? 'pending' : 'status',
             status: r.status
@@ -223,7 +223,7 @@ export default async function ClientDashboard() {
                             return (
                                 <div key={amt} className="space-y-3">
                                     <div className="flex justify-between items-baseline">
-                                        <p className="text-lg font-black text-white italic tracking-tighter">{amt.toLocaleString()} <span className="text-[8px] not-italic text-slate-600">F</span></p>
+                                        <p className="text-lg font-black text-white italic tracking-tighter">{(amt || 0).toLocaleString()} <span className="text-[8px] not-italic text-slate-600">F</span></p>
                                         <span className={`text-[8px] font-black uppercase ${remaining === 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                                             {remaining} restants
                                         </span>
@@ -270,7 +270,7 @@ export default async function ClientDashboard() {
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Abonnement</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{activeSub ? activeSub.abonnements.name : (expiredSub ? expiredSub.abonnements.name : 'N/A')}</span>
+                                    <span className="text-xl font-black text-white italic truncate">{activeSub?.abonnements?.name || expiredSub?.abonnements?.name || 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${activeSub ? 'bg-emerald-500/10 text-emerald-500' :
                                         expiredSub ? 'bg-red-500/10 text-red-500' :
                                             latestSubscription && !latestSubscription.is_active ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-800 text-slate-500'
@@ -279,7 +279,7 @@ export default async function ClientDashboard() {
                                     </span>
                                 </div>
                                 <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest animate-pulse">
-                                    {activeSub
+                                    {activeSub && activeSub.end_date
                                         ? `Échéance : ${new Date(activeSub.end_date).toLocaleDateString('fr-FR')}`
                                         : expiredSub ? '⚠️ Abonnement expiré' : 'Services restreints'}
                                 </p>
@@ -291,7 +291,7 @@ export default async function ClientDashboard() {
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Crédit</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{latestLoan ? `${latestLoan.amount.toLocaleString()} F` : 'N/A'}</span>
+                                    <span className="text-xl font-black text-white italic truncate">{latestLoan ? `${(latestLoan.amount || 0).toLocaleString()} F` : 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${latestLoan?.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' :
                                         latestLoan?.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
                                             latestLoan?.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
@@ -316,7 +316,7 @@ export default async function ClientDashboard() {
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Paiement</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{latestRepayment ? `${latestRepayment.amount_declared.toLocaleString()} F` : 'N/A'}</span>
+                                    <span className="text-xl font-black text-white italic truncate">{latestRepayment ? `${(latestRepayment.amount_declared || 0).toLocaleString()} F` : 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${latestRepayment?.status === 'verified' ? 'bg-emerald-500/10 text-emerald-500' :
                                         latestRepayment?.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
                                             latestRepayment?.status === 'rejected' ? 'bg-red-500/10 text-red-500' : 'bg-slate-800 text-slate-500'
@@ -379,9 +379,9 @@ export default async function ClientDashboard() {
                                 </div>
                                 <div className="mt-8 space-y-3">
                                     <h3 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
-                                        {activeSub ? activeSub.abonnements.name : (expiredSub ? expiredSub.abonnements.name : 'Aucun Plan')}
+                                        {activeSub?.abonnements?.name || expiredSub?.abonnements?.name || 'Aucun Plan'}
                                     </h3>
-                                    {activeSub && (
+                                    {activeSub && activeSub.end_date && (
                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic">
                                             Valide jusqu'au {new Date(activeSub.end_date).toLocaleDateString('fr-FR')}
                                         </p>
@@ -462,7 +462,7 @@ export default async function ClientDashboard() {
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">En-cours total</p>
-                                    <p className="text-2xl font-black text-white tracking-tighter italic truncate">{totalOutstanding.toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                    <p className="text-2xl font-black text-white tracking-tighter italic truncate">{(totalOutstanding || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
                                 </div>
                             </div>
 

@@ -395,7 +395,7 @@ export default async function SuperAdminPage({
                                                         {sub.plan?.name}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-[11px] font-black text-white italic">{sub.plan?.price.toLocaleString()} F</td>
+                                                <td className="px-6 py-4 text-[11px] font-black text-white italic">{sub.plan?.price?.toLocaleString() || '0'} F</td>
                                                 <td className="px-6 py-4 text-right pr-6">
                                                     <span className={`text-[9px] font-black uppercase italic ${sub.status === 'active' ? 'text-emerald-500' : sub.status === 'rejected' ? 'text-red-500' : 'text-amber-500'}`}>
                                                         {sub.status === 'active' ? 'Validé' : sub.status === 'rejected' ? 'Rejeté' : 'En attente'}

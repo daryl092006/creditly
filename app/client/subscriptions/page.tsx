@@ -124,7 +124,7 @@ export default async function SubscriptionsPage() {
                                 <div>
                                     <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-1 leading-none">{plan.name}</h3>
                                     <div className="flex items-baseline justify-center gap-1">
-                                        <span className="text-3xl font-black premium-gradient-text italic tracking-tighter">{plan.price.toLocaleString()}</span>
+                                        <span className="text-3xl font-black premium-gradient-text italic tracking-tighter">{(plan.price || 0).toLocaleString()}</span>
                                         <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">FCFA / mois</span>
                                     </div>
                                 </div>
@@ -133,7 +133,7 @@ export default async function SubscriptionsPage() {
                             <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
                                 {[
                                     { text: `${plan.max_loans_per_month} prêts mensuels`, icon: <Star size={16} /> },
-                                    { text: `Limite de ${plan.max_loan_amount.toLocaleString()} FCFA`, icon: <Rocket size={16} /> },
+                                    { text: `Limite de ${(plan.max_loan_amount || 0).toLocaleString()} FCFA`, icon: <Rocket size={16} /> },
                                     { text: `${plan.repayment_delay_days} jours de délai`, icon: <Flash size={16} /> }
                                 ].map((feature, i) => (
                                     <div key={i} className="flex items-center justify-center gap-4 group/feat">
