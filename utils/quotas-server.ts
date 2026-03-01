@@ -44,17 +44,24 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         }
     });
 
+    const { data: allPlans } = await supabase.from('abonnements').select('id');
+    const plans = (allPlans || []) as { id: string }[];
+
     const status: Record<string, { count: number, limit: number, reached: boolean }> = {};
 
-    quotaLimits.forEach((q: any) => {
-        const pid = q.plan_id;
-        if (!pid) return;
-        const limit = Number(q.monthly_limit);
+    plans.forEach((p) => {
+        const pid = p.id;
+        const q = (quotaLimits || []).find((ql: any) => ql.plan_id === pid);
+
+        // DEFAULT TO 0 (BLOCKED) if not in the quotas table
+        const limit = q ? parseInt(q.monthly_limit) : 0;
         const count = counts[pid] || 0;
+        const reached = count >= limit;
+
         status[pid] = {
             count,
             limit,
-            reached: count >= limit
+            reached
         };
     });
 
