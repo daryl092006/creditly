@@ -59,7 +59,7 @@ export default function LoanRequestForm({ subscription, quotasStatus, userData }
         }
 
         if (quotasStatus[amount]?.reached) {
-            setError(`Le quota mensuel pour ce montant (${amount.toLocaleString()} F) est déjà atteint au niveau global. Choisissez un autre montant ou revenez le mois prochain.`)
+            setError(`Ce montant (${amount.toLocaleString()} F) n'est plus disponible pour ce mois. Veuillez choisir un autre montant ou réessayer le mois prochain.`)
             return false
         }
 
@@ -169,20 +169,6 @@ export default function LoanRequestForm({ subscription, quotasStatus, userData }
                         <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Max: {subscription.plan.max_loan_amount.toLocaleString()}</p>
                     </div>
 
-                    {quotasStatus[amount] && (
-                        <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 transition-colors ${quotasStatus[amount].reached ? 'bg-red-500/10 border border-red-500/20 text-red-500' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500'}`}>
-                            <Information size={16} />
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Quota Global {amount.toLocaleString()} F</p>
-                                <p className="text-xs font-bold font-sans">
-                                    {quotasStatus[amount].reached
-                                        ? "Plafond mensuel atteint pour ce montant"
-                                        : `Disponibilité restante : ${quotasStatus[amount].limit - quotasStatus[amount].count} dossiers`
-                                    }
-                                </p>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

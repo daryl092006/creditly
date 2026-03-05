@@ -13,10 +13,14 @@ export default async function UserManagementPage() {
 
     const { data: activeLoans } = await supabase
         .from('prets')
-        .select('user_id')
+        .select('user_id, amount, amount_paid')
         .in('status', ['active', 'overdue'])
 
-    const activeLoanUserIds = new Set(activeLoans?.map(l => l.user_id) || [])
+    const userDebts = new Map<string, number>()
+    activeLoans?.forEach(l => {
+        const debt = (l.amount || 0) - (l.amount_paid || 0)
+        userDebts.set(l.user_id, (userDebts.get(l.user_id) || 0) + debt)
+    })
 
     const rows = users?.map(u => ({
         id: u.id,
@@ -25,7 +29,9 @@ export default async function UserManagementPage() {
         whatsapp: u.whatsapp,
         role: u.role,
         is_active: u.is_account_active,
-        has_active_loans: activeLoanUserIds.has(u.id)
+        has_active_loans: userDebts.has(u.id) && userDebts.get(u.id)! > 0,
+        surplus_balance: u.surplus_balance || 0,
+        debt: userDebts.get(u.id) || 0
     })) || []
 
     return (

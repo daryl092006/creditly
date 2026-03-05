@@ -275,9 +275,22 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 
         if (loan) {
             const currentPaid = Number(loan.amount_paid) || 0
-            const newTotalPaid = currentPaid + amountVerified
-            const isFullyPaid = newTotalPaid >= Number(loan.amount)
+            const totalLoanAmount = Number(loan.amount)
+            const remainingToPay = Math.max(0, totalLoanAmount - currentPaid)
 
+            let amountAppliedToLoan = amountVerified
+            let surplusGenerated = 0
+
+            // Si le montant versé dépasse ce qui reste à payer sur le prêt
+            if (amountVerified > remainingToPay) {
+                amountAppliedToLoan = remainingToPay
+                surplusGenerated = amountVerified - remainingToPay
+            }
+
+            const newTotalPaid = currentPaid + amountAppliedToLoan
+            const isFullyPaid = newTotalPaid >= totalLoanAmount
+
+            // Mettre à jour le prêt
             await supabase
                 .from('prets')
                 .update({
@@ -285,6 +298,22 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     status: isFullyPaid ? 'paid' : undefined
                 })
                 .eq('id', repayment.loan_id)
+
+            // Mettre à jour le surplus sur le remboursement lui-même pour l'historique
+            if (surplusGenerated > 0) {
+                await supabase
+                    .from('remboursements')
+                    .update({ surplus_amount: surplusGenerated })
+                    .eq('id', repaymentId)
+
+                // Ajouter au solde surplus de l'utilisateur
+                const { data: userData } = await supabase.from('users').select('surplus_balance').eq('id', repayment.user_id).single()
+                const currentSurplus = Number(userData?.surplus_balance) || 0
+                await supabase
+                    .from('users')
+                    .update({ surplus_balance: currentSurplus + surplusGenerated })
+                    .eq('id', repayment.user_id)
+            }
         }
     }
 

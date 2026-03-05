@@ -108,11 +108,11 @@ export default async function SuperAdminPage({
         .order('created_at', { ascending: false })
         .limit(5)
 
-    // 6. Prêts Actifs (Top 5 Urgences)
+    // 6. Prêts Actifs & Retards (Top 5 Urgences)
     const { data: urgentLoans } = await supabase
         .from('prets')
         .select('*, user:users(nom, prenom, email, whatsapp)')
-        .eq('status', 'active')
+        .in('status', ['active', 'overdue'])
         .order('due_date', { ascending: true })
         .limit(5)
 
@@ -141,6 +141,12 @@ export default async function SuperAdminPage({
         }
     }).sort((a, b) => b.totalActions - a.totalActions)
 
+    const totalSurplusBalance = admins?.reduce((acc, a) => acc + (Number((a as any).surplus_balance) || 0), 0) || 0; // Wait, I need to fetch all users actually, not just admins
+
+    // Correcting surplus fetch (all users)
+    const { data: allUsersFinance } = await supabase.from('users').select('surplus_balance')
+    const totalGlobalSurplus = allUsersFinance?.reduce((acc, u) => acc + (Number(u.surplus_balance) || 0), 0) || 0
+
     return (
         <div className="py-10 md:py-16 animate-fade-in">
             <div className="main-container space-y-12">
@@ -148,12 +154,12 @@ export default async function SuperAdminPage({
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div>
                         <div className="flex items-center gap-3 mb-4">
-                            <span className="px-3 py-1 bg-blue-600/10 text-blue-500 border border-blue-500/20 rounded-lg text-[10px] font-black uppercase italic tracking-widest">Dashboard v2.0</span>
+                            <span className="px-3 py-1 bg-blue-600/10 text-blue-500 border border-blue-500/20 rounded-lg text-[10px] font-black uppercase italic tracking-widest">Dashboard v2.1</span>
                             <span className="text-slate-700 font-black italic">/</span>
                             <span className="text-slate-500 font-bold italic text-[10px] uppercase tracking-widest">{month}/{year}</span>
                         </div>
                         <h1 className="text-4xl md:text-6xl font-black premium-gradient-text tracking-tight uppercase">Control Center.</h1>
-                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">Surveillance multidimensionnelle : Finance, Gouvernance et Performance administrative.</p>
+                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">Surveillance multidimensionnelle : Finance, Surplus et Performance administrative.</p>
                     </div>
 
                     <form className="flex items-center gap-2 p-2 bg-slate-900/50 border border-slate-800 rounded-2xl">
@@ -185,9 +191,9 @@ export default async function SuperAdminPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     {[
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
-                        { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-purple-400', sub: `Depuis le ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`, icon: <Currency /> },
-                        { label: 'Volume Prêté', value: totalActiveCapital, color: 'text-white', sub: `${activeLoansCount || 0} dossiers actifs`, icon: <Document /> },
-                        { label: 'Reste à Recouvrer', value: totalRemainingToRecover, color: 'text-amber-400', sub: 'Objectif recouvrement', icon: <CheckmarkFilled /> }
+                        { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document /> },
+                        { label: 'Volume Surplus', value: totalGlobalSurplus, color: 'text-blue-400', sub: 'Crédits clients disponibles', icon: <Wallet /> },
+                        { label: 'Recouvrement Net', value: totalRemainingToRecover - totalGlobalSurplus, color: 'text-amber-400', sub: 'Objectif net ajusté', icon: <CheckmarkFilled /> }
                     ].map((kpi, i) => (
                         <div key={i} className="glass-panel p-8 group relative overflow-hidden bg-slate-900/50 border-slate-800">
                             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-all"></div>
@@ -197,9 +203,9 @@ export default async function SuperAdminPage({
                                     {kpi.icon}
                                 </div>
                             </div>
-                            <p className={`text-4xl font-black tracking-tighter italic ${kpi.color}`}>
+                            <p className={`text-2xl font-black tracking-tighter italic ${kpi.color}`}>
                                 {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
-                                {typeof kpi.value === 'number' && (kpi.label.includes('Revenue') || kpi.label.includes('Prêté') || kpi.label.includes('Récupéré') || kpi.label.includes('Recouvrer')) && <span className="text-xs not-italic text-slate-700 ml-1">FCFA</span>}
+                                {typeof kpi.value === 'number' && <span className="text-[10px] not-italic text-slate-700 ml-1">FCFA</span>}
                             </p>
                             <p className="text-[10px] font-black text-slate-700 mt-2 uppercase italic tracking-wider">{kpi.sub}</p>
                         </div>
@@ -335,8 +341,8 @@ export default async function SuperAdminPage({
                                                         <p className="text-sm font-black text-white italic">{loan.amount.toLocaleString()} F</p>
                                                         <div className="w-full bg-white/5 h-1 rounded-full mt-1 overflow-hidden">
                                                             <div
-                                                                className="bg-emerald-500 h-full transition-all"
-                                                                style={{ width: `${Math.min(100, (Number(loan.amount_paid) / Number(loan.amount)) * 100)}%` }}
+                                                                className={`h-full transition-all ${loan.status === 'overdue' ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                                                style={{ width: `${Math.min(100, (Number(loan.amount_paid || 0) / Number(loan.amount)) * 100)}%` }}
                                                             ></div>
                                                         </div>
                                                     </div>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
-import { CheckmarkFilled, Warning } from '@carbon/icons-react'
+import { CheckmarkFilled, Warning, Printer } from '@carbon/icons-react'
+import { useRef } from 'react'
 
 interface WaiverProps {
     userData: {
@@ -45,6 +46,10 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
     const amountInWords = numberToFrench(loanData.amount)
     const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    const handlePrint = () => {
+        window.print();
+    }
 
     const canSubmit = accepted &&
         personalData.birthDate &&
@@ -207,12 +212,19 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                 </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 no-print">
                 <button
                     onClick={onBack}
                     className="flex-1 py-4 px-6 bg-slate-800 text-slate-400 font-black uppercase italic tracking-widest rounded-2xl border border-white/5 hover:bg-slate-700 hover:text-white transition-all active:scale-[0.98]"
                 >
                     Retour
+                </button>
+                <button
+                    onClick={handlePrint}
+                    className="flex-1 py-4 px-6 bg-slate-900 text-blue-500 font-black uppercase italic tracking-widest rounded-2xl border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                    <Printer size={20} />
+                    Imprimer / PDF
                 </button>
                 <ActionButton
                     onClick={() => onConfirm(personalData)}
@@ -233,6 +245,77 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                     )}
                 </ActionButton>
             </div>
+
+            {/* Hidden Printable Version - Styled for Page Print */}
+            <div className="hidden print-only print:block text-black bg-white p-12 font-serif text-sm leading-relaxed" id="printable-waiver">
+                <div className="text-center mb-10 border-b-2 border-black pb-6">
+                    <h1 className="text-2xl font-bold uppercase mb-1">Creditly</h1>
+                    <p className="text-[10px] tracking-widest uppercase font-bold">Solutions de Financement Privées</p>
+                    <div className="mt-4 text-xl font-bold border-y border-black py-2">RECONNAISSANCE DE DETTE & DÉCHARGE DE RESPONSABILITÉ</div>
+                </div>
+
+                <div className="space-y-6">
+                    <p>Je soussigné(e), <strong>{userData.prenom} {userData.nom}</strong>,</p>
+
+                    <div className="grid grid-cols-2 gap-4 border border-black p-4">
+                        <p>Né(e) le : <strong>{personalData.birthDate ? new Date(personalData.birthDate).toLocaleDateString('fr-FR') : '________________'}</strong></p>
+                        <p>ID : <strong>{personalData.idDetails || '________________'}</strong></p>
+                        <p className="col-span-2">Adresse : <strong>{personalData.address || '________________'}</strong></p>
+                        <p className="col-span-2">Profession : <strong>{personalData.profession || '________________'}</strong></p>
+                    </div>
+
+                    <p className="text-justify">
+                        Reconnais avoir reçu de la part de l'organisation <strong>Creditly</strong>, dans le cadre d'une collaboration de micro-financement privée, un prêt sans intérêt d'un montant total de :
+                    </p>
+
+                    <div className="text-center p-4 bg-gray-100 border-2 border-dashed border-gray-400 font-bold text-xl">
+                        {loanData.amount.toLocaleString()} FCFA <br />
+                        <span className="text-sm font-normal italic">({amountInWords} francs CFA)</span>
+                    </div>
+
+                    <p className="text-justify">
+                        Je reconnais que cette somme constitue une dette certaine, liquide et exigible. Je m'engage par la présente signature à la rembourser en totalité, sans aucun frais d'intérêt supplémentaire, au plus tard le :
+                        <strong className="underline ml-1">{loanData.dueDate}</strong>.
+                    </p>
+
+                    <p className="text-justify">
+                        <strong>Engagement de Remboursement :</strong> Le remboursement sera effectué via le réseau <strong>{loanData.payoutNetwork}</strong> au numéro <strong>{loanData.payoutPhone}</strong>. Tout défaut ou retard pourra entraîner des procédures de recouvrement conformément aux lois en vigueur.
+                    </p>
+
+                    <div className="space-y-2 mt-8">
+                        <p><strong>Décharge de Responsabilité :</strong> Le débiteur décharge Creditly de toute responsabilité autre que celle de la mise à disposition des fonds. Il accepte les conditions d'utilisation et de protection des données de la plateforme.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-12 mt-16 pb-12">
+                        <div className="border-t border-black pt-2">
+                            <p className="font-bold underline mb-10">Signature du Débiteur :</p>
+                            <p className="italic font-serif text-lg">{signature || 'Digital Signature'}</p>
+                            <p className="text-[10px] text-gray-500 mt-2 italic">Fait à {personalData.city || 'Cotonou'}, le {today}</p>
+                        </div>
+                        <div className="border-t border-black pt-2">
+                            <p className="font-bold underline mb-10">Pour Creditly (Approbation) :</p>
+                            <div className="relative h-12">
+                                <span className="absolute transform -rotate-6 border-2 border-blue-900 text-blue-900 px-4 py-1 text-xs font-black uppercase opacity-60">CERTIFIÉ CONFORME</span>
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-2 italic">Validation Opérationnelle Digitale</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-20 text-[8px] text-gray-400 text-justify leading-tight italic border-t pt-2">
+                    Note : Ce document, généré électroniquement et signé via la plateforme Creditly, possède une valeur contractuelle pleine et entière entre les parties. En cas de litige, les tribunaux compétents seront ceux du siège de l'émetteur.
+                </div>
+            </div>
+
+            <style jsx global>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    .print-only { display: block !important; }
+                    body { background: white !important; color: black !important; }
+                    .glass-panel { border: none !important; background: transparent !important; box-shadow: none !important; }
+                }
+                .print-only { display: none; }
+            `}</style>
         </div>
     )
 }

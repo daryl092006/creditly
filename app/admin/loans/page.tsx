@@ -44,6 +44,11 @@ export default async function AdminLoanPage({
         payout_phone: loan.payout_phone,
         payout_name: loan.payout_name,
         payout_network: loan.payout_network,
+        borrower_birth_date: loan.borrower_birth_date,
+        borrower_address: loan.borrower_address,
+        borrower_city: loan.borrower_city,
+        borrower_id_details: loan.borrower_id_details,
+        waiver_signed_at: loan.waiver_signed_at,
         admin: loan.admin ? {
             name: `${loan.admin.prenom} ${loan.admin.nom}`,
             role: loan.admin.role,

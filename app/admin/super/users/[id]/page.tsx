@@ -51,6 +51,34 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                     <div className="lg:col-span-1 space-y-8">
                         <div className="glass-panel p-8 bg-slate-900/50 border-white/5 space-y-8">
                             <div>
+                                <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-6 italic">Balance Financière</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
+                                            <Money size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Surplus Disponible</p>
+                                            <p className="text-xl font-black text-blue-400 italic tracking-tighter">{(user.surplus_balance || 0).toLocaleString()} <span className="text-[8px] not-italic text-slate-700">F</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                                            <Money size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Dette Totale</p>
+                                            <p className="text-xl font-black text-red-500 italic tracking-tighter">
+                                                {(loans?.filter(l => ['active', 'overdue'].includes(l.status)).reduce((acc, l) => acc + (l.amount - (l.amount_paid || 0)), 0) || 0).toLocaleString()} <span className="text-[8px] not-italic text-slate-700">F</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr className="border-white/5" />
+
+                            <div>
                                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 italic">Coordonnées</h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-4">

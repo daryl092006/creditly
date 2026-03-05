@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { useRouter } from 'next/navigation'
+import { Printer } from '@carbon/icons-react'
 
 export default function AdminLoanTable({ rows, currentUserRole }: {
     rows: Array<{
@@ -17,6 +18,11 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
         payout_phone?: string;
         payout_name?: string;
         payout_network?: string;
+        borrower_birth_date?: string;
+        borrower_address?: string;
+        borrower_city?: string;
+        borrower_id_details?: string;
+        waiver_signed_at?: string;
         whatsapp?: string;
         admin: { name: string; role: string; whatsapp?: string } | null
     }>,
@@ -26,6 +32,7 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'active' | 'rejected' } | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
+    const [viewWaiver, setViewWaiver] = useState<typeof rows[0] | null>(null)
     const router = useRouter()
 
     const handleAction = async () => {
@@ -53,6 +60,10 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
         }
     }
 
+    const handlePrintWaiver = () => {
+        window.print();
+    }
+
     return (
         <div className="relative">
             {/* Desktop Table View */}
@@ -60,7 +71,7 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-900/50 border-b border-white/5">
-                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidat & Décharge</th>
                             <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Demande</th>
                             <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Offre</th>
                             <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Réception des Fonds</th>
@@ -77,7 +88,18 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1">
                                             <p className="font-black text-white leading-tight italic">{row.user.split('(')[0]}</p>
-                                            <p className="text-[10px] font-bold text-slate-500 tracking-tight lowercase">{row.user.split('(')[1]?.replace(')', '')}</p>
+                                            <p className="text-[10px] font-bold text-slate-500 tracking-tight lowercase mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
+
+                                            {row.borrower_id_details ? (
+                                                <button
+                                                    onClick={() => setViewWaiver(row)}
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[8px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
+                                                >
+                                                    📜 Voir Décharge
+                                                </button>
+                                            ) : (
+                                                <span className="text-[7px] font-black text-slate-700 uppercase italic">Sans décharge</span>
+                                            )}
                                         </div>
                                     </div>
                                 </td>
@@ -186,7 +208,15 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="font-black text-white text-lg uppercase italic leading-tight tracking-tighter">{row.user.split('(')[0]}</p>
-                                <p className="text-[10px] font-bold text-slate-500 lowercase leading-none">{row.user.split('(')[1]?.replace(')', '')}</p>
+                                <p className="text-[10px] font-bold text-slate-500 lowercase leading-none mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
+                                {row.borrower_id_details && (
+                                    <button
+                                        onClick={() => setViewWaiver(row)}
+                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[8px] font-black uppercase tracking-widest"
+                                    >
+                                        📜 Décharge signée
+                                    </button>
+                                )}
                             </div>
                             <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest italic border border-blue-500/10">
                                 {row.plan}
@@ -295,6 +325,142 @@ export default function AdminLoanTable({ rows, currentUserRole }: {
                 cancelText="OK"
                 variant="danger"
             />
+
+            {/* Waiver Viewer Modal */}
+            {/* Waiver Viewer Modal */}
+            <ConfirmModal
+                isOpen={!!viewWaiver}
+                onClose={() => setViewWaiver(null)}
+                onConfirm={() => setViewWaiver(null)}
+                title="Détails de la Décharge (Reconnaissance de Dette)"
+                message=""
+                confirmText="Fermer"
+                variant="info"
+            >
+                {viewWaiver && (
+                    <div className="space-y-6">
+                        <div className="w-full mt-4 bg-black/40 border border-white/5 rounded-2xl p-6 space-y-6 text-left font-sans animate-fade-in max-h-[60vh] overflow-y-auto no-print">
+                            <div className="space-y-4">
+                                <div className="pb-4 border-b border-white/5">
+                                    <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] italic mb-4">Informations Signataire</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Nom du Débiteur</p>
+                                            <p className="text-sm font-bold text-white italic">{viewWaiver.user.split('(')[0]}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Pièce d'identité</p>
+                                            <p className="text-sm font-bold text-blue-400 italic">{viewWaiver.borrower_id_details || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Né(e) le</p>
+                                            <p className="text-sm font-bold text-slate-300 italic">{viewWaiver.borrower_birth_date ? new Date(viewWaiver.borrower_birth_date).toLocaleDateString('fr-FR') : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Ville</p>
+                                            <p className="text-sm font-bold text-slate-300 italic">{viewWaiver.borrower_city || 'N/A'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Adresse de Résidence</p>
+                                            <p className="text-sm font-bold text-slate-300 italic">{viewWaiver.borrower_address || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pb-4 border-b border-white/5">
+                                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic mb-4">Termes Engagés</h4>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Montant Principal</span>
+                                            <span className="text-lg font-black text-white italic tracking-tighter">{viewWaiver.amount.toLocaleString()} FCFA</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                                            "L'emprunteur reconnaît avoir reçu cette somme et s'engage au remboursement intégral."
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none mb-1">Signature Numérique Validée</p>
+                                            <p className="text-xs font-bold text-white italic">Signée le {viewWaiver.waiver_signed_at ? new Date(viewWaiver.waiver_signed_at).toLocaleString('fr-FR') : new Date(viewWaiver.date).toLocaleString('fr-FR')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handlePrintWaiver}
+                            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 no-print"
+                        >
+                            <Printer size={18} />
+                            Imprimer pour Archivage Physique
+                        </button>
+                    </div>
+                )}
+            </ConfirmModal>
+
+            {/* Hidden Printable Version for Admin */}
+            {viewWaiver && (
+                <div className="hidden print-only print:block text-black bg-white p-12 font-serif text-sm leading-relaxed" id="admin-printable-waiver">
+                    <div className="text-center mb-10 border-b-2 border-black pb-6">
+                        <h1 className="text-2xl font-bold uppercase mb-1">Creditly</h1>
+                        <p className="text-[10px] tracking-widest uppercase font-bold">Document d'Archivage Officiel</p>
+                        <div className="mt-4 text-xl font-bold border-y border-black py-2">RECONNAISSANCE DE DETTE & DÉCHARGE DE RESPONSABILITÉ</div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <p>Je soussigné(e), <strong>{viewWaiver.user.split('(')[0]}</strong>,</p>
+
+                        <div className="grid grid-cols-2 gap-4 border border-black p-4">
+                            <p>Né(e) le : <strong>{viewWaiver.borrower_birth_date ? new Date(viewWaiver.borrower_birth_date).toLocaleDateString('fr-FR') : '________________'}</strong></p>
+                            <p>ID : <strong>{viewWaiver.borrower_id_details || '________________'}</strong></p>
+                            <p className="col-span-2">Adresse : <strong>{viewWaiver.borrower_address || '________________'}</strong></p>
+                        </div>
+
+                        <p className="text-justify">
+                            Reconnais avoir reçu de la part de l'organisation <strong>Creditly</strong>, un prêt sans intérêt d'un montant total de :
+                        </p>
+
+                        <div className="text-center p-4 bg-gray-100 border-2 border-dashed border-gray-400 font-bold text-xl">
+                            {viewWaiver.amount.toLocaleString()} FCFA
+                        </div>
+
+                        <p className="text-justify italic">
+                            Le bénéficiaire s'engage au remboursement intégral à l'échéance convenue. Cette reconnaissance de dette signée numériquement fait foi de l'engagement contractuel.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-12 mt-16 pb-12">
+                            <div className="border-t border-black pt-2">
+                                <p className="font-bold underline mb-10">Signature du Débiteur :</p>
+                                <p className="italic font-serif text-lg">Signé numériquement</p>
+                                <p className="text-[10px] text-gray-500 mt-2 italic">Date : {viewWaiver.waiver_signed_at ? new Date(viewWaiver.waiver_signed_at).toLocaleDateString('fr-FR') : new Date(viewWaiver.date).toLocaleDateString('fr-FR')}</p>
+                            </div>
+                            <div className="border-t border-black pt-2">
+                                <p className="font-bold underline mb-10">Sceau Creditly :</p>
+                                <div className="relative h-12">
+                                    <span className="absolute border-2 border-blue-900 text-blue-900 px-4 py-1 text-[10px] font-black uppercase">DOCUMENT CERTIFIÉ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style jsx global>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    .print-only { display: block !important; }
+                    body { background: white !important; color: black !important; }
+                    .glass-panel { border: none !important; background: transparent !important; box-shadow: none !important; }
+                }
+                .print-only { display: none; }
+            `}</style>
         </div>
     )
 }

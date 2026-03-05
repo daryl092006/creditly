@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
-import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 interface SubscriptionPlan {
     name: string
@@ -43,8 +42,6 @@ export default async function ClientDashboard() {
 
     // LAZY-CRON: Auto-update statuses silently
     await supabase.rpc('auto_update_system_statuses')
-
-    const quotasStatus = await checkGlobalQuotasStatus()
 
     const {
         data: { user },
@@ -97,7 +94,7 @@ export default async function ClientDashboard() {
         .from('prets')
         .select('amount, amount_paid')
         .eq('user_id', user.id)
-        .eq('status', 'active')
+        .in('status', ['active', 'overdue'])
 
     const totalOutstanding = activeLoans?.reduce((acc, loan) => acc + (loan.amount - (loan.amount_paid || 0)), 0) || 0
 
@@ -111,7 +108,7 @@ export default async function ClientDashboard() {
 
     const { data: recentRepayments } = await supabase
         .from('remboursements')
-        .select('id, amount_declared, status, created_at, validated_at')
+        .select('id, amount_declared, surplus_amount, status, created_at, validated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3)
@@ -162,12 +159,11 @@ export default async function ClientDashboard() {
     const kycColor = profile?.is_account_active ? 'bg-emerald-500/10 text-emerald-500' : kycDocs?.status === 'rejected' ? 'bg-red-500/10 text-red-500/80 animate-pulse' : kycDocs ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
     const kycProgress = profile?.is_account_active ? '100' : kycDocs?.status === 'rejected' ? '33' : kycDocs ? '66' : '33'
 
-    // Calculate imminent deadlines (within 7 days)
+    // Calculate imminent deadlines (within 7 days OR already overdue)
     const imminentDeadlines = recentLoans?.filter(l =>
-        l.status === 'active' &&
+        (l.status === 'active' || l.status === 'overdue') &&
         l.due_date &&
-        new Date(l.due_date).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000 &&
-        new Date(l.due_date).getTime() > new Date().getTime()
+        (new Date(l.due_date).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000)
     ) || []
 
 
@@ -194,10 +190,6 @@ export default async function ClientDashboard() {
                             <span>Nouveau Prêt</span>
                             <Add size={20} className="group-hover:rotate-90 transition-transform" />
                         </Link>
-                        <Link href="/client/loans" className="glass-panel px-6 py-4 flex items-center justify-center gap-3 bg-slate-900/50 hover:bg-slate-800/50 transition-all border-slate-800">
-                            <Wallet size={20} className="text-slate-400" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white">Mes Prêts</span>
-                        </Link>
                     </div>
                 </div>
 
@@ -220,38 +212,6 @@ export default async function ClientDashboard() {
                         </Link>
                     </div>
                 )}
-
-                {/* Quotas Monitor Bar */}
-                <div className="mb-16 glass-panel p-6 bg-slate-900/50 border-slate-800 overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-                    <div className="flex items-center gap-4 mb-6 relative z-10">
-                        <div className="h-4 w-1 bg-emerald-500 rounded-full"></div>
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Disponibilité des Financements ce mois</h2>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 relative z-10">
-                        {[5000, 10000, 25000, 50000, 100000].map(amt => {
-                            const q = quotasStatus[amt];
-                            const remaining = q ? Math.max(0, q.limit - q.count) : 0;
-                            const percentage = q && q.limit > 0 ? Math.min(100, (q.count / q.limit) * 100) : 0;
-                            return (
-                                <div key={amt} className="space-y-3">
-                                    <div className="flex justify-between items-baseline">
-                                        <p className="text-lg font-black text-white italic tracking-tighter">{(amt || 0).toLocaleString()} <span className="text-[8px] not-italic text-slate-600">F</span></p>
-                                        <span className={`text-[8px] font-black uppercase ${remaining === 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                            {remaining} restants
-                                        </span>
-                                    </div>
-                                    <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full transition-all duration-1000 ${remaining === 0 ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                            style={{ width: `${percentage}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
 
                 {/* Status Monitoring Hub */}
                 <div className="mb-16">
@@ -306,14 +266,16 @@ export default async function ClientDashboard() {
                                 <div className="flex items-baseline justify-between gap-2">
                                     <span className="text-xl font-black text-white italic truncate">{latestLoan ? `${(latestLoan.amount || 0).toLocaleString()} F` : 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${latestLoan?.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' :
-                                        latestLoan?.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
-                                            latestLoan?.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
-                                                latestLoan?.status === 'paid' ? 'bg-blue-500/10 text-blue-500' : 'bg-slate-800 text-slate-500'
+                                        latestLoan?.status === 'overdue' ? 'bg-red-500/10 text-red-500 animate-pulse' :
+                                            latestLoan?.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
+                                                latestLoan?.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                                                    latestLoan?.status === 'paid' ? 'bg-blue-500/10 text-blue-500' : 'bg-slate-800 text-slate-500'
                                         }`}>
                                         {latestLoan?.status === 'active' ? 'Approuvé' :
-                                            latestLoan?.status === 'pending' ? 'Étude' :
-                                                latestLoan?.status === 'rejected' ? 'Refusé' :
-                                                    latestLoan?.status === 'paid' ? 'Soldé' : 'Aucun'}
+                                            latestLoan?.status === 'overdue' ? 'En Retard' :
+                                                latestLoan?.status === 'pending' ? 'Étude' :
+                                                    latestLoan?.status === 'rejected' ? 'Refusé' :
+                                                        latestLoan?.status === 'paid' ? 'Soldé' : 'Aucun'}
                                     </span>
                                 </div>
                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest truncate">

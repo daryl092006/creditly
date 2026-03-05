@@ -29,12 +29,14 @@ export default async function AdminRepaymentPage({
 
     const rows = repayments?.map(r => ({
         id: r.id,
+        loan_id: r.loan_id,
+        user_id: r.user_id,
         user: `${r.user?.prenom} ${r.user?.nom} (${r.user?.email})`,
         whatsapp: r.user?.whatsapp || r.user?.telephone,
         loan_amount: r.loan?.amount || 0,
         loan_amount_paid: r.loan?.amount_paid || 0,
-        amount: r.amount_declared, // Mapped to match table interface
         amount_declared: r.amount_declared,
+        surplus_amount: r.surplus_amount || 0,
         proof_url: r.proof_url,
         date: r.created_at,
         status: r.status,

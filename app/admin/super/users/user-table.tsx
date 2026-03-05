@@ -6,7 +6,7 @@ import { TrashCan, User, Switcher, Misuse, InformationFilled } from '@carbon/ico
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import Link from 'next/link'
 
-export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string; has_active_loans?: boolean }> }) {
+export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; role: string; whatsapp?: string; has_active_loans?: boolean; surplus_balance?: number; debt?: number }> }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist', hasLoans?: boolean } | null>(null)
@@ -53,7 +53,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                     <thead>
                         <tr className="bg-slate-950/50 border-b border-white/5">
                             <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Identité & Statut</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Email</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Finance (Prêt / Surplus)</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Contact</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Rôle Système</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-right">Actions</th>
@@ -78,8 +78,20 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-8 py-6 text-sm font-bold text-slate-400 italic">
-                                    {row.email}
+                                <td className="px-8 py-6">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className={`text-xs font-black italic ${row.debt && row.debt > 0 ? 'text-red-500' : 'text-slate-500'}`}>
+                                                Dette : {row.debt?.toLocaleString() || 0} F
+                                            </p>
+                                            {row.has_active_loans && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                            )}
+                                        </div>
+                                        <p className={`text-xs font-black italic ${row.surplus_balance && row.surplus_balance > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+                                            Surplus : {row.surplus_balance?.toLocaleString() || 0} F
+                                        </p>
+                                    </div>
                                 </td>
                                 <td className="px-8 py-6">
                                     {row.whatsapp && (

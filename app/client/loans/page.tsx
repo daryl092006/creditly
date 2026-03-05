@@ -96,7 +96,7 @@ export default async function ClientLoansPage() {
                                                                 'bg-red-500/10 text-red-400 border-red-500/20'
                                                         }`}>
                                                         {loan.status === 'active'
-                                                            ? ((loan.amount_paid || 0) > 0 ? `Actif (${Math.round(((loan.amount_paid || 0) / loan.amount) * 100)}%)` : 'Actif')
+                                                            ? ((loan.amount_paid || 0) > 0 ? `Actif (${Math.min(100, Math.round(((loan.amount_paid || 0) / loan.amount) * 100))}%)` : 'Actif')
                                                             : loan.status === 'pending' ? 'En Vérification'
                                                                 : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
                                                     </span>
@@ -157,26 +157,27 @@ export default async function ClientLoansPage() {
                                             <p className="text-xs font-bold text-white">{new Date(loan.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                         </div>
                                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest italic border ${loan.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                            loan.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                loan.status === 'paid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                    'bg-red-500/10 text-red-400 border-red-500/20'
+                                            loan.status === 'overdue' ? 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]' :
+                                                loan.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                    loan.status === 'paid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                        'bg-red-500/10 text-red-400 border-red-500/20'
                                             }`}>
-                                            {loan.status === 'active' ? 'Actif' : loan.status === 'pending' ? 'Vérification' : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
+                                            {loan.status === 'active' ? 'Actif' : loan.status === 'overdue' ? 'En Retard' : loan.status === 'pending' ? 'Vérification' : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
                                         </span>
                                     </div>
 
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Montant Engagé</p>
                                         <p className="text-3xl font-black text-white italic tracking-tighter leading-none">{(loan.amount || 0).toLocaleString()} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                        {loan.status === 'active' && (loan.amount_paid || 0) > 0 && (
+                                        {(loan.status === 'active' || loan.status === 'overdue') && (loan.amount_paid || 0) > 0 && (
                                             <div className="pt-2">
                                                 <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
                                                     <div
-                                                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                                        className={`${loan.status === 'overdue' ? 'bg-red-500' : 'bg-emerald-500'} h-full rounded-full transition-all duration-500`}
                                                         style={{ width: `${Math.min(100, ((loan.amount_paid || 0) / loan.amount) * 100)}%` }}
                                                     ></div>
                                                 </div>
-                                                <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">Progress : {Math.round(((loan.amount_paid || 0) / loan.amount) * 100)}% réglé</p>
+                                                <p className={`text-[8px] font-black ${loan.status === 'overdue' ? 'text-red-500' : 'text-emerald-500'} uppercase tracking-widest italic`}>Progress : {Math.min(100, Math.round(((loan.amount_paid || 0) / loan.amount) * 100))}% réglé</p>
                                             </div>
                                         )}
                                     </div>
