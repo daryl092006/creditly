@@ -104,6 +104,9 @@ export default async function LoanRequestPage() {
 
 
 
+    // Fetch user profile for the waiver
+    const { data: userData } = await supabase.from('users').select('nom, prenom, birth_date, address, city, profession').eq('id', user.id).single()
+
     return (
         <div className="p-8 max-w-4xl mx-auto space-y-8">
             <h1 className="text-center text-3xl font-bold premium-gradient-text uppercase italic tracking-tighter">Nouvelle Demande</h1>
@@ -140,7 +143,11 @@ export default async function LoanRequestPage() {
                 </div>
             </div>
 
-            <LoanRequestForm subscription={sub} quotasStatus={quotasStatus} />
+            <LoanRequestForm
+                subscription={sub}
+                quotasStatus={quotasStatus}
+                userData={userData || { nom: '', prenom: '' }}
+            />
         </div>
     )
 }

@@ -20,12 +20,17 @@ function SignupForm() {
         nom: '',
         whatsapp: '',
         email: '',
-        password: ''
+        password: '',
+        birth_date: '',
+        profession: '',
+        guarantor_prenom: '',
+        guarantor_nom: '',
+        guarantor_whatsapp: ''
     })
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
-            <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300 py-20">
+            <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden mt-10">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-black premium-gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] text-center w-full">
@@ -45,10 +50,10 @@ function SignupForm() {
                     setIsSubmitting(true)
 
                     try {
-                        const formData = new FormData(e.currentTarget)
+                        const formDataValues = new FormData(e.currentTarget)
                         const response = await fetch('/api/auth/signup', {
                             method: 'POST',
-                            body: formData,
+                            body: formDataValues,
                         })
 
                         // Try to parse JSON response
@@ -80,78 +85,150 @@ function SignupForm() {
                         setIsSubmitting(false)
                     }
                 }} className="space-y-8">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom</label>
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Informations Personnelles</h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom</label>
+                                <input
+                                    name="prenom"
+                                    type="text"
+                                    placeholder="Jean"
+                                    required
+                                    value={formData.prenom}
+                                    onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom</label>
+                                <input
+                                    name="nom"
+                                    type="text"
+                                    placeholder="Dupont"
+                                    required
+                                    value={formData.nom}
+                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Date de Naissance</label>
+                                <input
+                                    name="birth_date"
+                                    type="date"
+                                    required
+                                    value={formData.birth_date}
+                                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Profession</label>
+                                <input
+                                    name="profession"
+                                    type="text"
+                                    placeholder="Ex: Ingénieur, Commerçant"
+                                    required
+                                    value={formData.profession}
+                                    onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 text-left">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp <span className="text-blue-500 font-bold lowercase italic">(Indicatif obligatoire, ex: +229)</span></label>
                             <input
-                                name="prenom"
+                                name="whatsapp"
                                 type="text"
-                                placeholder="Jean"
+                                placeholder="+229 00 00 00 00"
                                 required
-                                value={formData.prenom}
-                                onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
-                                className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                value={formData.whatsapp}
+                                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom</label>
+
+                        <div className="space-y-2 text-left">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Email Professionnel</label>
                             <input
-                                name="nom"
-                                type="text"
-                                placeholder="Dupont"
+                                name="email"
+                                type="email"
+                                placeholder="votre@email.com"
                                 required
-                                value={formData.nom}
-                                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                                className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
                             />
+                        </div>
+
+                        <div className="space-y-2 text-left">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Mot de passe de sécurité</label>
+                            <div className="relative">
+                                <input
+                                    name="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="••••••••"
+                                    required
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5 pr-14"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-2"
+                                >
+                                    {showPassword ? <ViewOff size={20} /> : <View size={20} />}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp <span className="text-blue-500 font-bold lowercase italic">(Indicatif obligatoire, ex: +229)</span></label>
-                        <input
-                            name="whatsapp"
-                            type="text"
-                            placeholder="+229 00 00 00 00"
-                            required
-                            value={formData.whatsapp}
-                            onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                            className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
-                        />
-                    </div>
+                    <div className="space-y-6 pt-4">
+                        <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Informations sur le Garant</h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom du Garant</label>
+                                <input
+                                    name="guarantor_prenom"
+                                    type="text"
+                                    placeholder="Pierre"
+                                    required
+                                    value={formData.guarantor_prenom}
+                                    onChange={(e) => setFormData({ ...formData, guarantor_prenom: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom du Garant</label>
+                                <input
+                                    name="guarantor_nom"
+                                    type="text"
+                                    placeholder="Martin"
+                                    required
+                                    value={formData.guarantor_nom}
+                                    onChange={(e) => setFormData({ ...formData, guarantor_nom: e.target.value })}
+                                    className="w-full px-5 py-4 rounded-2xl border border-white/5 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-bold text-slate-200 bg-white/5"
+                                />
+                            </div>
+                        </div>
 
-                    <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Email Professionnel</label>
-                        <input
-                            name="email"
-                            type="email"
-                            placeholder="votre@email.com"
-                            required
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
-                        />
-                    </div>
-
-                    <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Mot de passe de sécurité</label>
-                        <div className="relative">
+                        <div className="space-y-2 text-left">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp du Garant</label>
                             <input
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="••••••••"
+                                name="guarantor_whatsapp"
+                                type="text"
+                                placeholder="+229 00 00 00 00"
                                 required
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5 pr-14"
+                                value={formData.guarantor_whatsapp}
+                                onChange={(e) => setFormData({ ...formData, guarantor_whatsapp: e.target.value })}
+                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-white/5 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5"
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-2"
-                            >
-                                {showPassword ? <ViewOff size={20} /> : <View size={20} />}
-                            </button>
                         </div>
                     </div>
 

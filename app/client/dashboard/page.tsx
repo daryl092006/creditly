@@ -16,6 +16,7 @@ interface UserSubscription {
     plan_id: string
     end_date: string
     created_at: string
+    admin_id?: string
     abonnements: SubscriptionPlan
 }
 
@@ -39,6 +40,10 @@ interface Repayment {
 
 export default async function ClientDashboard() {
     const supabase = await createClient()
+
+    // LAZY-CRON: Auto-update statuses silently
+    await supabase.rpc('auto_update_system_statuses')
+
     const quotasStatus = await checkGlobalQuotasStatus()
 
     const {
@@ -60,6 +65,7 @@ export default async function ClientDashboard() {
                 plan_id, 
                 end_date, 
                 created_at, 
+                admin_id,
                 abonnements(name)
             )
         `)
@@ -78,6 +84,13 @@ export default async function ClientDashboard() {
     const expiredSub = !activeSub ? allSubs.find((sub: UserSubscription) =>
         (sub.status === 'expired' || sub.status === 'active') && sub.end_date && sub.end_date <= now
     ) : null
+
+    // Fetch account manager info if there is an active sub with an admin assigned
+    let accountManager = null;
+    if (activeSub?.admin_id) {
+        const { data: adminData } = await supabase.from('users').select('nom, prenom, whatsapp').eq('id', activeSub.admin_id).single()
+        accountManager = adminData
+    }
 
     // Fetch active loans for "En-cours total"
     const { data: activeLoans } = await supabase
@@ -392,6 +405,37 @@ export default async function ClientDashboard() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Account Manager Notification */}
+                        {accountManager && (
+                            <div className="glass-panel p-6 sm:p-8 bg-gradient-to-br from-blue-900/30 to-slate-900 border-blue-500/20 shadow-lg relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/20 transition-colors"></div>
+                                <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start relative z-10">
+                                    <div className="w-16 h-16 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl flex items-center justify-center shrink-0">
+                                        <span className="text-2xl font-black text-white italic tracking-tighter">
+                                            VIP
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 text-center sm:text-left">
+                                        <h3 className="text-lg font-black text-white uppercase tracking-tighter italic mb-1">Votre Gestionnaire Alloué</h3>
+                                        <p className="text-xs font-bold text-slate-400 mb-4 max-w-lg">
+                                            Un conseiller exclusif a activé votre compte et s'occupera du suivi de votre dossier. Contactez-le pour toute demande spécifique.
+                                        </p>
+                                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Service Elite</p>
+                                                <p className="text-sm font-black text-slate-200">Conseiller Dédié</p>
+                                            </div>
+                                            {accountManager.whatsapp && (
+                                                <a href={`https://wa.me/${accountManager.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="premium-button py-2.5 px-6 inline-flex items-center gap-2">
+                                                    <Chat size={16} /> Contacter sur WhatsApp
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Recent Activity Mini-Panel */}
                         <div className="glass-panel p-6 sm:p-8 bg-slate-900/50 border-slate-800">

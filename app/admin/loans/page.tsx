@@ -17,6 +17,9 @@ export default async function AdminLoanPage({
 
     const supabase = await createClient()
 
+    // LAZY-CRON: Auto-Nettoyage des statuts pour la vue Admin Prêts
+    await supabase.rpc('auto_update_system_statuses')
+
     // Fetch loans with user and snapshot info
     const { data: loans } = await supabase
         .from('prets')
@@ -82,6 +85,6 @@ export default async function AdminLoanPage({
                     <AdminLoanTable rows={rows} currentUserRole={currentUserRole} />
                 </div>
             </div>
-        </div> 
+        </div>
     )
 }

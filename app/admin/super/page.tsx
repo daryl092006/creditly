@@ -42,6 +42,10 @@ export default async function SuperAdminPage({
     }
 
     const supabase = await createClient()
+
+    // LAZY-CRON: Auto-update statuses silently for accurate analytics
+    await supabase.rpc('auto_update_system_statuses')
+
     const { data: offers } = await supabase.from('abonnements').select('*').order('price')
     const quotasStatus = await checkGlobalQuotasStatus(month, year)
 

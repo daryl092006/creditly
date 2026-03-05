@@ -6,18 +6,31 @@ import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 import { sendAdminNotification } from '@/utils/email-service'
 
-export async function requestLoan(amount: number, payoutPhone: string, payoutName: string, payoutNetwork: string) {
+export async function requestLoan(
+    amount: number,
+    payoutPhone: string,
+    payoutName: string,
+    payoutNetwork: string,
+    personalData: {
+        birthDate: string;
+        address: string;
+        idDetails: string;
+        city: string;
+        profession: string;
+    }
+) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
     // 0. Input Validation
-    const { LoanRequestSchema } = await import('@/utils/validation-schemas'); // Dynamic import to avoid build cycle if any
+    const { LoanRequestSchema } = await import('@/utils/validation-schemas');
     const validationResult = LoanRequestSchema.safeParse({
         amount,
         payoutPhone,
         payoutName,
-        payoutNetwork
+        payoutNetwork,
+        ...personalData
     });
 
     if (!validationResult.success) {
@@ -29,7 +42,12 @@ export async function requestLoan(amount: number, payoutPhone: string, payoutNam
         p_amount: amount,
         p_payout_phone: payoutPhone,
         p_payout_name: payoutName,
-        p_payout_network: payoutNetwork
+        p_payout_network: payoutNetwork,
+        p_birth_date: personalData.birthDate,
+        p_address: personalData.address,
+        p_city: personalData.city,
+        p_id_details: personalData.idDetails,
+        p_profession: personalData.profession
     });
 
     if (rpcError) {

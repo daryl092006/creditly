@@ -17,9 +17,10 @@ export default function AdminNav({ userRole }: { userRole: UserRole }) {
         { name: 'Dashboard', href: '/admin/super', icon: 'M4...', roles: ['superadmin'] },
         { name: 'KYC', href: '/admin/kyc', icon: 'M10...', roles: ['admin_kyc', 'superadmin'] },
         { name: 'Prêts', href: '/admin/loans', icon: 'M12...', roles: ['admin_loan', 'superadmin'] },
-        { name: 'Remboursements', href: '/admin/repayments', icon: 'M9...', roles: ['admin_repayment', 'superadmin'] },
+        { name: 'Remb.', href: '/admin/repayments', icon: 'M9...', roles: ['admin_repayment', 'superadmin'] },
         { name: 'Abonnements', href: '/admin/super/subscriptions', icon: 'M15...', roles: ['superadmin'] },
-        { name: 'Users', href: '/admin/super/users', icon: 'M12...', roles: ['superadmin'] }
+        { name: 'Users', href: '/admin/super/users', icon: 'M12...', roles: ['superadmin'] },
+        { name: 'Mon Profil', href: '/admin/profile', icon: 'M1...', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin'] }
     ]
 
     const links = allLinks.filter(link => userRole && link.roles.includes(userRole))

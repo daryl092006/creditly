@@ -32,6 +32,11 @@ export async function signup(formData: FormData) {
     const nom = formData.get('nom') as string
     const prenom = formData.get('prenom') as string
     const whatsapp = formData.get('whatsapp') as string
+    const birthDate = formData.get('birth_date') as string
+    const profession = formData.get('profession') as string
+    const guarantorNom = formData.get('guarantor_nom') as string
+    const guarantorPrenom = formData.get('guarantor_prenom') as string
+    const guarantorWhatsapp = formData.get('guarantor_whatsapp') as string
 
     try {
         // 0. Check Blacklist
@@ -55,7 +60,12 @@ export async function signup(formData: FormData) {
                     nom,
                     prenom,
                     whatsapp,
-                    role: 'client'
+                    role: 'client',
+                    birth_date: birthDate,
+                    profession: profession,
+                    guarantor_nom: guarantorNom,
+                    guarantor_prenom: guarantorPrenom,
+                    guarantor_whatsapp: guarantorWhatsapp
                 }
             }
         })

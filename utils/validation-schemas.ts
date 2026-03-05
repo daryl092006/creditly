@@ -22,7 +22,13 @@ export const LoanRequestSchema = z.object({
         .min(2, "Le nom complet est trop court")
         .max(100, "Le nom complet est trop long"),
 
-    payoutNetwork: z.enum(['MTN', 'Moov', 'Celtiis'])
+    payoutNetwork: z.enum(['MTN', 'Moov', 'Celtiis']),
+
+    // Waiver fields
+    birthDate: z.string().min(1, "La date de naissance est requise"),
+    address: z.string().min(5, "L'adresse est trop courte"),
+    idDetails: z.string().min(5, "Les détails de la pièce sont requis"),
+    city: z.string().min(2, "La ville est requise")
 });
 
 export const SubscriptionSchema = z.object({

@@ -6,6 +6,8 @@ import { requestLoan } from '../actions'
 import { useRouter } from 'next/navigation'
 import { ActionButton } from '@/app/components/ui/ActionButton'
 
+import LoanWaiver, { PersonalData } from './loan-waiver'
+
 interface Subscription {
     plan: {
         name: string;
@@ -22,8 +24,20 @@ interface QuotaStatus {
     }
 }
 
-export default function LoanRequestForm({ subscription, quotasStatus }: { subscription: Subscription, quotasStatus: QuotaStatus }) {
+export default function LoanRequestForm({ subscription, quotasStatus, userData }: {
+    subscription: Subscription,
+    quotasStatus: QuotaStatus,
+    userData: {
+        nom: string,
+        prenom: string,
+        birth_date?: string,
+        address?: string,
+        city?: string,
+        profession?: string
+    }
+}) {
     const router = useRouter()
+    const [step, setStep] = useState(1)
     const [amount, setAmount] = useState<number>(subscription.plan.max_loan_amount)
     const [payoutPhone, setPayoutPhone] = useState('')
     const [payoutName, setPayoutName] = useState('')
@@ -31,35 +45,69 @@ export default function LoanRequestForm({ subscription, quotasStatus }: { subscr
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
-    const handleSubmit = async () => {
-        setLoading(true)
+    // Calculate due date
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (subscription.plan.repayment_delay_days || 30));
+    const formattedDueDate = dueDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const validateFirstStep = () => {
         setError(null)
 
         if (amount > subscription.plan.max_loan_amount) {
             setError('Le montant dépasse votre plafond autorisé.')
-            setLoading(false)
-            return
+            return false
         }
 
         if (quotasStatus[amount]?.reached) {
             setError(`Le quota mensuel pour ce montant (${amount.toLocaleString()} F) est déjà atteint au niveau global. Choisissez un autre montant ou revenez le mois prochain.`)
-            setLoading(false)
-            return
+            return false
         }
 
         if (!payoutPhone || !payoutName || !payoutNetwork) {
             setError('Veuillez remplir toutes les informations de réception.')
-            setLoading(false)
-            return
+            return false
         }
 
-        const res = await requestLoan(amount, payoutPhone, payoutName, payoutNetwork)
+        return true
+    }
+
+    const handleNextStep = () => {
+        if (validateFirstStep()) {
+            setStep(2)
+        }
+    }
+
+    const handleFinalSubmit = async (personalData: PersonalData) => {
+        setLoading(true)
+        setError(null)
+
+        const res = await requestLoan(amount, payoutPhone, payoutName, payoutNetwork, personalData)
         if (res?.error) {
             setError(res.error)
             setLoading(false)
+            setStep(1) // Return to first step to fix errors if any
         } else {
             router.push(`/client/dashboard?success=PretEngage`)
         }
+    }
+
+    if (step === 2) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <LoanWaiver
+                    userData={userData}
+                    loanData={{
+                        amount,
+                        payoutPhone,
+                        payoutNetwork,
+                        dueDate: formattedDueDate
+                    }}
+                    onConfirm={handleFinalSubmit}
+                    onBack={() => setStep(1)}
+                    loading={loading}
+                />
+            </div>
+        )
     }
 
 
@@ -185,13 +233,11 @@ export default function LoanRequestForm({ subscription, quotasStatus }: { subscr
                 </div>
 
                 <ActionButton
-                    onClick={handleSubmit}
-                    loading={loading}
-                    loadingText="Traitement Instantané..."
+                    onClick={handleNextStep}
                     className="w-full py-6 text-sm active:scale-[0.98] group/btn mt-4"
                 >
-                    <Money size={20} className="group-hover/btn:rotate-12 transition-transform" />
-                    Engager le Financement
+                    Continuer vers la Décharge
+                    <Money size={20} className="group-hover/btn:rotate-12 transition-transform ml-2" />
                 </ActionButton>
             </div>
         </div>

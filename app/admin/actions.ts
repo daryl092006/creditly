@@ -83,15 +83,23 @@ export async function updateKycStatus(submissionId: string, status: 'approved' |
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
 
-    // 2. Fetch User for Notification (Safe Mode)
-    const { data: submission } = await supabase.from('kyc_submissions').select('user_id').eq('id', submissionId).single()
-    if (submission?.user_id) {
-        const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', submission.user_id).single()
+    // 3. Auto-Activation du compte
+    if (status === 'approved' && currentData?.user_id) {
+        await supabase.from('users').update({ is_account_active: true }).eq('id', currentData.user_id)
+    } else if (status === 'rejected' && currentData?.user_id) {
+        await supabase.from('users').update({ is_account_active: false }).eq('id', currentData.user_id)
+    }
+
+    // 4. Fetch User for Notification (Safe Mode)
+    if (currentData?.user_id) {
+        const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', currentData.user_id).single()
 
         if (userData?.email) {
             const userName = `${userData.prenom} ${userData.nom}`;
             if (status === 'rejected') {
                 await safeSendUserEmail('KYC_REJECTED', { email: userData.email, name: userName, details: notes })
+            } else if (status === 'approved') {
+                await safeSendUserEmail('KYC_APPROVED', { email: userData.email, name: userName })
             }
         }
     }
