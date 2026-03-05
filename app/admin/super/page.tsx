@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { Currency, Document, ChevronRight, Filter, CheckmarkFilled, Time } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, CheckmarkFilled, Time, Wallet } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export default async function SuperAdminPage({

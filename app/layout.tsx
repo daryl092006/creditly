@@ -28,14 +28,14 @@ export default function RootLayout({
     <html lang="fr" className={`${outfit.variable} dark`} suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content="ca-pub-7463108649392537" />
+      </head>
+      <body className="antialiased selection:bg-blue-600/20" suppressHydrationWarning>
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8933090351597750"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-      </head>
-      <body className="antialiased selection:bg-blue-600/20" suppressHydrationWarning>
         <Suspense fallback={null}>
           <LoadingBar />
         </Suspense>
