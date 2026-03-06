@@ -24,7 +24,8 @@ CREATE OR REPLACE FUNCTION public.request_loan_transaction(
   p_birth_date date DEFAULT NULL,
   p_address text DEFAULT NULL,
   p_city text DEFAULT NULL,
-  p_id_details text DEFAULT NULL
+  p_id_details text DEFAULT NULL,
+  p_profession text DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -48,7 +49,8 @@ BEGIN
   SET 
     birth_date = COALESCE(p_birth_date, birth_date),
     address = COALESCE(p_address, address),
-    city = COALESCE(p_city, city)
+    city = COALESCE(p_city, city),
+    profession = COALESCE(p_profession, profession)
   WHERE id = v_user_id;
 
   -- 1. Check Active Subscription
@@ -102,6 +104,7 @@ BEGIN
     borrower_address,
     borrower_city,
     borrower_id_details,
+    borrower_profession,
     waiver_signed_at
   )
   values (
@@ -116,6 +119,7 @@ BEGIN
     p_address,
     p_city,
     p_id_details,
+    p_profession,
     now()
   )
   returning id into v_new_loan_id;

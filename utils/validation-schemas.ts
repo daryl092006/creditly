@@ -28,7 +28,8 @@ export const LoanRequestSchema = z.object({
     birthDate: z.string().min(1, "La date de naissance est requise"),
     address: z.string().min(5, "L'adresse est trop courte"),
     idDetails: z.string().min(5, "Les détails de la pièce sont requis"),
-    city: z.string().min(2, "La ville est requise")
+    city: z.string().min(2, "La ville est requise"),
+    profession: z.string().min(2, "La profession est requise")
 });
 
 export const SubscriptionSchema = z.object({
