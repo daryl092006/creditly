@@ -91,14 +91,16 @@ export default async function ClientLoansPage() {
                                                 </td>
                                                 <td className="px-8 py-6 text-left">
                                                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest italic border ${loan.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]' :
-                                                        loan.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' :
-                                                            loan.status === 'paid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                                'bg-red-500/10 text-red-400 border-red-500/20'
+                                                        loan.status === 'overdue' ? 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]' :
+                                                            loan.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' :
+                                                                loan.status === 'paid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                                    'bg-red-500/10 text-red-400 border-red-500/20'
                                                         }`}>
                                                         {loan.status === 'active'
                                                             ? ((loan.amount_paid || 0) > 0 ? `Actif (${Math.min(100, Math.round(((loan.amount_paid || 0) / loan.amount) * 100))}%)` : 'Actif')
-                                                            : loan.status === 'pending' ? 'En Vérification'
-                                                                : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
+                                                            : loan.status === 'overdue' ? 'En Retard'
+                                                                : loan.status === 'pending' ? 'En Vérification'
+                                                                    : loan.status === 'paid' ? 'Payé' : 'Rejeté'}
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-6 text-sm font-bold text-slate-500 italic">
@@ -120,7 +122,7 @@ export default async function ClientLoansPage() {
                                                                 Ressayer
                                                             </Link>
                                                         )}
-                                                        {loan.status === 'active' && (
+                                                        {(loan.status === 'active' || loan.status === 'overdue') && (
                                                             <Link
                                                                 href={`/client/loans/repayment?loanId=${loan.id}`}
                                                                 className="px-6 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
@@ -202,7 +204,7 @@ export default async function ClientLoansPage() {
                                                     Ressayer
                                                 </Link>
                                             )}
-                                            {loan.status === 'active' && (
+                                            {(loan.status === 'active' || loan.status === 'overdue') && (
                                                 <Link
                                                     href={`/client/loans/repayment?loanId=${loan.id}`}
                                                     className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl"

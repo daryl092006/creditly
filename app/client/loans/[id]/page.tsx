@@ -60,7 +60,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                             Identifiant Unique : <span className="text-white not-italic">{loan.id.split('-')[0].toUpperCase()}</span>
                         </p>
                     </div>
-                    {loan.status === 'active' && (
+                    {(loan.status === 'active' || loan.status === 'overdue') && (
                         <Link href={`/client/loans/repayment?loanId=${loan.id}`} className="premium-button px-10">
                             Rembourser Maintenant
                         </Link>

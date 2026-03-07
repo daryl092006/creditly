@@ -19,7 +19,7 @@ export default async function RepaymentPage({
         .from('prets')
         .select('*')
         .eq('user_id', user.id)
-        .eq('status', 'active')
+        .in('status', ['active', 'overdue'])
 
     if (loanIdParam) {
         query.eq('id', loanIdParam)
@@ -56,7 +56,7 @@ export default async function RepaymentPage({
 
                         <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
                             <div className="space-y-1 text-center md:text-left">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Solde Restant à Payer</p>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Capital Principal Restant</p>
                                 <p className="text-4xl font-black text-white italic tracking-tighter">
                                     {(remainingBalance || 0).toLocaleString()} <span className="text-xs not-italic text-slate-600">FCFA</span>
                                 </p>

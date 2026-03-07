@@ -114,9 +114,11 @@ export async function submitRepayment(formData: FormData) {
     if (loanError || !loan) return { error: 'Prêt introuvable' }
 
     const remaining = Number(loan.amount) - (Number(loan.amount_paid) || 0)
+    /*
     if (numAmount > remaining) {
         return { error: `Le montant (${numAmount.toLocaleString()} F) dépasse votre solde restant (${remaining.toLocaleString()} F).` }
     }
+    */
 
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()

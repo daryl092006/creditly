@@ -18,10 +18,13 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         setError(null)
 
         const numAmount = Number(amount)
+        // Check disabled to allow for penalty payments
+        /*
         if (numAmount > remainingBalance) {
             setError(`Le montant saisi (${numAmount.toLocaleString()} F) dépasse votre solde restant (${remainingBalance.toLocaleString()} F).`)
             return
         }
+        */
 
         const formData = new FormData()
         formData.append('loanId', loanId)
