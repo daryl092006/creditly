@@ -31,7 +31,8 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        borderBottom: 1,
+        borderBottomWidth: 1,
+        borderBottomStyle: 'solid',
         borderBottomColor: '#000',
         paddingBottom: 20,
         marginBottom: 30,
@@ -91,7 +92,8 @@ const styles = StyleSheet.create({
     },
     amountCard: {
         backgroundColor: '#f9f9f9',
-        border: 1,
+        borderWidth: 1,
+        borderStyle: 'solid',
         borderColor: '#000',
         padding: 15,
         textAlign: 'center',
@@ -104,7 +106,8 @@ const styles = StyleSheet.create({
     amountInWords: {
         fontSize: 9,
         textTransform: 'uppercase',
-        borderTop: 1,
+        borderTopWidth: 1,
+        borderTopStyle: 'solid',
         borderTopColor: '#ddd',
         paddingTop: 5,
         marginTop: 5,
@@ -121,6 +124,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
         padding: 10,
         borderWidth: 1,
+        borderStyle: 'solid',
         borderColor: '#eee',
     },
     clauseTitle: {
@@ -128,7 +132,8 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textTransform: 'uppercase',
         marginBottom: 5,
-        borderBottom: 0.5,
+        borderBottomWidth: 0.5,
+        borderBottomStyle: 'solid',
         borderBottomColor: '#ccc',
     },
     clauseText: {
@@ -143,7 +148,8 @@ const styles = StyleSheet.create({
     },
     signatureBlock: {
         width: '40%',
-        borderTop: 1,
+        borderTopWidth: 1,
+        borderTopStyle: 'solid',
         borderTopColor: '#000',
         paddingTop: 5,
     },
@@ -200,6 +206,7 @@ const styles = StyleSheet.create({
     },
     certificationBox: {
         borderWidth: 1.5,
+        borderStyle: 'solid',
         borderColor: 'rgba(0, 50, 150, 0.4)',
         padding: 4,
         marginTop: 10,
@@ -213,7 +220,8 @@ const styles = StyleSheet.create({
     },
     footer: {
         marginTop: 'auto',
-        borderTop: 0.5,
+        borderTopWidth: 0.5,
+        borderTopStyle: 'solid',
         borderTopColor: '#eee',
         paddingTop: 10,
         textAlign: 'center',
