@@ -16,7 +16,7 @@ interface UserSubscription {
     end_date: string
     created_at: string
     admin_id?: string
-    abonnements: SubscriptionPlan
+    plan: SubscriptionPlan // Standardize to match other pages
 }
 
 interface Loan {
@@ -56,6 +56,7 @@ export default async function ClientDashboard() {
         .select(`
             *, 
             user_subscriptions(
+                id,
                 is_active, 
                 status,
                 rejection_reason,
@@ -63,7 +64,7 @@ export default async function ClientDashboard() {
                 end_date, 
                 created_at, 
                 admin_id,
-                abonnements(name)
+                plan:abonnements(name)
             )
         `)
         .eq('id', user.id)
@@ -248,7 +249,7 @@ export default async function ClientDashboard() {
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Mon Forfait</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{activeSub?.abonnements?.name || expiredSub?.abonnements?.name || 'N/A'}</span>
+                                    <span className="text-xl font-black text-white italic truncate">{activeSub?.plan?.name || expiredSub?.plan?.name || latestSubscription?.plan?.name || 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${activeSub ? 'bg-emerald-500/10 text-emerald-500' :
                                         expiredSub ? 'bg-red-500/10 text-red-500' :
                                             latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-800 text-slate-500'
@@ -359,7 +360,7 @@ export default async function ClientDashboard() {
                                 </div>
                                 <div className="mt-8 space-y-3">
                                     <h3 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
-                                        {activeSub?.abonnements?.name || expiredSub?.abonnements?.name || 'Aucun forfait'}
+                                        {activeSub?.plan?.name || expiredSub?.plan?.name || latestSubscription?.plan?.name || 'Aucun forfait'}
                                     </h3>
                                     {activeSub && activeSub.end_date && (
                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic">
