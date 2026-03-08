@@ -53,29 +53,22 @@ export default async function ClientDashboard() {
 
     const { data: profile } = await supabase
         .from('users')
-        .select(`
-            *, 
-            user_subscriptions(
-                id,
-                is_active, 
-                status,
-                rejection_reason,
-                plan_id, 
-                end_date, 
-                created_at, 
-                admin_id,
-                plan:abonnements(name)
-            )
-        `)
+        .select('*')
         .eq('id', user.id)
         .single()
 
-    const now = new Date().toISOString()
-    const allSubs = [...(profile?.user_subscriptions || [])].sort((a: UserSubscription, b: UserSubscription) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const { data: userSubs } = await supabase
+        .from('user_subscriptions')
+        .select('*, plan:abonnements(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-    // Find a subscription that is active and not expired - Sync with Loan Request Logic
+    const now = new Date().toISOString()
+    const allSubs = userSubs || []
+
+    // Find a subscription that is active and not expired - Sync mapping with subscriptions page (less strict on is_active)
     const activeSub = allSubs.find((sub: UserSubscription) =>
-        sub.status === 'active' && sub.is_active === true && sub.end_date && sub.end_date > now
+        sub.status === 'active' && sub.end_date && sub.end_date > now
     )
 
     // Find if there's an expired but previously active subscription
@@ -117,7 +110,7 @@ export default async function ClientDashboard() {
     // Fetch latest for Status Hub
     const latestLoan = recentLoans?.[0]
     const latestRepayment = recentRepayments?.[0]
-    const latestSubscription = [...allSubs].sort((a: UserSubscription, b: UserSubscription) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+    const latestSubscription = allSubs[0]
 
     // Check if KYC docs exist
     const { data: kycDocs } = await supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
