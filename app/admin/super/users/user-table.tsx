@@ -281,11 +281,9 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
             <ConfirmModal
                 isOpen={!!errorAction}
                 onClose={() => setErrorAction(null)}
-                onConfirm={() => setErrorAction(null)}
                 title={errorAction?.title || "Action Impossible"}
                 message={errorAction?.message || ""}
-                confirmText="Fermer"
-                cancelText="OK"
+                cancelText="Fermer"
                 variant="danger"
             />
         </div>

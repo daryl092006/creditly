@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from '@carbon/icons-react'
+import LoanListActions from './loan-list-actions'
 
 export default async function ClientLoansPage() {
     const supabase = await createClient()
@@ -18,7 +19,10 @@ export default async function ClientLoansPage() {
 
     const { data: loans } = await supabase
         .from('prets')
-        .select('*')
+        .select(`
+            *,
+            user:users!prets_user_id_fkey(email, nom, prenom)
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -113,10 +117,11 @@ export default async function ClientLoansPage() {
                                                     {loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : '—'}
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <div className="flex items-center justify-end gap-4">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <LoanListActions loan={loan} profile={loan.user} />
                                                         <Link
                                                             href={`/client/loans/${loan.id}`}
-                                                            className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
+                                                            className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors px-2 py-1"
                                                         >
                                                             Voir
                                                         </Link>
@@ -199,6 +204,7 @@ export default async function ClientLoansPage() {
                                             <p className="text-[10px] font-bold text-slate-400">{loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : '—'}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <LoanListActions loan={loan} profile={loan.user} />
                                             <Link
                                                 href={`/client/loans/${loan.id}`}
                                                 className="px-4 py-2 border border-slate-700 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest"

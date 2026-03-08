@@ -2,15 +2,16 @@
 
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Warning, CheckmarkFilled, ErrorFilled, InformationFilled } from '@carbon/icons-react'
+import { Warning, CheckmarkFilled, ErrorFilled, InformationFilled, Close } from '@carbon/icons-react'
 import { ActionButton } from './ActionButton'
 
 interface ConfirmModalProps {
     isOpen: boolean
     onClose: () => void
-    onConfirm: () => void
+    onConfirm?: () => void
     title: string
-    message: string
+    message?: string
+    description?: string
     confirmText?: string
     cancelText?: string
     variant?: 'danger' | 'success' | 'info' | 'warning'
@@ -18,6 +19,8 @@ interface ConfirmModalProps {
     customIcon?: React.ReactNode
     children?: React.ReactNode
     disabled?: boolean
+    hideButtons?: boolean
+    maxWidth?: 'md' | 'lg' | 'xl' | '2xl' | '4xl'
 }
 
 export default function ConfirmModal({
@@ -26,13 +29,16 @@ export default function ConfirmModal({
     onConfirm,
     title,
     message,
+    description,
     confirmText = 'Confirmer',
     cancelText = 'Annuler',
     variant = 'info',
     isLoading = false,
     customIcon,
     children,
-    disabled = false
+    disabled = false,
+    hideButtons = false,
+    maxWidth = 'md'
 }: ConfirmModalProps) {
     const [mounted, setMounted] = useState(false)
 
@@ -76,14 +82,32 @@ export default function ConfirmModal({
 
     const currentVariant = variantStyles[variant]
 
+    const maxWidthClasses = {
+        'md': 'max-w-md',
+        'lg': 'max-w-lg',
+        'xl': 'max-w-xl',
+        '2xl': 'max-w-2xl',
+        '4xl': 'max-w-4xl'
+    }
+
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto cursor-pointer" onClick={isLoading ? undefined : onClose}>
             <div
-                className="absolute inset-0 bg-slate-950/80 backdrop-blur-md animate-fade-in"
-                onClick={isLoading ? undefined : onClose}
+                className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-fade-in"
             ></div>
 
-            <div className={`glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-slide-up border-slate-800 bg-slate-900/80 shadow-2xl ${currentVariant.bg}`}>
+            <div
+                className={`glass-panel w-full ${maxWidthClasses[maxWidth]} p-8 md:p-10 relative z-10 animate-slide-up border-slate-800 bg-slate-900/90 shadow-2xl ${currentVariant.bg} cursor-default`}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Always visible Close Button */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 border border-white/5 text-slate-500 hover:text-white hover:bg-white/10 transition-all z-20"
+                >
+                    <Close size={20} />
+                </button>
+
                 <div className="flex flex-col items-center text-center space-y-6">
                     <div className="w-20 h-20 rounded-3xl bg-slate-950 border border-white/5 flex items-center justify-center shadow-2xl group transition-transform hover:scale-105 duration-500">
                         {customIcon || currentVariant.icon}
@@ -93,35 +117,41 @@ export default function ConfirmModal({
                         <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter tabular-nums">
                             {title}
                         </h3>
-                        <p className="text-slate-400 font-bold italic text-sm leading-relaxed">
-                            {message}
-                        </p>
+                        {(message || description) && (
+                            <p className="text-slate-400 font-bold italic text-sm leading-relaxed max-w-sm">
+                                {message || description}
+                            </p>
+                        )}
                     </div>
 
                     {children && (
-                        <div className="w-full">
+                        <div className="w-full text-left">
                             {children}
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4 w-full pt-4">
-                        <button
-                            onClick={onClose}
-                            disabled={isLoading}
-                            className="px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 active:scale-95"
-                        >
-                            {cancelText}
-                        </button>
-                        <ActionButton
-                            onClick={onConfirm}
-                            loading={isLoading}
-                            loadingText={confirmText}
-                            disabled={disabled}
-                            className={`py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
-                        >
-                            <span>{confirmText}</span>
-                        </ActionButton>
-                    </div>
+                    {!hideButtons && (
+                        <div className={`grid ${onConfirm ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full pt-4`}>
+                            <button
+                                onClick={onClose}
+                                disabled={isLoading}
+                                className="px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 active:scale-95"
+                            >
+                                {cancelText}
+                            </button>
+                            {onConfirm && (
+                                <ActionButton
+                                    onClick={onConfirm}
+                                    loading={isLoading}
+                                    loadingText={confirmText}
+                                    disabled={disabled}
+                                    className={`py-4 !rounded-2xl shadow-2xl flex items-center justify-center gap-2 ${currentVariant.button}`}
+                                >
+                                    <span>{confirmText}</span>
+                                </ActionButton>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>,

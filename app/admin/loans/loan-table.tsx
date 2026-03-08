@@ -450,15 +450,12 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
             <ConfirmModal
                 isOpen={!!errorAction}
                 onClose={() => setErrorAction(null)}
-                onConfirm={() => setErrorAction(null)}
                 title={errorAction?.title || "Action Impossible"}
                 message={errorAction?.message || ""}
-                confirmText="Fermer"
-                cancelText="OK"
+                cancelText="Fermer"
                 variant="danger"
             />
 
-            {/* Waiver Viewer Modal */}
             {/* Waiver Viewer Modal */}
             <ConfirmModal
                 isOpen={!!viewWaiver}
@@ -466,14 +463,10 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                     setViewWaiver(null)
                     setDownloadingId(null)
                 }}
-                onConfirm={() => {
-                    setViewWaiver(null)
-                    setDownloadingId(null)
-                }}
                 title="Détails de la Décharge (Reconnaissance de Dette)"
-                message=""
-                confirmText="Fermer"
                 variant="info"
+                hideButtons={true}
+                maxWidth="lg"
             >
                 {viewWaiver && (
                     <div className="space-y-6">

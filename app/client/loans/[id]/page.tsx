@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Money, Information, CheckmarkFilled, CloseFilled, Time } from '@carbon/icons-react'
+import { ArrowLeft, Calendar, Money, Information, CheckmarkFilled, CloseFilled, Time, Document as DocumentIcon } from '@carbon/icons-react'
+import LoanContractActions from './contract-actions'
 
 export default async function LoanDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -17,11 +18,14 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
         .from('prets')
         .select(`
             *,
-            plan:subscription_snapshot_id(name)
+            plan:subscription_snapshot_id(name),
+            user:users!prets_user_id_fkey(email, nom, prenom)
         `)
         .eq('id', id)
         .eq('user_id', user.id)
         .single()
+
+    const profile = loan?.user
 
     const { data: pendingRepayment } = await supabase
         .from('remboursements')
@@ -104,7 +108,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                             )}
                         </div>
                         <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Total à payer</p>
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Montant prêté</p>
                             <p className="text-5xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} <span className="text-xs not-italic text-slate-700">FCFA</span></p>
                         </div>
                     </div>
@@ -154,23 +158,41 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                         </div>
                     </div>
 
-                    {/* Conditions Section */}
-                    <div className="glass-panel p-10 space-y-8 bg-slate-900/50 border-slate-800 text-left">
-                        <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2 italic">
-                            <Money size={14} /> Résumé
-                        </h3>
-                        <div className="grid grid-cols-1 gap-6">
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
-                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 italic">Somme reçue</p>
-                                <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} FCFA</p>
+                    {/* Right Column: Conditions or Contract */}
+                    <div className="space-y-8">
+                        {/* Contract Section - Only if signed */}
+                        {loan.waiver_signed_at && (
+                            <div className="glass-panel p-10 space-y-6 bg-blue-600/5 border-blue-500/20 text-left relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
+                                <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2 italic relative z-10">
+                                    <DocumentIcon size={14} /> Votre Contrat
+                                </h3>
+                                <p className="text-sm font-bold text-slate-400 italic leading-relaxed relative z-10">
+                                    Votre reconnaissance de dette a été signée numériquement et validée. Vous pouvez en obtenir une copie certifiée.
+                                </p>
+                                <div className="relative z-10 pt-2">
+                                    <LoanContractActions loan={loan} profile={profile} />
+                                </div>
                             </div>
-                            <div className="p-6 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
-                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 italic">Frais de Dossier</p>
-                                <p className="text-3xl font-black text-white tracking-tighter italic">0.00% <span className="text-[10px] text-slate-700 italic ml-2">Fixe</span></p>
-                            </div>
-                            <div className="p-6 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
-                                <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic">Reste à payer</p>
-                                <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount - (loan.amount_paid || 0)).toLocaleString()} FCFA</p>
+                        )}
+
+                        {/* Conditions Section */}
+                        <div className="glass-panel p-10 space-y-8 bg-slate-900/50 border-slate-800 text-left">
+                            <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2 italic">
+                                <Money size={14} /> Résumé financier
+                            </h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Somme prêtée</p>
+                                        {loan.service_fee && <span className="text-[8px] font-black text-blue-500 uppercase border border-blue-500/20 px-2 py-0.5 rounded">+ 500 F frais</span>}
+                                    </div>
+                                    <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString()} FCFA</p>
+                                </div>
+                                <div className="p-6 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
+                                    <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic">Reste à payer</p>
+                                    <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount + (loan.service_fee || 0) - (loan.amount_paid || 0)).toLocaleString()} FCFA</p>
+                                </div>
                             </div>
                         </div>
                     </div>
