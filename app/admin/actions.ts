@@ -350,20 +350,14 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                 })
                 .eq('id', repayment.loan_id)
 
-            // Mettre à jour le surplus sur le remboursement lui-même pour l'historique
+            // Mettre à jour la pénalité sur le remboursement lui-même pour l'historique
             if (surplusGenerated > 0) {
                 await supabase
                     .from('remboursements')
                     .update({ surplus_amount: surplusGenerated })
                     .eq('id', repaymentId)
 
-                // Mettre à jour le solde surplus de l'utilisateur
-                const { data: userData } = await supabase.from('users').select('surplus_balance').eq('id', repayment.user_id).single()
-                const currentSurplus = Number(userData?.surplus_balance) || 0
-                await supabase
-                    .from('users')
-                    .update({ surplus_balance: currentSurplus + surplusGenerated })
-                    .eq('id', repayment.user_id)
+                // Note: On ne crédite plus le solde surplus de l'utilisateur car le surplus est désormais considéré comme une pénalité perçue par la plateforme.
             }
 
             // --- REPAYMENT COMMISSION ---
@@ -673,14 +667,7 @@ export async function createDirectRepayment(formData: FormData) {
         })
         .eq('id', loanId)
 
-    if (surplusGenerated > 0) {
-        const { data: userData } = await supabase.from('users').select('surplus_balance').eq('id', userId).single()
-        const currentSurplus = Number(userData?.surplus_balance) || 0
-        await supabase
-            .from('users')
-            .update({ surplus_balance: currentSurplus + surplusGenerated })
-            .eq('id', userId)
-    }
+    // Note: On ne crédite plus le solde surplus de l'utilisateur ici non plus (considéré comme pénalité).
 
     // --- REPAYMENT COMMISSION (Direct) ---
     const { count } = await supabase

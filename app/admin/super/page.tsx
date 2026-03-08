@@ -144,9 +144,13 @@ export default async function SuperAdminPage({
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
-    // Correcting surplus fetch (all users)
+    // Récupération des pénalités collectées (historique des surplus)
+    const { data: allPenalties } = await supabase.from('remboursements').select('surplus_amount').eq('status', 'verified')
+    const totalPenaltiesCollected = allPenalties?.reduce((acc: number, r: any) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+
+    // Reliquat des surplus historiques (si encore présents dans les soldes types users)
     const { data: allUsersFinance } = await supabase.from('users').select('surplus_balance')
-    const totalGlobalSurplus = allUsersFinance?.reduce((acc: number, u: any) => acc + (Number(u.surplus_balance) || 0), 0) || 0
+    const totalGlobalCredits = allUsersFinance?.reduce((acc: number, u: any) => acc + (Number(u.surplus_balance) || 0), 0) || 0
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
@@ -160,7 +164,7 @@ export default async function SuperAdminPage({
                             <span className="text-slate-500 font-bold italic text-[10px] uppercase tracking-widest">{month}/{year}</span>
                         </div>
                         <h1 className="text-4xl md:text-6xl font-black premium-gradient-text tracking-tight uppercase">Control Center.</h1>
-                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">Surveillance multidimensionnelle : Finance, Surplus et Performance administrative.</p>
+                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">Surveillance multidimensionnelle : Finance, Pénalités et Performance administrative.</p>
                     </div>
 
                     <form className="flex items-center gap-2 p-2 bg-slate-900/50 border border-slate-800 rounded-2xl">
@@ -193,9 +197,9 @@ export default async function SuperAdminPage({
                     {[
                         { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
                         { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-blue-400', sub: `Sem. du ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`, icon: <Time /> },
+                        { label: 'Volume Pénalités', value: totalPenaltiesCollected, color: 'text-blue-400', sub: 'Surplus perçus par Creditly', icon: <Wallet /> },
                         { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document /> },
-                        { label: 'Volume Surplus', value: totalGlobalSurplus, color: 'text-blue-400', sub: 'Crédits clients disponibles', icon: <Wallet /> },
-                        { label: 'Recouvrement Net', value: totalRemainingToRecover - totalGlobalSurplus, color: 'text-amber-400', sub: 'Objectif net ajusté', icon: <CheckmarkFilled /> }
+                        { label: 'Reliquat Crédits', value: totalGlobalCredits, color: 'text-amber-400', sub: 'Anciens surplus restants', icon: <CheckmarkFilled /> }
                     ].map((kpi, i) => (
                         <div key={i} className="glass-panel p-8 group relative overflow-hidden bg-slate-900/50 border-slate-800">
                             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-all"></div>
