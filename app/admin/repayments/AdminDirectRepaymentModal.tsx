@@ -118,22 +118,27 @@ export default function AdminDirectRepaymentModal({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 overflow-hidden">
+            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-fade-in" onClick={onClose}></div>
 
-            <div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-zoom-in">
+            <div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up max-h-[85vh] flex flex-col">
                 {/* Header Decoration */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none z-0"></div>
 
-                <div className="p-8 sm:p-12 relative z-10">
+                {/* Fixed Close Button */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-6 right-6 w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all z-20"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+
+                <div className="p-8 sm:p-12 relative z-10 overflow-y-auto custom-scrollbar flex-1">
                     <div className="flex justify-between items-start mb-10">
                         <div>
                             <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Paiement <span className="premium-gradient-text uppercase">Direct Admin.</span></h2>
                             <p className="text-slate-500 font-bold text-xs mt-1 italic uppercase tracking-widest">Enregistrer un versement pour un client</p>
                         </div>
-                        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-500 hover:text-white transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
                     </div>
 
                     {error && (

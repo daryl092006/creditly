@@ -44,20 +44,20 @@ export function DocumentPreviewModal({
             <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-fade-in pointer-events-none"></div>
 
             <div
-                className="glass-panel w-full max-w-6xl max-h-[95vh] h-auto flex flex-col relative z-50 animate-slide-up bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden"
+                className="glass-panel w-full max-w-6xl max-h-[90vh] h-auto flex flex-col relative z-50 animate-slide-up bg-slate-900 border-slate-800 shadow-2xl shadow-black/50 overflow-hidden rounded-[2.5rem]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center bg-white/5 shrink-0">
+                <div className="p-6 md:p-8 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0 relative">
                     <div>
-                        <h3 className="text-lg md:text-xl font-black text-white uppercase italic tracking-tight">{title}</h3>
-                        {subtitle && <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{subtitle}</p>}
+                        <h3 className="text-xl md:text-2xl font-black text-white uppercase italic tracking-tighter leading-none">{title}</h3>
+                        {subtitle && <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mt-1 italic">{subtitle}</p>}
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-red-500 transition-colors shadow-sm"
+                        className="w-12 h-12 rounded-2xl bg-white/5 text-slate-500 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all border border-white/5 shadow-sm"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
