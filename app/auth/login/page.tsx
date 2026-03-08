@@ -7,6 +7,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { Logo } from '@/app/components/ui/Logo'
 
 function LoginForm() {
     const searchParams = useSearchParams()
@@ -23,10 +24,10 @@ function LoginForm() {
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300">
             <div className="glass-panel p-8 md:p-12 w-full max-w-md animate-fade-in relative overflow-hidden">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
-                    <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">
-                        Bon retour parmi nous
+                <div className="flex flex-col items-center mb-12">
+                    <Logo size="lg" className="scale-125 mb-6" />
+                    <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] text-center">
+                        Accès Sécurisé • Financement Elite
                     </p>
                 </div>
 

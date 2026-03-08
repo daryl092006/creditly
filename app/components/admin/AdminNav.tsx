@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signout } from '@/app/auth/actions'
 import { Logout, Settings, UserMultiple } from '@carbon/icons-react'
+import { Logo } from '@/app/components/ui/Logo'
 
 // Define the role type locally or import if shared (keeping it simple here)
 type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | null
 
 export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
     const pathname = usePathname()
+    const isAdminMaster = userRoles.includes('superadmin') || userRoles.includes('owner')
 
     // Define all links with their required roles
     // If roles is undefined, it's accessible by all admins (or handled otherwise, here strictly restricted)
@@ -34,10 +36,7 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
             <div className="main-container flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <Link href="#" className="flex items-center gap-2 group cursor-default">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shadow-lg shadow-blue-500/20 italic">C</div>
-                        <span className="font-black premium-gradient-text tracking-tighter hidden sm:block uppercase italic">
-                            {userRoles.includes('superadmin') ? 'Creditly Master' : 'Creditly Admin'}
-                        </span>
+                        <Logo text={isAdminMaster ? 'Creditly Master' : 'Creditly Admin'} />
                     </Link>
 
                     <div className="hidden lg:flex items-center gap-1">

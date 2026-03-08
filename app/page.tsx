@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Security, Rocket, ChartBar, Time, UserAvatarFilledAlt, CloudLogging, Locked, CheckmarkFilled, Checkmark, Star, Flash } from '@carbon/icons-react';
 import { createClient } from '@/utils/supabase/server';
+import { Logo } from '@/app/components/ui/Logo';
 
 export default async function Home() {
     const supabase = await createClient();
@@ -18,12 +19,9 @@ export default async function Home() {
             <header className="fixed top-0 w-full z-50 backdrop-blur-3xl bg-slate-950/70 border-b border-white/5">
                 <div className="main-container">
                     <div className="flex justify-between items-center h-20">
-                        <div className="flex items-center gap-3 group cursor-pointer">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg italic">
-                                C
-                            </div>
-                            <span className="font-black text-2xl tracking-tighter text-white uppercase italic">Creditly</span>
-                        </div>
+                        <Link href="/">
+                            <Logo />
+                        </Link>
 
                         <nav className="hidden lg:flex items-center space-x-12">
                             {[
@@ -269,10 +267,7 @@ export default async function Home() {
                 <div className="main-container">
                     <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-20">
                         <div className="space-y-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg italic">C</div>
-                                <span className="font-black text-2xl tracking-tighter text-white uppercase italic">Creditly</span>
-                            </div>
+                            <Logo />
                             <p className="text-slate-500 font-bold text-sm max-w-sm italic leading-relaxed">
                                 Révolutionner l&apos;accès au micro-crédit par une technologie de pointe et un design d&apos;exception.
                             </p>

@@ -5,6 +5,7 @@ import { ArrowRight, View, ViewOff } from '@carbon/icons-react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { Logo } from '@/app/components/ui/Logo'
 
 import { Suspense } from 'react'
 
@@ -31,10 +32,10 @@ function SignupForm() {
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 transition-colors duration-300 py-20">
             <div className="glass-panel p-8 md:p-12 w-full max-w-xl animate-fade-in relative overflow-hidden mt-10">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black premium-gradient-text tracking-tighter mb-2 uppercase italic">Creditly</h1>
-                    <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] text-center w-full">
-                        Votre partenaire de confiance
+                <div className="flex flex-col items-center mb-12">
+                    <Logo size="lg" className="scale-125 mb-6" />
+                    <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] text-center">
+                        Rejoignez l&apos;Élite • Financement Instantané
                     </p>
                 </div>
 

@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Printer, Document } from '@carbon/icons-react'
+import { Download, Printer, Document, Warning } from '@carbon/icons-react'
 import { pdf } from '@react-pdf/renderer'
 import { LoanPDFDocument } from '../request/loan-pdf'
 import { numberToFrench } from '@/utils/formatters'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
+import { Logo } from '@/app/components/ui/Logo'
 
 interface LoanContractActionsProps {
     loan: any;
@@ -16,9 +17,13 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
     const [downloading, setDownloading] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
 
+    // CUTOFF_DATE: Loans before March 8th, 2026 don't have waivers
+    const CUTOFF_DATE = new Date('2026-03-08T00:00:00')
+    const loanDate = new Date(loan.created_at)
+    const hasWaiver = loanDate >= CUTOFF_DATE
+
     // FEE_START_DATE logic synchronized with admin and request side
     const FEE_START_DATE = new Date('2026-03-09T00:00:00')
-    const loanDate = new Date(loan.created_at)
     const hasFee = loanDate >= FEE_START_DATE
     const totalAmount = hasFee ? (loan.amount + 500) : loan.amount
     const amountInWords = numberToFrench(totalAmount)
@@ -71,6 +76,20 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
         }
     }
 
+    if (!hasWaiver) {
+        return (
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500/50">
+                    <Warning size={20} />
+                </div>
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 italic">Contrat indisponible</p>
+                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.2em]">Archives antérieures au 08/03/2026</p>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -112,10 +131,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
 
                         <div className="relative z-10 space-y-6">
                             <div className="flex justify-between items-start border-b border-black pb-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-[#2563eb] text-white flex items-center justify-center font-black text-lg italic">C</div>
-                                    <span className="font-black text-xl italic uppercase tracking-tighter">Creditly</span>
-                                </div>
+                                <Logo size="sm" className="grayscale contrast-200 brightness-0" />
                                 <div className="text-right">
                                     <p className="font-black">CONTRAT OFFICIEL</p>
                                     <p className="text-[10px] italic">Signé le {loan.waiver_signed_at ? new Date(loan.waiver_signed_at).toLocaleDateString('fr-FR') : 'N/A'}</p>
