@@ -4,11 +4,10 @@ import React, { useState } from 'react'
 import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { useRouter } from 'next/navigation'
-import { Printer, Download, Wallet } from '@carbon/icons-react'
+import { Printer, Download } from '@carbon/icons-react'
 import { LoanPDFDocument } from '@/app/client/loans/request/loan-pdf'
 import { pdf } from '@react-pdf/renderer'
 import { numberToFrench } from '@/utils/formatters'
-import AdminDirectRepaymentModal from '../repayments/AdminDirectRepaymentModal'
 import { Logo } from '@/app/components/ui/Logo'
 
 interface LoanRow {
@@ -61,7 +60,6 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
     const [viewWaiver, setViewWaiver] = useState<typeof rows[0] | null>(null)
     const [downloadingId, setDownloadingId] = useState<string | null>(null)
     const [isClient, setIsClient] = useState(false)
-    const [repaymentModal, setRepaymentModal] = useState<{ isOpen: boolean, user: any, loan: any }>({ isOpen: false, user: null, loan: null })
     const router = useRouter()
 
     React.useEffect(() => {
@@ -302,30 +300,14 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                 Lecture Seule
                                             </span>
                                         ) : (
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${row.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                    row.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                        'bg-slate-800 text-slate-500 border-slate-700'
-                                                    }`}>
-                                                    {row.status === 'active' ? 'Actif' :
-                                                        row.status === 'rejected' ? 'Rejeté' :
-                                                            row.status}
-                                                </span>
-                                                {row.status === 'active' && ['admin_loan', 'superadmin', 'owner'].includes(currentUserRole || '') && row.profile && (
-                                                    <button
-                                                        onClick={() => setRepaymentModal({
-                                                            isOpen: true,
-                                                            user: { id: row.profile!.id, nom: row.profile!.nom, prenom: row.profile!.prenom, email: row.profile!.email },
-                                                            loan: row
-                                                        })}
-                                                        className="h-9 px-3 bg-emerald-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/10 active:scale-95 flex items-center gap-2"
-                                                        title="Effectuer un remboursement"
-                                                    >
-                                                        <Wallet size={14} />
-                                                        Rembourser
-                                                    </button>
-                                                )}
-                                            </div>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${row.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                row.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                    'bg-slate-800 text-slate-500 border-slate-700'
+                                                }`}>
+                                                {row.status === 'active' ? 'Actif' :
+                                                    row.status === 'rejected' ? 'Rejeté' :
+                                                        row.status}
+                                            </span>
                                         )}
                                     </div>
                                 </td>
@@ -431,23 +413,8 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex gap-2 w-full">
-                                            <div className="flex-1 py-4 text-center rounded-2xl bg-white/5 border border-white/5">
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
-                                            </div>
-                                            {row.status === 'active' && ['admin_loan', 'superadmin', 'owner'].includes(currentUserRole || '') && row.profile && (
-                                                <button
-                                                    onClick={() => setRepaymentModal({
-                                                        isOpen: true,
-                                                        user: { id: row.profile!.id, nom: row.profile!.nom, prenom: row.profile!.prenom, email: row.profile!.email },
-                                                        loan: row
-                                                    })}
-                                                    className="px-6 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2"
-                                                >
-                                                    <Wallet size={16} />
-                                                    Rembourser
-                                                </button>
-                                            )}
+                                        <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
                                         </div>
                                     )}
                                 </>
@@ -605,13 +572,6 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                     </div>
                 )}
             </ConfirmModal>
-
-            <AdminDirectRepaymentModal
-                isOpen={repaymentModal.isOpen}
-                onClose={() => setRepaymentModal(prev => ({ ...prev, isOpen: false }))}
-                initialUser={repaymentModal.user}
-                initialLoan={repaymentModal.loan}
-            />
 
             {/* Hidden Printable Version for Admin */}
             {viewWaiver && (

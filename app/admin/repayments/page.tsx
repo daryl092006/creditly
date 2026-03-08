@@ -58,7 +58,7 @@ export default async function AdminRepaymentPage({
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <AdminCreateRepaymentWrapper isAdmin={role === 'superadmin' || role === 'admin_comptable'} />
+                        <AdminCreateRepaymentWrapper isAdmin={true} />
                         <div className="flex bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 backdrop-blur-xl">
                             {[
                                 { label: 'En attente', val: 'pending' },
