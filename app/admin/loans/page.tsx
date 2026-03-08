@@ -25,7 +25,7 @@ export default async function AdminLoanPage({
         .from('prets')
         .select(`
             *,
-            user:users!prets_user_id_fkey(email, nom, prenom, whatsapp, telephone),
+            user:users!prets_user_id_fkey(email, nom, prenom, whatsapp, telephone, birth_date, address, city, profession),
             plan:subscription_snapshot_id(name),
             admin:users!prets_admin_id_fkey(email, nom, prenom, roles, whatsapp),
             repayments:remboursements(status)

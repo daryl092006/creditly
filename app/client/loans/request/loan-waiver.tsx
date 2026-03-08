@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
-import { CheckmarkFilled, Warning, Printer } from '@carbon/icons-react'
+import { CheckmarkFilled, Warning, Printer, Download } from '@carbon/icons-react'
 import { useRef, useEffect } from 'react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { LoanPDFDocument } from './loan-pdf'
@@ -248,24 +248,30 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         Imprimer
                     </button>
                     {isClient && (
-                        <PDFDownloadLink
-                            document={
-                                <LoanPDFDocument
-                                    userData={userData}
-                                    loanData={loanData}
-                                    personalData={personalData}
-                                    signature={signature}
-                                    amountInWords={amountInWords}
-                                    repaymentNumber={repaymentNumber}
-                                />
-                            }
-                            fileName={`Contrat_Creditly_${userData.nom}_${new Date().getTime()}.pdf`}
-                            className="w-full py-2 px-6 bg-emerald-600/10 text-emerald-500 font-black text-[10px] uppercase italic tracking-widest rounded-xl border border-emerald-500/20 hover:bg-emerald-600 hover:text-white transition-all text-center"
-                        >
-                            {({ loading: pdfLoading }) =>
-                                pdfLoading ? 'Génération...' : 'Télécharger PDF Pro'
-                            }
-                        </PDFDownloadLink>
+                        <div className="flex flex-col gap-1">
+                            <PDFDownloadLink
+                                document={
+                                    <LoanPDFDocument
+                                        userData={userData}
+                                        loanData={loanData}
+                                        personalData={personalData}
+                                        signature={signature || `${userData.prenom} ${userData.nom}`}
+                                        amountInWords={amountInWords}
+                                        repaymentNumber={repaymentNumber}
+                                    />
+                                }
+                                fileName={`Contrat_Creditly_${userData.nom}_${new Date().getTime()}.pdf`}
+                                className="w-full py-3 px-6 bg-emerald-600 text-white font-black text-[10px] uppercase italic tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all text-center flex items-center justify-center gap-2"
+                            >
+                                {({ loading: pdfLoading, error: pdfError }) => (
+                                    <>
+                                        <Download size={16} />
+                                        {pdfLoading ? 'Préparation...' : pdfError ? 'Erreur PDF' : 'Télécharger PDF Pro'}
+                                    </>
+                                )}
+                            </PDFDownloadLink>
+                            <p className="text-[8px] text-slate-500 text-center italic">Document officiel certifié</p>
+                        </div>
                     )}
                 </div>
                 <ActionButton
@@ -416,13 +422,33 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         margin: 0;
                         size: auto;
                     }
-                    body {
-                        background: white !important;
-                        -webkit-print-color-adjust: exact;
+                    html, body {
+                        background-color: white !important;
+                        color: #1a1a1a !important;
+                        filter: none !important;
                     }
+                    /* Désactiver le mode sombre du navigateur pour l'impression */
+                    * { 
+                        color-adjust: exact !important; 
+                        -webkit-print-color-adjust: exact !important; 
+                        print-color-adjust: exact !important;
+                    }
+                    /* Cache tout ce qui n'est pas le contrat */
+                    body { visibility: hidden !important; background: white !important; }
+                    
+                    #printable-waiver {
+                        visibility: visible !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        display: block !important;
+                        background-color: white !important;
+                        color: black !important;
+                        padding: 20px !important;
+                    }
+                    #printable-waiver * { visibility: visible !important; }
                     .no-print { display: none !important; }
-                    .print-only { display: block !important; }
-                    .main-container, .admin-container { padding: 0 !important; max-width: none !important; margin: 0 !important; }
                 }
                 .print-only { display: none; }
             `}</style>

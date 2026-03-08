@@ -16,7 +16,11 @@ interface LoanRow {
         nom: string;
         prenom: string;
         email: string;
-    };
+        birth_date?: string;
+        address?: string;
+        city?: string;
+        profession?: string;
+    } | null;
     amount: number;
     amount_paid: number;
     plan: string;
@@ -52,7 +56,12 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const [viewWaiver, setViewWaiver] = useState<typeof rows[0] | null>(null)
+    const [isClient, setIsClient] = useState(false)
     const router = useRouter()
+
+    React.useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     const handleAction = async () => {
         if (!confirmAction) return
@@ -109,16 +118,50 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             <p className="font-black text-white leading-tight italic">{row.user.split('(')[0]}</p>
                                             <p className="text-[10px] font-bold text-slate-500 tracking-tight lowercase mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
 
-                                            {row.borrower_id_details ? (
+                                            <div className="flex flex-wrap gap-2 mt-2">
                                                 <button
                                                     onClick={() => setViewWaiver(row)}
-                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[8px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:text-white transition-all"
                                                 >
-                                                    📜 Voir Décharge
+                                                    👁️ Voir
                                                 </button>
-                                            ) : (
-                                                <span className="text-[7px] font-black text-slate-700 uppercase italic">Sans décharge</span>
-                                            )}
+                                                {isClient && row.profile && (
+                                                    <PDFDownloadLink
+                                                        document={
+                                                            <LoanPDFDocument
+                                                                userData={{
+                                                                    nom: row.profile?.nom || 'Client',
+                                                                    prenom: row.profile?.prenom || ''
+                                                                }}
+                                                                loanData={{
+                                                                    amount: row.amount,
+                                                                    payoutNetwork: row.payout_network || 'MTN',
+                                                                    dueDate: row.due_date || 'N/A'
+                                                                }}
+                                                                personalData={{
+                                                                    address: row.borrower_address || row.profile?.address || '',
+                                                                    city: row.borrower_city || row.profile?.city || '',
+                                                                    profession: row.borrower_profession || row.profile?.profession || '',
+                                                                    idDetails: row.borrower_id_details || 'En attente',
+                                                                    birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
+                                                                }}
+                                                                signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
+                                                                amountInWords={numberToFrench(row.amount + 500)}
+                                                                repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                                            />
+                                                        }
+                                                        fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                                                    >
+                                                        {({ loading }) => (
+                                                            <>
+                                                                <Download size={10} />
+                                                                {loading ? '...' : 'PDF'}
+                                                            </>
+                                                        )}
+                                                    </PDFDownloadLink>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -228,14 +271,50 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             <div>
                                 <p className="font-black text-white text-lg uppercase italic leading-tight tracking-tighter">{row.user.split('(')[0]}</p>
                                 <p className="text-[10px] font-bold text-slate-500 lowercase leading-none mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
-                                {row.borrower_id_details && (
+                                <div className="flex gap-2 mt-3">
                                     <button
                                         onClick={() => setViewWaiver(row)}
-                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[8px] font-black uppercase tracking-widest"
+                                        className="inline-flex items-center gap-1 px-3 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest"
                                     >
-                                        📜 Décharge signée
+                                        👁️ Voir
                                     </button>
-                                )}
+                                    {isClient && row.profile && (
+                                        <PDFDownloadLink
+                                            document={
+                                                <LoanPDFDocument
+                                                    userData={{
+                                                        nom: row.profile?.nom || 'Client',
+                                                        prenom: row.profile?.prenom || ''
+                                                    }}
+                                                    loanData={{
+                                                        amount: row.amount,
+                                                        payoutNetwork: row.payout_network || 'MTN',
+                                                        dueDate: row.due_date || 'N/A'
+                                                    }}
+                                                    personalData={{
+                                                        address: row.borrower_address || row.profile?.address || '',
+                                                        city: row.borrower_city || row.profile?.city || '',
+                                                        profession: row.borrower_profession || row.profile?.profession || '',
+                                                        idDetails: row.borrower_id_details || 'En attente',
+                                                        birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
+                                                    }}
+                                                    signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
+                                                    amountInWords={numberToFrench(row.amount + 500)}
+                                                    repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                                />
+                                            }
+                                            fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
+                                            className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm"
+                                        >
+                                            {({ loading }) => (
+                                                <>
+                                                    <Download size={14} />
+                                                    {loading ? '...' : 'Télécharger PDF'}
+                                                </>
+                                            )}
+                                        </PDFDownloadLink>
+                                    )}
+                                </div>
                             </div>
                             <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest italic border border-blue-500/10">
                                 {row.plan}
@@ -358,7 +437,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
             >
                 {viewWaiver && (
                     <div className="space-y-6">
-                        <div className="w-full mt-4 bg-white border border-slate-200 rounded-2xl p-6 space-y-6 text-left font-sans animate-fade-in max-h-[60vh] overflow-y-auto no-print shadow-inner text-slate-700">
+                        <div id="admin-printable-waiver" className="w-full mt-4 bg-white border border-slate-200 rounded-2xl p-6 space-y-6 text-left font-sans animate-fade-in max-h-[60vh] overflow-y-auto custom-scrollbar shadow-inner text-slate-700">
                             <div className="space-y-4">
                                 <div className="pb-4 border-b border-slate-100">
                                     <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] italic mb-4">Informations Signataire</h4>
@@ -429,39 +508,42 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                 <Printer size={18} />
                                 Imprimer papier
                             </button>
-                            <PDFDownloadLink
-                                document={
-                                    <LoanPDFDocument
-                                        userData={{
-                                            nom: viewWaiver.profile.nom,
-                                            prenom: viewWaiver.profile.prenom
-                                        }}
-                                        loanData={{
-                                            amount: viewWaiver.amount,
-                                            payoutNetwork: viewWaiver.payout_network || 'MTN',
-                                            dueDate: viewWaiver.due_date || 'N/A'
-                                        }}
-                                        personalData={{
-                                            address: viewWaiver.borrower_address || '',
-                                            city: viewWaiver.borrower_city || '',
-                                            profession: viewWaiver.borrower_profession || '',
-                                            idDetails: viewWaiver.borrower_id_details || ''
-                                        }}
-                                        signature={`${viewWaiver.profile.prenom} ${viewWaiver.profile.nom}`}
-                                        amountInWords={numberToFrench(viewWaiver.amount + 500)}
-                                        repaymentNumber={repaymentPhones[viewWaiver.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
-                                    />
-                                }
-                                fileName={`Contrat_Creditly_${viewWaiver.profile.nom}_Archivage.pdf`}
-                                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-blue-500/20 text-center"
-                            >
-                                {({ loading }) => (
-                                    <>
-                                        <Download size={18} />
-                                        {loading ? 'Génération...' : 'Télécharger PDF Pro'}
-                                    </>
-                                )}
-                            </PDFDownloadLink>
+                            {isClient && (
+                                <PDFDownloadLink
+                                    document={
+                                        <LoanPDFDocument
+                                            userData={{
+                                                nom: viewWaiver.profile?.nom || 'Client',
+                                                prenom: viewWaiver.profile?.prenom || ''
+                                            }}
+                                            loanData={{
+                                                amount: viewWaiver.amount,
+                                                payoutNetwork: viewWaiver.payout_network || 'MTN',
+                                                dueDate: viewWaiver.due_date || 'N/A'
+                                            }}
+                                            personalData={{
+                                                address: viewWaiver.borrower_address || viewWaiver.profile?.address || '',
+                                                city: viewWaiver.borrower_city || viewWaiver.profile?.city || '',
+                                                profession: viewWaiver.borrower_profession || viewWaiver.profile?.profession || '',
+                                                idDetails: viewWaiver.borrower_id_details || 'En attente',
+                                                birthDate: viewWaiver.borrower_birth_date || viewWaiver.profile?.birth_date || ''
+                                            }}
+                                            signature={viewWaiver.waiver_signed_at ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : (viewWaiver.status === 'active' || viewWaiver.status === 'paid' ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : '')}
+                                            amountInWords={numberToFrench(viewWaiver.amount + 500)}
+                                            repaymentNumber={repaymentPhones[viewWaiver.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                        />
+                                    }
+                                    fileName={`Contrat_Creditly_${viewWaiver.profile?.nom || 'Client'}_Archivage.pdf`}
+                                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-blue-500/20 text-center"
+                                >
+                                    {({ loading: pdfLoading }) => (
+                                        <>
+                                            <Download size={18} />
+                                            {pdfLoading ? 'Génération...' : 'Télécharger PDF Pro'}
+                                        </>
+                                    )}
+                                </PDFDownloadLink>
+                            )}
                         </div>
                     </div>
                 )}
@@ -591,6 +673,43 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                 /* Hide printable container by default in browser */
                 .print-only-container {
                     display: none;
+                }
+            `}</style>
+            <style jsx global>{`
+                @media print {
+                    @page { margin: 1cm; size: auto; }
+                    html, body { 
+                        background-color: white !important; 
+                        color: black !important;
+                        filter: none !important;
+                    }
+                    /* Désactiver l'apparence sombre du système pour l'impression */
+                    * { 
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                    }
+                    /* Cache tout sauf le contrat que nous voulons imprimer */
+                    body { visibility: hidden !important; background: white !important; }
+                    
+                    #admin-printable-waiver {
+                        visibility: visible !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        max-height: none !important;
+                        display: block !important;
+                        border: none !important;
+                        padding: 0 !important;
+                        background: white !important;
+                        color: black !important;
+                    }
+                    #admin-printable-waiver * {
+                        visibility: visible !important;
+                    }
+                    .no-print { display: none !important; }
                 }
             `}</style>
         </div>

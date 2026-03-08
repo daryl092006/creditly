@@ -16,13 +16,17 @@ const styles = StyleSheet.create({
     },
     watermark: {
         position: 'absolute',
-        top: '40%',
-        left: '20%',
-        fontSize: 100,
-        color: '#f0f0f0',
+        top: '35%',
+        left: '10%',
+        fontSize: 120,
+        color: '#f8f8f8',
         transform: 'rotate(-45deg)',
         fontWeight: 'bold',
+        opacity: 0.5,
         zIndex: -1,
+        borderWidth: 10,
+        borderColor: '#f8f8f8',
+        padding: 20,
     },
     header: {
         flexDirection: 'row',
@@ -177,13 +181,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     stampTextLarge: {
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: 'bold',
-        color: 'rgba(0, 50, 150, 0.4)',
+        color: 'rgba(0, 50, 150, 0.6)',
+        textTransform: 'uppercase',
     },
     stampTextSmall: {
-        fontSize: 6,
-        color: 'rgba(0, 50, 150, 0.4)',
+        fontSize: 5,
+        fontWeight: 'bold',
+        color: 'rgba(0, 50, 150, 0.5)',
+        marginTop: 2,
+    },
+    stampLine: {
+        width: 40,
+        height: 1,
+        backgroundColor: 'rgba(0, 50, 150, 0.2)',
+        marginVertical: 2,
+    },
+    certificationBox: {
+        borderWidth: 1.5,
+        borderColor: 'rgba(0, 50, 150, 0.4)',
+        padding: 4,
+        marginTop: 10,
+        transform: 'rotate(-5deg)',
+    },
+    certificationText: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: 'rgba(0, 50, 150, 0.6)',
+        textTransform: 'uppercase',
     },
     footer: {
         marginTop: 'auto',
@@ -281,12 +307,17 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                 <View style={styles.signatureBlock}>
                     <View style={styles.stamp}>
                         <View style={styles.stampInner}>
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'rgba(0, 50, 150, 0.4)' }}>CREDITLY.IO</Text>
+                            <View style={styles.stampLine} />
                             <Text style={styles.stampTextLarge}>APPROUVÉ</Text>
-                            <Text style={styles.stampTextSmall}>CREDITLY {new Date().getFullYear()}</Text>
+                            <View style={styles.stampLine} />
+                            <Text style={styles.stampTextSmall}>DIGITAL CERTIFIED {new Date().getFullYear()}</Text>
                         </View>
                     </View>
                     <Text style={styles.signatureLabel}>Pour Creditly (L'Organisation)</Text>
-                    <Text style={{ fontSize: 9, color: '#0000FF', fontWeight: 'bold', marginTop: 10 }}>CERTIFIÉ CONFORME</Text>
+                    <View style={styles.certificationBox}>
+                        <Text style={styles.certificationText}>Certification Automatique</Text>
+                    </View>
                 </View>
             </View>
 
