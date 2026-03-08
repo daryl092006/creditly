@@ -88,18 +88,30 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
     }
 
     const handleDownloadPDF = async (row: LoanRow) => {
-        if (!row.profile) return
+        if (!row.profile) {
+            setErrorAction({
+                title: "Données manquantes",
+                message: "Le profil client est introuvable. Impossible de générer le contrat."
+            })
+            return
+        }
         setDownloadingId(row.id)
-
+        
         try {
+            // Validation des données critiques
+            const nom = row.profile.nom || 'Client';
+            const prenom = row.profile.prenom || '';
+            const amount = row.amount || 0;
+            const dateStr = row.date || new Date().toISOString();
+            
             const doc = (
                 <LoanPDFDocument
                     userData={{
-                        nom: row.profile.nom,
-                        prenom: row.profile.prenom
+                        nom: nom,
+                        prenom: prenom
                     }}
                     loanData={{
-                        amount: row.amount,
+                        amount: amount,
                         payoutNetwork: row.payout_network || 'MTN',
                         dueDate: row.due_date || 'N/A'
                     }}
@@ -110,27 +122,29 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                         idDetails: row.borrower_id_details || 'En attente',
                         birthDate: row.borrower_birth_date || row.profile.birth_date || ''
                     }}
-                    signature={row.waiver_signed_at ? `${row.profile.prenom} ${row.profile.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile.prenom} ${row.profile.nom}` : '')}
-                    amountInWords={numberToFrench(new Date(row.date) >= new Date('2026-03-09T00:00:00') ? row.amount + 500 : row.amount)}
+                    signature={row.waiver_signed_at ? `${prenom} ${nom}` : (row.status === 'active' || row.status === 'paid' ? `${prenom} ${nom}` : '')}
+                    amountInWords={numberToFrench(new Date(dateStr) >= new Date('2026-03-09T00:00:00') ? amount + 500 : amount)}
                     repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
-                    applicationDate={row.date}
+                    applicationDate={dateStr}
                 />
             )
 
-            const blob = await pdf(doc).toBlob()
+            const instance = pdf(doc);
+            const blob = await instance.toBlob();
+            
             const url = URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url
-            link.download = `Contrat_Creditly_${row.profile.nom}_${row.id.substring(0, 8)}.pdf`
+            link.download = `Contrat_Creditly_${nom}_${row.id.substring(0, 8)}.pdf`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
             URL.revokeObjectURL(url)
-        } catch (err) {
-            console.error('PDF Error:', err)
+        } catch (err: any) {
+            console.error('PDF Generation Error Detail:', err)
             setErrorAction({
-                title: "Erreur de génération",
-                message: "Impossible de créer le fichier PDF. Veuillez réessayer."
+                title: "Erreur Technique PDF",
+                message: `Détail : ${err.message || 'Erreur inconnue'}. Vérifiez la console pour plus de détails.`
             })
         } finally {
             setDownloadingId(null)
@@ -167,25 +181,33 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             <p className="font-black text-white leading-tight italic">{row.user.split('(')[0]}</p>
                                             <p className="text-[10px] font-bold text-slate-500 tracking-tight lowercase mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
 
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <button
-                                                    onClick={() => setViewWaiver(row)}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:text-white transition-all"
-                                                >
-                                                    👁️ Voir
-                                                </button>
-                                                {isClient && row.profile && (
-                                                    <button
-                                                        onClick={() => handleDownloadPDF(row)}
-                                                        disabled={downloadingId === row.id}
-                                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-sm ${downloadingId === row.id
-                                                            ? 'bg-emerald-500 text-white animate-pulse cursor-wait'
-                                                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        <Download size={10} />
-                                                        {downloadingId === row.id ? '...' : 'PDF'}
-                                                    </button>
+                                             <div className="flex flex-wrap gap-2 mt-2">
+                                                {row.waiver_signed_at ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setViewWaiver(row)}
+                                                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            👁️ Voir
+                                                        </button>
+                                                        {isClient && row.profile && (
+                                                            <button
+                                                                onClick={() => handleDownloadPDF(row)}
+                                                                disabled={downloadingId === row.id}
+                                                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-sm ${downloadingId === row.id
+                                                                    ? 'bg-emerald-500 text-white animate-pulse cursor-wait'
+                                                                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white'
+                                                                    }`}
+                                                            >
+                                                                <Download size={10} />
+                                                                {downloadingId === row.id ? '...' : 'PDF'}
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-1 bg-slate-800/50 text-slate-600 border border-slate-700/50 rounded-lg text-[7px] font-black uppercase tracking-[0.1em] opacity-60">
+                                                        ⚠️ Pas de décharge
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -297,25 +319,33 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             <div>
                                 <p className="font-black text-white text-lg uppercase italic leading-tight tracking-tighter">{row.user.split('(')[0]}</p>
                                 <p className="text-[10px] font-bold text-slate-500 lowercase leading-none mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
-                                <div className="flex gap-2 mt-3">
-                                    <button
-                                        onClick={() => setViewWaiver(row)}
-                                        className="inline-flex items-center gap-1 px-3 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest"
-                                    >
-                                        👁️ Voir
-                                    </button>
-                                    {isClient && row.profile && (
-                                        <button
-                                            onClick={() => handleDownloadPDF(row)}
-                                            disabled={downloadingId === row.id}
-                                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${downloadingId === row.id
-                                                ? 'bg-emerald-500 text-white animate-pulse'
-                                                : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                                }`}
-                                        >
-                                            <Download size={14} />
-                                            {downloadingId === row.id ? 'Prêt...' : 'Télécharger PDF'}
-                                        </button>
+                                 <div className="flex gap-2 mt-3">
+                                    {row.waiver_signed_at ? (
+                                        <>
+                                            <button
+                                                onClick={() => setViewWaiver(row)}
+                                                className="inline-flex items-center gap-1 px-3 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest"
+                                            >
+                                                👁️ Voir
+                                            </button>
+                                            {isClient && row.profile && (
+                                                <button
+                                                    onClick={() => handleDownloadPDF(row)}
+                                                    disabled={downloadingId === row.id}
+                                                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${downloadingId === row.id
+                                                        ? 'bg-emerald-500 text-white animate-pulse'
+                                                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                        }`}
+                                                >
+                                                    <Download size={14} />
+                                                    {downloadingId === row.id ? 'Prêt...' : 'Télécharger PDF'}
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="inline-flex items-center px-3 py-2 bg-slate-800/50 text-slate-600 border border-slate-700/50 rounded-xl text-[8px] font-black uppercase tracking-widest opacity-60">
+                                            ⚠️ Pas de décharge
+                                        </span>
                                     )}
                                 </div>
                             </div>
