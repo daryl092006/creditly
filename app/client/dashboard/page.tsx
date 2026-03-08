@@ -126,10 +126,10 @@ export default async function ClientDashboard() {
     const notifications = [
         ...allSubs.map((s: UserSubscription) => ({
             id: `sub-${s.created_at}`,
-            text: s.status === 'pending' ? `Paiement abonnement ${s.abonnements?.name || '...'} en cours de validation` :
-                s.status === 'active' ? `Abonnement ${s.abonnements?.name || '...'} actif` :
-                    s.status === 'rejected' ? `Paiement ${s.abonnements?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
-                        `Abonnement ${s.abonnements?.name || '...'} expiré`,
+            text: s.status === 'pending' ? `Paiement abonnement ${s.plan?.name || '...'} en cours de validation` :
+                s.status === 'active' ? `Abonnement ${s.plan?.name || '...'} actif` :
+                    s.status === 'rejected' ? `Paiement ${s.plan?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                        `Abonnement ${s.plan?.name || '...'} expiré`,
             date: s.created_at,
             type: s.status === 'pending' ? 'pending' : 'status',
             status: s.status
