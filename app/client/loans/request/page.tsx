@@ -12,13 +12,17 @@ export default async function LoanRequestPage() {
 
     if (!user) return redirect('/auth/login')
 
-    // Check active subscription
+    // Check active subscription - More robust check
     const { data: sub } = await supabase
         .from('user_subscriptions')
         .select('*, plan:abonnements(*)')
         .eq('user_id', user.id)
+        .eq('status', 'active')
         .eq('is_active', true)
-        .single()
+        .gt('end_date', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
     if (!sub) {
         return (

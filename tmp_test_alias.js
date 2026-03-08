@@ -12,14 +12,20 @@ async function check() {
     const key = env.SUPABASE_SERVICE_ROLE_KEY;
 
     try {
-        const response = await fetch(`${url}/rest/v1/abonnements?select=*`, {
+        const response = await fetch(`${url}/rest/v1/user_subscriptions?select=*,plan:abonnements(*)&limit=1`, {
             headers: {
                 'apikey': key,
                 'Authorization': `Bearer ${key}`
             }
         });
         const data = await response.json();
-        fs.writeFileSync('d:\\creditly\\plans_output.json', JSON.stringify(data, null, 2), 'utf8');
+        console.log('User subscription with plan alias:', JSON.stringify(data?.[0], null, 2));
+        
+        if (data?.[0] && !data[0].plan && data[0].abonnements) {
+            console.log('!!! ALIAS FAILED, data is in "abonnements" key !!!');
+        } else if (data?.[0] && data[0].plan) {
+            console.log('Alias worked.');
+        }
     } catch (err) {
         console.error('Fetch error:', err.message);
     }

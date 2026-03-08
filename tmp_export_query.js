@@ -12,14 +12,14 @@ async function check() {
     const key = env.SUPABASE_SERVICE_ROLE_KEY;
 
     try {
-        const response = await fetch(`${url}/rest/v1/abonnements?select=*`, {
+        const response = await fetch(`${url}/rest/v1/user_subscriptions?select=*,plan:abonnements(*)&limit=1`, {
             headers: {
                 'apikey': key,
                 'Authorization': `Bearer ${key}`
             }
         });
         const data = await response.json();
-        fs.writeFileSync('d:\\creditly\\plans_output.json', JSON.stringify(data, null, 2), 'utf8');
+        fs.writeFileSync('d:\\creditly\\query_output.json', JSON.stringify(data?.[0], null, 2));
     } catch (err) {
         console.error('Fetch error:', err.message);
     }
