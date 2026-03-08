@@ -91,13 +91,13 @@ export default function ConfirmModal({
     }
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 overflow-hidden" onClick={isLoading ? undefined : onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden" onClick={isLoading ? undefined : onClose}>
             {/* Backdrop */}
-            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-fade-in pointer-events-none"></div>
+            <div className="fixed inset-0 bg-slate-950 backdrop-blur-2xl animate-fade-in pointer-events-none"></div>
 
-            {/* Modal Box */}
+            {/* Modal Box - 100% View */}
             <div
-                className={`glass-panel w-full ${maxWidthClasses[maxWidth]} max-h-[85vh] flex flex-col relative z-10 animate-slide-up border-slate-800 bg-slate-900/90 shadow-2xl ${currentVariant.bg} cursor-default overflow-hidden rounded-[2.5rem]`}
+                className={`w-full h-full md:h-auto ${maxWidthClasses[maxWidth]} md:max-h-[92vh] flex flex-col relative z-10 animate-slide-up border-white/5 bg-slate-900 shadow-2xl ${currentVariant.bg} cursor-default overflow-hidden md:rounded-[2.5rem]`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Always visible Close Button */}

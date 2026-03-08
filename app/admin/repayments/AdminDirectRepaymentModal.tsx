@@ -118,10 +118,10 @@ export default function AdminDirectRepaymentModal({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 overflow-hidden">
-            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-fade-in" onClick={onClose}></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden">
+            <div className="fixed inset-0 bg-slate-950 backdrop-blur-2xl animate-fade-in" onClick={onClose}></div>
 
-            <div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up max-h-[85vh] flex flex-col">
+            <div className="relative w-full h-full md:h-auto md:max-w-3xl bg-slate-900 md:border md:border-white/10 md:rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up md:max-h-[92vh] flex flex-col">
                 {/* Header Decoration */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none z-0"></div>
 
