@@ -56,6 +56,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
     const [rejectionReason, setRejectionReason] = useState('')
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const [viewWaiver, setViewWaiver] = useState<typeof rows[0] | null>(null)
+    const [downloadingId, setDownloadingId] = useState<string | null>(null)
     const [isClient, setIsClient] = useState(false)
     const router = useRouter()
 
@@ -126,40 +127,53 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                     👁️ Voir
                                                 </button>
                                                 {isClient && row.profile && (
-                                                    <PDFDownloadLink
-                                                        document={
-                                                            <LoanPDFDocument
-                                                                userData={{
-                                                                    nom: row.profile?.nom || 'Client',
-                                                                    prenom: row.profile?.prenom || ''
-                                                                }}
-                                                                loanData={{
-                                                                    amount: row.amount,
-                                                                    payoutNetwork: row.payout_network || 'MTN',
-                                                                    dueDate: row.due_date || 'N/A'
-                                                                }}
-                                                                personalData={{
-                                                                    address: row.borrower_address || row.profile?.address || '',
-                                                                    city: row.borrower_city || row.profile?.city || '',
-                                                                    profession: row.borrower_profession || row.profile?.profession || '',
-                                                                    idDetails: row.borrower_id_details || 'En attente',
-                                                                    birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
-                                                                }}
-                                                                signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
-                                                                amountInWords={numberToFrench(row.amount + 500)}
-                                                                repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
-                                                            />
-                                                        }
-                                                        fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
-                                                    >
-                                                        {({ loading }) => (
-                                                            <>
+                                                    <div className="relative">
+                                                        {downloadingId === row.id ? (
+                                                            <PDFDownloadLink
+                                                                key={`pdf-${row.id}`}
+                                                                document={
+                                                                    <LoanPDFDocument
+                                                                        userData={{
+                                                                            nom: row.profile?.nom || 'Client',
+                                                                            prenom: row.profile?.prenom || ''
+                                                                        }}
+                                                                        loanData={{
+                                                                            amount: row.amount,
+                                                                            payoutNetwork: row.payout_network || 'MTN',
+                                                                            dueDate: row.due_date || 'N/A'
+                                                                        }}
+                                                                        personalData={{
+                                                                            address: row.borrower_address || row.profile?.address || '',
+                                                                            city: row.borrower_city || row.profile?.city || '',
+                                                                            profession: row.borrower_profession || row.profile?.profession || '',
+                                                                            idDetails: row.borrower_id_details || 'En attente',
+                                                                            birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
+                                                                        }}
+                                                                        signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
+                                                                        amountInWords={numberToFrench(row.amount + 500)}
+                                                                        repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                                                    />
+                                                                }
+                                                                fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
+                                                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest transition-all shadow-lg animate-pulse"
+                                                            >
+                                                                {({ loading }) => (
+                                                                    <>
+                                                                        <Download size={10} />
+                                                                        {loading ? 'Prêt...' : 'Prêt ! Clic'}
+                                                                    </>
+                                                                )}
+                                                            </PDFDownloadLink>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => setDownloadingId(row.id)}
+                                                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all shadow-sm"
+                                                            >
                                                                 <Download size={10} />
-                                                                {loading ? '...' : 'PDF'}
-                                                            </>
+                                                                Générer PDF
+                                                            </button>
                                                         )}
-                                                    </PDFDownloadLink>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -279,40 +293,53 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                         👁️ Voir
                                     </button>
                                     {isClient && row.profile && (
-                                        <PDFDownloadLink
-                                            document={
-                                                <LoanPDFDocument
-                                                    userData={{
-                                                        nom: row.profile?.nom || 'Client',
-                                                        prenom: row.profile?.prenom || ''
-                                                    }}
-                                                    loanData={{
-                                                        amount: row.amount,
-                                                        payoutNetwork: row.payout_network || 'MTN',
-                                                        dueDate: row.due_date || 'N/A'
-                                                    }}
-                                                    personalData={{
-                                                        address: row.borrower_address || row.profile?.address || '',
-                                                        city: row.borrower_city || row.profile?.city || '',
-                                                        profession: row.borrower_profession || row.profile?.profession || '',
-                                                        idDetails: row.borrower_id_details || 'En attente',
-                                                        birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
-                                                    }}
-                                                    signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
-                                                    amountInWords={numberToFrench(row.amount + 500)}
-                                                    repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
-                                                />
-                                            }
-                                            fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
-                                            className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm"
-                                        >
-                                            {({ loading }) => (
-                                                <>
+                                        <div className="relative">
+                                            {downloadingId === row.id ? (
+                                                <PDFDownloadLink
+                                                    key={`pdf-mobile-${row.id}`}
+                                                    document={
+                                                        <LoanPDFDocument
+                                                            userData={{
+                                                                nom: row.profile?.nom || 'Client',
+                                                                prenom: row.profile?.prenom || ''
+                                                            }}
+                                                            loanData={{
+                                                                amount: row.amount,
+                                                                payoutNetwork: row.payout_network || 'MTN',
+                                                                dueDate: row.due_date || 'N/A'
+                                                            }}
+                                                            personalData={{
+                                                                address: row.borrower_address || row.profile?.address || '',
+                                                                city: row.borrower_city || row.profile?.city || '',
+                                                                profession: row.borrower_profession || row.profile?.profession || '',
+                                                                idDetails: row.borrower_id_details || 'En attente',
+                                                                birthDate: row.borrower_birth_date || row.profile?.birth_date || ''
+                                                            }}
+                                                            signature={row.waiver_signed_at ? `${row.profile?.prenom} ${row.profile?.nom}` : (row.status === 'active' || row.status === 'paid' ? `${row.profile?.prenom} ${row.profile?.nom}` : '')}
+                                                            amountInWords={numberToFrench(row.amount + 500)}
+                                                            repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                                        />
+                                                    }
+                                                    fileName={`Contrat_Creditly_${row.profile?.nom || 'Client'}_${row.id.substring(0, 8)}.pdf`}
+                                                    className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg animate-pulse"
+                                                >
+                                                    {({ loading }) => (
+                                                        <>
+                                                            <Download size={14} />
+                                                            {loading ? 'Prêt...' : 'Télécharger'}
+                                                        </>
+                                                    )}
+                                                </PDFDownloadLink>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setDownloadingId(row.id)}
+                                                    className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm"
+                                                >
                                                     <Download size={14} />
-                                                    {loading ? '...' : 'Télécharger PDF'}
-                                                </>
+                                                    Générer PDF
+                                                </button>
                                             )}
-                                        </PDFDownloadLink>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -390,6 +417,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                 onClose={() => {
                     setConfirmAction(null)
                     setRejectionReason('')
+                    setDownloadingId(null)
                 }}
                 onConfirm={handleAction}
                 title={confirmAction?.status === 'active' ? 'Approuver le prêt ?' : 'Refuser le prêt ?'}
@@ -428,8 +456,14 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
             {/* Waiver Viewer Modal */}
             <ConfirmModal
                 isOpen={!!viewWaiver}
-                onClose={() => setViewWaiver(null)}
-                onConfirm={() => setViewWaiver(null)}
+                onClose={() => {
+                    setViewWaiver(null)
+                    setDownloadingId(null)
+                }}
+                onConfirm={() => {
+                    setViewWaiver(null)
+                    setDownloadingId(null)
+                }}
                 title="Détails de la Décharge (Reconnaissance de Dette)"
                 message=""
                 confirmText="Fermer"
@@ -508,41 +542,54 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                 <Printer size={18} />
                                 Imprimer papier
                             </button>
-                            {isClient && (
-                                <PDFDownloadLink
-                                    document={
-                                        <LoanPDFDocument
-                                            userData={{
-                                                nom: viewWaiver.profile?.nom || 'Client',
-                                                prenom: viewWaiver.profile?.prenom || ''
-                                            }}
-                                            loanData={{
-                                                amount: viewWaiver.amount,
-                                                payoutNetwork: viewWaiver.payout_network || 'MTN',
-                                                dueDate: viewWaiver.due_date || 'N/A'
-                                            }}
-                                            personalData={{
-                                                address: viewWaiver.borrower_address || viewWaiver.profile?.address || '',
-                                                city: viewWaiver.borrower_city || viewWaiver.profile?.city || '',
-                                                profession: viewWaiver.borrower_profession || viewWaiver.profile?.profession || '',
-                                                idDetails: viewWaiver.borrower_id_details || 'En attente',
-                                                birthDate: viewWaiver.borrower_birth_date || viewWaiver.profile?.birth_date || ''
-                                            }}
-                                            signature={viewWaiver.waiver_signed_at ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : (viewWaiver.status === 'active' || viewWaiver.status === 'paid' ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : '')}
-                                            amountInWords={numberToFrench(viewWaiver.amount + 500)}
-                                            repaymentNumber={repaymentPhones[viewWaiver.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
-                                        />
-                                    }
-                                    fileName={`Contrat_Creditly_${viewWaiver.profile?.nom || 'Client'}_Archivage.pdf`}
-                                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xl shadow-blue-500/20 text-center"
-                                >
-                                    {({ loading: pdfLoading }) => (
-                                        <>
+                            {isClient && viewWaiver && (
+                                <div className="w-full">
+                                    {downloadingId === viewWaiver.id ? (
+                                        <PDFDownloadLink
+                                            key={`pdf-modal-${viewWaiver.id}`}
+                                            document={
+                                                <LoanPDFDocument
+                                                    userData={{
+                                                        nom: viewWaiver.profile?.nom || 'Client',
+                                                        prenom: viewWaiver.profile?.prenom || ''
+                                                    }}
+                                                    loanData={{
+                                                        amount: viewWaiver.amount,
+                                                        payoutNetwork: viewWaiver.payout_network || 'MTN',
+                                                        dueDate: viewWaiver.due_date || 'N/A'
+                                                    }}
+                                                    personalData={{
+                                                        address: viewWaiver.borrower_address || viewWaiver.profile?.address || '',
+                                                        city: viewWaiver.borrower_city || viewWaiver.profile?.city || '',
+                                                        profession: viewWaiver.borrower_profession || viewWaiver.profile?.profession || '',
+                                                        idDetails: viewWaiver.borrower_id_details || 'En attente',
+                                                        birthDate: viewWaiver.borrower_birth_date || viewWaiver.profile?.birth_date || ''
+                                                    }}
+                                                    signature={viewWaiver.waiver_signed_at ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : (viewWaiver.status === 'active' || viewWaiver.status === 'paid' ? `${viewWaiver.profile?.prenom} ${viewWaiver.profile?.nom}` : '')}
+                                                    amountInWords={numberToFrench(viewWaiver.amount + 500)}
+                                                    repaymentNumber={repaymentPhones[viewWaiver.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
+                                                />
+                                            }
+                                            fileName={`Contrat_Creditly_${viewWaiver.profile?.nom || 'Client'}_Archivage.pdf`}
+                                            className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 animate-pulse"
+                                        >
+                                            {({ loading: pdfLoading }) => (
+                                                <>
+                                                    <Download size={18} />
+                                                    {pdfLoading ? 'Préparation...' : 'Prêt ! Cliquez pour Télécharger'}
+                                                </>
+                                            )}
+                                        </PDFDownloadLink>
+                                    ) : (
+                                        <button
+                                            onClick={() => setDownloadingId(viewWaiver.id)}
+                                            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20"
+                                        >
                                             <Download size={18} />
-                                            {pdfLoading ? 'Génération...' : 'Télécharger PDF Pro'}
-                                        </>
+                                            Générer le PDF Officiel
+                                        </button>
                                     )}
-                                </PDFDownloadLink>
+                                </div>
                             )}
                         </div>
                     </div>
