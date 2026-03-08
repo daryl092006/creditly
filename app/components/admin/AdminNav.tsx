@@ -24,8 +24,11 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
         { name: 'Mon Profil', href: '/admin/profile', icon: 'M1...', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] }
     ]
 
-    const links = allLinks.filter(link => userRoles.some(role => link.roles.includes(role as any)))
-
+    const links = allLinks.filter(link => {
+        // L'owner a accès à TOUT car il surplombe le superadmin
+        if (userRoles.includes('owner')) return true
+        return userRoles.some(role => link.roles.includes(role as any))
+    })
     return (
         <nav className="sticky top-0 z-50 w-full bg-slate-900/70 backdrop-blur-2xl border-b border-slate-800 py-3 transition-colors duration-300">
             <div className="main-container flex items-center justify-between">
