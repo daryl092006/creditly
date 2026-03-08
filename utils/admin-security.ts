@@ -13,11 +13,11 @@ export async function requireAdminRole(allowedRoles: UserRole[]) {
 
     const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('roles')
         .eq('id', user.id)
         .single()
 
-    const userRoles = profile?.role ? [profile.role as UserRole] : []
+    const userRoles = (profile?.roles || []) as UserRole[]
 
     // OWNER has absolute power: they satisfy ANY admin check
     const isOwner = userRoles.includes('owner')
@@ -29,7 +29,7 @@ export async function requireAdminRole(allowedRoles: UserRole[]) {
         console.error(`Access Denied: User ${user.email} (Roles: ${userRoles.join(', ')}) attempted to access restricted area.`)
 
         // Logical redirect based on seniority/priority
-        if (userRoles.includes('owner')) redirect('/admin/super') // Should not happen with hasAccess fix
+        if (userRoles.includes('owner')) redirect('/admin/super')
         if (userRoles.includes('superadmin')) redirect('/admin/super')
         if (userRoles.includes('admin_comptable')) redirect('/admin/repayments')
         if (userRoles.includes('admin_repayment')) redirect('/admin/repayments')
@@ -52,11 +52,12 @@ export async function getCurrentUserRole(): Promise<UserRole | null> {
 
     const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('roles')
         .eq('id', user.id)
         .single()
 
-    return (profile?.role as UserRole) || null
+    const roles = profile?.roles as UserRole[]
+    return roles && roles.length > 0 ? roles[0] : null
 }
 
 export async function getCurrentUserRoles(): Promise<UserRole[]> {
@@ -66,9 +67,9 @@ export async function getCurrentUserRoles(): Promise<UserRole[]> {
 
     const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('roles')
         .eq('id', user.id)
         .single()
 
-    return profile?.role ? [profile.role as UserRole] : []
+    return (profile?.roles || []) as UserRole[]
 }

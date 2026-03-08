@@ -27,7 +27,7 @@ export default async function AdminLoanPage({
             *,
             user:users!prets_user_id_fkey(email, nom, prenom, whatsapp, telephone),
             plan:subscription_snapshot_id(name),
-            admin:users!prets_admin_id_fkey(email, nom, prenom, role, whatsapp),
+            admin:users!prets_admin_id_fkey(email, nom, prenom, roles, whatsapp),
             repayments:remboursements(status)
         `)
         .eq('status', statusFilter)
@@ -54,7 +54,7 @@ export default async function AdminLoanPage({
         waiver_signed_at: loan.waiver_signed_at,
         admin: loan.admin ? {
             name: `${loan.admin.prenom} ${loan.admin.nom}`,
-            role: loan.admin.role,
+            role: loan.admin.roles?.[0],
             whatsapp: loan.admin.whatsapp
         } : null
     })) || []

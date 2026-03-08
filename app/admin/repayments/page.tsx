@@ -23,7 +23,7 @@ export default async function AdminRepaymentPage({
             *,
             loan:prets(amount, amount_paid),
             user:users!remboursements_user_id_fkey(email, nom, prenom, whatsapp, telephone),
-            admin:users!remboursements_admin_id_fkey(email, nom, prenom, role, whatsapp)
+            admin:users!remboursements_admin_id_fkey(email, nom, prenom, roles, whatsapp)
         `)
         .eq('status', statusFilter)
         .order('created_at', { ascending: false })
@@ -43,7 +43,7 @@ export default async function AdminRepaymentPage({
         status: r.status,
         admin: r.admin ? {
             name: `${r.admin.prenom} ${r.admin.nom}`,
-            role: r.admin.role,
+            role: r.admin.roles?.[0],
             whatsapp: r.admin.whatsapp
         } : null
     })) || []

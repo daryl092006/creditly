@@ -13,12 +13,19 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
 
     const handleToggleRole = async (userId: string, currentRoles: string[], roleToToggle: string) => {
-        // En mode single role, basculer vers un rôle l'attribue directement de manière exclusive
-        // Si le rôle cliqué est déjà celui actuel, on force éventuellement un retour en client
-        const newRole = currentRoles.includes(roleToToggle) ? 'client' : roleToToggle
+        let newRoles: string[]
+        if (currentRoles.includes(roleToToggle)) {
+            // Remove role (but keep at least one if it's the last one? No, let's trust admin)
+            newRoles = currentRoles.filter(r => r !== roleToToggle)
+        } else {
+            // Add role
+            newRoles = [...currentRoles, roleToToggle]
+        }
+
+        if (newRoles.length === 0) newRoles = ['client'] // Default fallback
 
         setLoading(userId)
-        const result = await updateUserRoles(userId, newRole as any)
+        const result = await updateUserRoles(userId, newRoles as any)
         if (result?.error) {
             setErrorAction({
                 title: "Erreur de Privilège",

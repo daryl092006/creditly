@@ -27,7 +27,7 @@ export default async function UserManagementPage() {
         email: u.email,
         name: `${u.prenom || ''} ${u.nom || ''}`,
         whatsapp: u.whatsapp,
-        roles: u.role ? [u.role] : ['client'],
+        roles: u.roles || [],
         is_active: u.is_account_active,
         has_active_loans: userDebts.has(u.id) && userDebts.get(u.id)! > 0,
         surplus_balance: u.surplus_balance || 0,

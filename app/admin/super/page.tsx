@@ -124,8 +124,8 @@ export default async function SuperAdminPage({
     // On récupère tous les admins
     const { data: admins } = await supabase
         .from('users')
-        .select('id, nom, prenom, role, whatsapp')
-        .in('role', ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable', 'owner'])
+        .select('id, nom, prenom, roles, whatsapp')
+        .overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable', 'owner'])
 
     // On agrège leurs actions
     const kycActions = await supabase.from('kyc_submissions').select('admin_id, status').not('admin_id', 'is', null)
@@ -435,7 +435,7 @@ export default async function SuperAdminPage({
                                             <div className="flex items-center gap-3">
                                                 <div>
                                                     <p className="text-xs font-black text-white italic uppercase tracking-tight">{admin.prenom} {admin.nom}</p>
-                                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{admin.role}</p>
+                                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{admin.roles?.[0]}</p>
                                                 </div>
                                                 {admin.whatsapp && (
                                                     <a
@@ -455,19 +455,19 @@ export default async function SuperAdminPage({
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            {(admin.role === 'admin_kyc' || admin.role === 'superadmin') && (
+                                            {(admin.roles?.includes('admin_kyc') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
                                                 <div className="flex-1 text-center p-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
                                                     <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">KYC</p>
                                                     <p className="text-[10px] font-black text-slate-300">{admin.details.kycCount}</p>
                                                 </div>
                                             )}
-                                            {(admin.role === 'admin_loan' || admin.role === 'superadmin') && (
+                                            {(admin.roles?.includes('admin_loan') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
                                                 <div className="flex-1 text-center p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                                                     <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Prêts</p>
                                                     <p className="text-[10px] font-black text-slate-300">{admin.details.loanCount}</p>
                                                 </div>
                                             )}
-                                            {(admin.role === 'admin_repayment' || admin.role === 'superadmin') && (
+                                            {(admin.roles?.includes('admin_repayment') || admin.roles?.includes('admin_comptable') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
                                                 <div className="flex-1 text-center p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
                                                     <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Remb.</p>
                                                     <p className="text-[10px] font-black text-slate-300">{admin.details.repaymentCount}</p>

@@ -3,10 +3,10 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function updateUserRoles(userId: string, role: 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable') {
+export async function updateUserRoles(userId: string, roles: Array<'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner'>) {
     const supabase = await createClient()
 
-    const { error } = await supabase.from('users').update({ role }).eq('id', userId)
+    const { error } = await supabase.from('users').update({ roles }).eq('id', userId)
 
     if (error) return { error: error.message }
     revalidatePath('/admin/super/users')

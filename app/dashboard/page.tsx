@@ -15,7 +15,7 @@ export default async function DashboardPage() {
     // Fetch user role from public.users table
     const { data: initialProfile, error: profileError } = await supabase
         .from('users')
-        .select('role')
+        .select('roles')
         .eq('id', user.id)
         .single()
 
@@ -32,39 +32,34 @@ export default async function DashboardPage() {
                 email: user.email,
                 nom: user.user_metadata?.nom || '',
                 prenom: user.user_metadata?.prenom || '',
-                role: 'client' // Force client role for new recovery profiles
+                roles: ['client'] // Default role
             })
-            .select('role')
+            .select('roles')
             .single()
 
         if (insertError) {
             console.error('CRITICAL: Failed to recover/create profile:', insertError)
-            // If we can't create it, we are stuck, but let's try to assume 'client' for one last redirect 
-            // to see if the client page can handle missing profiles better.
             return redirect('/client/dashboard?warning=ProfileCreatedOnTheFlyFailed')
         }
         profile = newProfile
     }
 
-    console.log('User profile found/created, role:', profile?.role)
+    const roles = (profile?.roles || []) as string[]
 
-    if (!profile) {
-        console.error('CRITICAL: Profile is null after recovery attempts')
-        return redirect('/client/dashboard?error=ProfileRecoveryFailed')
+    // Redirect based on priority roles
+    if (roles.includes('owner') || roles.includes('superadmin')) {
+        return redirect('/admin/super')
+    }
+    if (roles.includes('admin_kyc')) {
+        return redirect('/admin/kyc')
+    }
+    if (roles.includes('admin_loan')) {
+        return redirect('/admin/loans')
+    }
+    if (roles.includes('admin_repayment') || roles.includes('admin_comptable')) {
+        return redirect('/admin/repayments')
     }
 
-    // Redirect based on role
-    switch (profile.role) {
-        case 'superadmin':
-            return redirect('/admin/super')
-        case 'admin_kyc':
-            return redirect('/admin/kyc')
-        case 'admin_loan':
-            return redirect('/admin/loans')
-        case 'admin_repayment':
-            return redirect('/admin/repayments')
-        case 'client':
-        default:
-            return redirect('/client/dashboard')
-    }
+    // Default to client dashboard
+    return redirect('/client/dashboard')
 }
