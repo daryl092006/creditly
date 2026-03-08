@@ -590,7 +590,7 @@ export async function getActiveLoansForUser(userId: string) {
 
 export async function createDirectRepayment(formData: FormData) {
     const role = await getCurrentUserRole()
-    if (!role || !['superadmin', 'admin_comptable', 'owner'].includes(role)) {
+    if (!role || !['superadmin', 'admin_comptable', 'owner', 'admin_loan', 'admin_repayment'].includes(role)) {
         return { error: "Accès refusé. Action réservée aux administrateurs autorisés." }
     }
 

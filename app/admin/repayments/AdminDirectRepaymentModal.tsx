@@ -23,10 +23,14 @@ interface LoanMatch {
 
 export default function AdminDirectRepaymentModal({
     isOpen,
-    onClose
+    onClose,
+    initialUser = null,
+    initialLoan = null
 }: {
     isOpen: boolean;
-    onClose: () => void
+    onClose: () => void;
+    initialUser?: UserMatch | null;
+    initialLoan?: LoanMatch | null;
 }) {
     const [step, setStep] = useState(1)
     const [searchQuery, setSearchQuery] = useState('')
@@ -41,7 +45,26 @@ export default function AdminDirectRepaymentModal({
     const [isSearching, setIsSearching] = useState(false)
 
     useEffect(() => {
-        if (!isOpen) {
+        if (isOpen) {
+            if (initialUser) {
+                setSelectedUser(initialUser)
+                setStep(2)
+
+                // Fetch loans for this user if not provided or to ensure fresh data
+                const fetchLoans = async () => {
+                    setIsSearching(true)
+                    const userLoans = await getActiveLoansForUser(initialUser.id)
+                    setLoans(userLoans)
+                    if (initialLoan) {
+                        // Find the matching loan in the fresh list if possible
+                        const match = userLoans.find(l => l.id === initialLoan.id)
+                        setSelectedLoan(match || initialLoan)
+                    }
+                    setIsSearching(false)
+                }
+                fetchLoans()
+            }
+        } else {
             // Reset state on close
             setStep(1)
             setSearchQuery('')
@@ -51,7 +74,7 @@ export default function AdminDirectRepaymentModal({
             setFile(null)
             setError(null)
         }
-    }, [isOpen])
+    }, [isOpen, initialUser, initialLoan])
 
     const handleSearch = async () => {
         if (searchQuery.length < 2) return
