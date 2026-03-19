@@ -25,7 +25,7 @@ create table public.users (
   guarantor_whatsapp text,
 
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now() 
 );
 
 -- Enable RLS
