@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const adminEmail = process.env.ADMIN_EMAIL || 'creditly001@gmail.com';
+const darylEmail = 'darylggt23@gmail.com';
 
 type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION';
 
@@ -95,14 +96,33 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     }
 
     try {
+        // 1. Envoi IMMÉDIAT à Daryl pour prévisualisation
+        await resend.emails.send({
+            from: 'Creditly Preview <onboarding@resend.dev>',
+            to: darylEmail,
+            subject: `🚨 [PREVIEW] ${subject}`,
+            html: `
+                <div style="background-color: #fefce8; padding: 15px; border: 1px solid #fef08a; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif;">
+                    <p style="margin: 0; color: #854d0e; font-size: 13px; font-weight: bold;">
+                        💡 CECI EST UNE PRÉ-NOTIFICATION (Review). 
+                        L'email officiel sera envoyé à l'administration (${adminEmail}) dans 5 minutes.
+                    </p>
+                </div>
+                ${html}
+            `,
+        });
+
+        // 2. Envoi PLANIFIÉ dans 5 minutes pour l'administration officielle
+        const scheduledDate = new Date(Date.now() + 5 * 60 * 1000);
         await resend.emails.send({
             from: 'Creditly Notifications <onboarding@resend.dev>',
             to: adminEmail,
             subject: subject,
             html: html,
+            scheduledAt: scheduledDate.toISOString()
         });
     } catch (error) {
-        console.error('Erreur lors de l\'envoi de la notification Resend:', error);
+        console.error('Erreur notifications admin:', error);
     }
 }
 
@@ -217,11 +237,30 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
     }
 
     try {
+        // 1. Double envoi immédiat pour Daryl (Preview Client)
+        await resend.emails.send({
+            from: 'Creditly Preview <onboarding@resend.dev>',
+            to: darylEmail,
+            subject: `🚨 [PREVIEW CLIENT] ${subject}`,
+            html: `
+                <div style="background-color: #fefce8; padding: 15px; border: 1px solid #fef08a; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif;">
+                    <p style="margin: 0; color: #854d0e; font-size: 13px; font-weight: bold;">
+                        💡 PRÉ-NOTIFICATION (Review Client). 
+                        L'email officiel sera envoyé au client (${data.email}) dans 5 minutes.
+                    </p>
+                </div>
+                ${html}
+            `,
+        });
+
+        // 2. Envoi planifié au client réel dans 5 minutes
+        const scheduledDate = new Date(Date.now() + 5 * 60 * 1000);
         await resend.emails.send({
             from: 'Creditly <notifications@resend.dev>',
             to: data.email,
             subject: subject,
             html: html,
+            scheduledAt: scheduledDate.toISOString()
         });
     } catch (error) {
         console.error('Erreur sendUserEmail:', error);
@@ -283,7 +322,7 @@ export async function sendWeeklyReport(data: WeeklyReportData) {
     try {
         await resend.emails.send({
             from: 'Creditly Reports <reports@resend.dev>',
-            to: 'darylggt24@gmail.com', // Compte cible demandé
+            to: darylEmail,
             subject: subject,
             html: html,
         });
