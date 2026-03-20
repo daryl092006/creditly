@@ -1,291 +1,179 @@
 import { createClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { Currency, Document, ChevronRight, Filter, CheckmarkFilled, Time, Wallet } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, CheckmarkFilled, Time, Wallet, CheckmarkOutline } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
+import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 
 export default async function SuperAdminPage({
     searchParams
 }: {
-    searchParams: Promise<{ month?: string; year?: string; week?: string }>
+    searchParams: Promise<{ month?: string, year?: string }>
 }) {
-    // Security Check - STRICT SUPERADMIN
-    await requireAdminRole(['superadmin', 'admin_comptable'])
+    // 1. Security & Time Context
+    await requireAdminRole(['superadmin', 'admin_comptable', 'owner'])
 
     const params = await searchParams
-    const month = params.month ? parseInt(params.month) : new Date().getMonth() + 1
-    const year = params.year ? parseInt(params.year) : new Date().getFullYear()
+    const now = new Date()
+    const month = params.month ? parseInt(params.month) : now.getMonth() + 1
+    const year = params.year ? parseInt(params.year) : now.getFullYear()
 
-    // Week Logic
-    const today = new Date()
-    // Default to current week's Sunday if no week param
-    let startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay())
-    startOfWeek.setHours(0, 0, 0, 0)
-
-    if (params.week) {
-        startOfWeek = new Date(params.week)
-        // Ensure it's treated as start of day
-        startOfWeek.setHours(0, 0, 0, 0)
-    }
-
-    // Generate last 12 weeks for filter dropdown
-    const weeksList = []
-    const currentWeekStart = new Date()
-    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
-    currentWeekStart.setHours(0, 0, 0, 0)
-
-    for (let i = 0; i < 12; i++) {
-        const d = new Date(currentWeekStart)
-        d.setDate(d.getDate() - (i * 7))
-        weeksList.push(d)
-    }
-
-    const supabase = await createClient()
-
-    // LAZY-CRON: Auto-update statuses silently for accurate analytics
-    await supabase.rpc('auto_update_system_statuses')
-
-    const { data: offers } = await supabase.from('abonnements').select('*').order('price')
-    const quotasStatus = await checkGlobalQuotasStatus(month, year)
-
-    // 1. Statisiques Globales (Total)
-    const { count: activeLoansCount } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'active')
-
-    // 2. Éléments en attente (Urgence)
-    const { count: pendingKyc } = await supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingLoans } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingSubs } = await supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingRepayments } = await supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-
-    // 3. Filtrage Temporel (Revenue & Loans par mois)
     const startDate = new Date(year, month - 1, 1).toISOString()
     const endDate = new Date(year, month, 0, 23, 59, 59).toISOString()
 
-    // Revenu du mois (Abonnements activés pendant ce mois)
+    const supabase = await createClient()
+
+    // 2. Fetch Core Financial Metrics
+    // Revenue from Subscriptions
     const { data: monthlySubs } = await supabase
         .from('user_subscriptions')
-        .select('plan:abonnements(price), start_date')
-        .eq('is_active', true)
-        .gte('start_date', startDate)
-        .lte('start_date', endDate)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .select('*, plan:abonnements(price)')
+        .eq('status', 'active')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
 
-    // 4. Prêts Actifs & Finances (Détail)
+    // Volume of Penalties (Surplus)
+    const { data: allRemboursements } = await supabase
+        .from('remboursements')
+        .select('surplus_amount')
+        .eq('status', 'verified')
+
+    const totalPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+
+    // Global Risk (Active Loans)
     const { data: allActiveLoans } = await supabase
         .from('prets')
-        .select('amount, amount_paid, due_date')
-        .in('status', ['active', 'overdue', 'paid'])
+        .select('amount, amount_paid')
+        .in('status', ['active', 'overdue'])
 
     const totalActiveCapital = allActiveLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
     const totalAlreadyRecovered = allActiveLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
     const totalRemainingToRecover = totalActiveCapital - totalAlreadyRecovered
 
-    // Calcul Revenu Hebdomadaire (Semaine courante ou séléctionnée)
-    // startOfWeek is already calculated above
-
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    endOfWeek.setHours(23, 59, 59, 999)
-
-
-
-    const { data: weeklySubs } = await supabase
-        .from('user_subscriptions')
-        .select('plan:abonnements(price)')
-        .eq('status', 'active')
-        .gte('created_at', startOfWeek.toISOString())
-        .lte('created_at', endOfWeek.toISOString())
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const weeklyRevenue = weeklySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-
-    // 5. Abonnements récents (Historique)
-    const { data: recentSubs } = await supabase
-        .from('user_subscriptions')
-        .select('*, plan:abonnements(name, price), user:users(nom, prenom)')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-    // 6. Prêts Actifs & Retards (Top 5 Urgences)
-    const { data: rawUrgentLoans } = await supabase
+    // 4.5. Calcul des Frais de Dossier (Source de revenu additionnelle)
+    const FEE_START_DATE = new Date('2026-03-09T00:00:00')
+    const { data: loansWithFees } = await supabase
         .from('prets')
-        .select('*, user:users(nom, prenom, email, whatsapp), repayments:remboursements(status)')
-        .in('status', ['active', 'overdue'])
-        .order('due_date', { ascending: true })
-        .limit(15)
+        .select('admin_id, created_at, status')
+        .gte('created_at', FEE_START_DATE.toISOString())
+        .in('status', ['approved', 'active', 'paid', 'overdue'])
 
-    const urgentLoans = rawUrgentLoans?.filter(l =>
-        !(l as any).repayments?.some((r: any) => r.status === 'pending')
-    ).slice(0, 5) || []
+    const totalFeesCollected = (loansWithFees?.length || 0) * 500
+    const monthlyFees = loansWithFees?.filter(l =>
+        new Date(l.created_at) >= new Date(startDate) &&
+        new Date(l.created_at) <= new Date(endDate)
+    ).length || 0
+    const monthlyFeesRevenue = monthlyFees * 500
 
-    // 5. Performance Admin (Audit)
-    // On récupère tous les admins
+    // Calcul Revenu Hebdomadaire (Semaine courante)
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - now.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    // 3. System Urgencies (Pending Actions)
+    const { count: pendingKyc } = await supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+    const { count: pendingLoans } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+    const { count: pendingSubs } = await supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+    const { count: pendingRepayments } = await supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+
+    // 4. Quotas Monitoring
+    const globalQuotas = await checkGlobalQuotasStatus()
+
+    // 5. Admin Performance & Gains Portfolio
     const { data: admins } = await supabase
         .from('users')
-        .select('id, nom, prenom, roles, whatsapp')
-        .overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable', 'owner'])
+        .select('id, nom, prenom, roles')
+        .not('roles', 'cs', '{"client"}')
 
     // On agrège leurs actions
     const kycActions = await supabase.from('kyc_submissions').select('admin_id, status').not('admin_id', 'is', null)
-    const loanActions = await supabase.from('prets').select('admin_id, status').not('admin_id', 'is', null)
+    const loanActions = await supabase.from('prets').select('admin_id, status, created_at').not('admin_id', 'is', null)
     const repaymentActions = await supabase.from('remboursements').select('admin_id, status').not('admin_id', 'is', null)
-    // Removed subscription actions from audit as per request
+
+    // Fetch commissions for realized logic
+    const { data: totalCommissions } = await supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type')
+
+    // 6. Récupération des demandes de retrait admin
+    const { data: pendingWithdrawals } = await supabase
+        .from('admin_withdrawals')
+        .select('*, admin:users(nom, prenom, email, roles)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
 
     const adminPerformance = admins?.map((admin: any) => {
         const kycCount = kycActions.data?.filter(a => a.admin_id === admin.id).length || 0
-        const loanCount = loanActions.data?.filter(a => a.admin_id === admin.id).length || 0
+        const loanCountRaw = loanActions.data?.filter(a => a.admin_id === admin.id) || []
+        const loanCount = loanCountRaw.filter(l => ['approved', 'active', 'paid', 'overdue'].includes(l.status)).length
+
+        // Gains Réalisés (Paid Loans)
+        const realizedGains = totalCommissions?.filter((c: any) =>
+            c.admin_id === admin.id && (c.loan?.status === 'paid' || c.type === 'repayment_reward')
+        ).reduce((acc, c) => acc + Number(c.amount), 0) || 0
+
         const repaymentCount = repaymentActions.data?.filter(a => a.admin_id === admin.id).length || 0
         return {
             ...admin,
             totalActions: kycCount + loanCount + repaymentCount,
+            totalEarnings: realizedGains,
             details: { kycCount, loanCount, repaymentCount }
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
-    // Récupération des pénalités collectées (historique des surplus)
-    const { data: allPenalties } = await supabase.from('remboursements').select('surplus_amount').eq('status', 'verified')
-    const totalPenaltiesCollected = allPenalties?.reduce((acc: number, r: any) => acc + (Number(r.surplus_amount) || 0), 0) || 0
-
-
     return (
-        <div className="py-10 md:py-16 animate-fade-in">
-            <div className="main-container space-y-12">
-                {/* Header with Search/Filters */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="px-3 py-1 bg-blue-600/10 text-blue-500 border border-blue-500/20 rounded-lg text-[10px] font-black uppercase italic tracking-widest">Dashboard v2.1</span>
-                            <span className="text-slate-700 font-black italic">/</span>
-                            <span className="text-slate-500 font-bold italic text-[10px] uppercase tracking-widest">{month}/{year}</span>
+        <div className="py-10 md:py-16 animate-fade-in min-h-screen">
+            <div className="admin-container">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <span className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <Currency size={24} />
+                            </span>
+                            <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">Control Center</h1>
                         </div>
-                        <h1 className="text-4xl md:text-6xl font-black premium-gradient-text tracking-tight uppercase">Control Center.</h1>
-                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">Surveillance multidimensionnelle : Finance, Pénalités et Performance administrative.</p>
+                        <p className="text-slate-500 font-bold italic leading-relaxed">Intelligence financière et monitoring opérationnel</p>
                     </div>
 
-                    <form className="flex items-center gap-2 p-2 bg-slate-900/50 border border-slate-800 rounded-2xl">
-                        <Filter size={16} className="text-slate-600 ml-2" />
-                        <select name="month" defaultValue={month} className="bg-transparent text-white font-black text-xs p-2 outline-none cursor-pointer">
-                            {Array.from({ length: 12 }).map((_, i) => (
-                                <option key={i + 1} value={i + 1} className="bg-slate-950">{new Date(0, i).toLocaleString('fr', { month: 'long' })}</option>
-                            ))}
-                        </select>
-                        <select name="year" defaultValue={year} className="bg-transparent text-white font-black text-xs p-2 outline-none cursor-pointer border-l border-slate-800 ml-2">
-                            {[2024, 2025, 2026].map(y => (
-                                <option key={y} value={y} className="bg-slate-950">{y}</option>
-                            ))}
-                        </select>
-                        <select name="week" defaultValue={startOfWeek.toISOString().split('T')[0]} className="bg-transparent text-white font-black text-xs p-2 outline-none cursor-pointer border-l border-slate-800 ml-2 max-w-[100px] sm:max-w-none">
-                            {weeksList.map((w, i) => (
-                                <option key={i} value={w.toISOString().split('T')[0]} className="bg-slate-950">
-                                    Sem. {w.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                </option>
-                            ))}
-                        </select>
-                        <button type="submit" className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all active:scale-90">
-                            <ChevronRight size={16} />
-                        </button>
-                    </form>
-                </div>
+                    <div className="flex flex-wrap items-center gap-3 bg-slate-900/50 p-2 rounded-2xl border border-slate-800 backdrop-blur-xl">
+                        <div className="flex bg-slate-800 rounded-xl px-4 py-2 text-slate-400 font-black text-[10px] uppercase tracking-widest italic items-center gap-2">
+                            <Time size={14} /> {new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} {year}
+                        </div>
+                        <Link href="/admin/finance" className="px-6 py-2.5 rounded-xl bg-blue-600/10 text-blue-500 text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-500/20">
+                            Ledger Financier
+                        </Link>
+                    </div>
+                </header>
 
                 {/* KPI Grid - Temporal & Absolute */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
                     {[
-                        { label: 'Revenue Mensuel', value: monthlyRevenue, color: 'text-emerald-400', sub: `${new Date(0, month - 1).toLocaleString('fr', { month: 'long' })} ${year}`, icon: <Currency /> },
-                        { label: 'Revenue Hebdo', value: weeklyRevenue, color: 'text-blue-400', sub: `Sem. du ${startOfWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`, icon: <Time /> },
+                        { label: 'Revenue Mensuel', value: monthlyRevenue + monthlyFeesRevenue, color: 'text-emerald-400', sub: `Subs + ${monthlyFeesRevenue.toLocaleString()} F frais`, icon: <Currency /> },
+                        { label: 'Admin Gain (Dossiers)', value: totalFeesCollected, color: 'text-blue-400', sub: 'Volume total frais générés', icon: <Time /> },
                         { label: 'Volume Pénalités', value: totalPenaltiesCollected, color: 'text-blue-400', sub: 'Surplus perçus par Creditly', icon: <Wallet /> },
                         { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document /> }
                     ].map((kpi, i) => (
-                        <div key={i} className="glass-panel p-8 group relative overflow-hidden bg-slate-900/50 border-slate-800">
-                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-all"></div>
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic leading-none">{kpi.label}</p>
-                                <div className="text-slate-700 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <div key={i} className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-xl">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="text-slate-500 group-hover:text-blue-500 transition-colors">
                                     {kpi.icon}
                                 </div>
+                                <div className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
                             </div>
-                            <p className={`text-2xl font-black tracking-tighter italic ${kpi.color}`}>
-                                {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
-                                {typeof kpi.value === 'number' && <span className="text-[10px] not-italic text-slate-700 ml-1">FCFA</span>}
-                            </p>
-                            <p className="text-[10px] font-black text-slate-700 mt-2 uppercase italic tracking-wider">{kpi.sub}</p>
+                            <div>
+                                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{kpi.label}</h2>
+                                <p className={`text-2xl font-black tracking-tighter italic ${kpi.color}`}>
+                                    {kpi.value.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
+                                </p>
+                                <p className="text-[9px] font-bold text-slate-700 mt-2 uppercase italic truncate">{kpi.sub}</p>
+                            </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Global Quotas Monitor Section - High-Tech Availability Matrix */}
-                <section className="mb-14">
-                    <div className="flex items-center gap-4 mb-6 px-1">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                            <h3 className="text-[10px] font-black text-white uppercase tracking-[0.4em] italic">
-                                Matrice de Disponibilité Système
-                            </h3>
-                        </div>
-                        <div className="h-px flex-grow bg-gradient-to-r from-slate-800 to-transparent"></div>
-                        <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic tabular-nums">
-                            Période : {new Date(year, month - 1).toLocaleString('fr', { month: 'long' })} {year}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                        {offers?.map(plan => {
-                            const q = quotasStatus[plan.id as keyof typeof quotasStatus];
-                            if (!q) return null;
-
-                            const remaining = Math.max(0, q.limit - q.count);
-                            const isFull = q.limit > 0 && remaining === 0;
-                            const isLocked = q.limit === 0;
-                            const percentage = q.limit > 0 ? Math.min(100, (q.count / q.limit) * 100) : 100;
-
-                            return (
-                                <div key={plan.id} className={`glass-panel p-4 bg-slate-950/40 border-slate-800/60 hover:scale-[1.02] transition-all duration-500 group relative overflow-hidden ${isLocked ? 'opacity-50 grayscale' : ''}`}>
-                                    {/* Background glow for active items */}
-                                    {!isLocked && !isFull && (
-                                        <div className="absolute -right-4 -top-4 w-12 h-12 bg-emerald-600/5 rounded-full blur-xl group-hover:bg-emerald-600/10 transition-colors"></div>
-                                    )}
-
-                                    <div className="flex justify-between items-start mb-3">
-                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-slate-300 transition-colors">
-                                            {plan.name}
-                                        </span>
-                                        <div className="flex items-center gap-1">
-                                            <span className={`text-[10px] font-black italic tabular-nums ${isLocked ? 'text-slate-600' : isFull ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                {isLocked ? 'OFF' : remaining}
-                                            </span>
-                                            {!isLocked && <span className="text-[6px] font-black text-slate-700 uppercase">UNITÉS</span>}
-                                        </div>
-                                    </div>
-
-                                    <div className="text-xl font-black text-white italic tracking-tighter leading-none mb-4 group-hover:translate-x-1 transition-transform tabular-nums">
-                                        {plan.max_loan_amount >= 1000 ? (plan.max_loan_amount / 1000) + 'K' : plan.max_loan_amount} <span className="text-[10px] not-italic text-slate-700">F</span>
-                                    </div>
-
-                                    <div className="relative h-1 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
-                                        <div
-                                            className={`h-full transition-all duration-1000 rounded-full ${isLocked ? 'bg-slate-800' :
-                                                isFull ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse' :
-                                                    'bg-gradient-to-r from-blue-600 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                                                }`}
-                                            style={{ width: `${percentage}%` }}
-                                        ></div>
-                                    </div>
-
-                                    <div className="flex justify-between text-[7px] font-black uppercase tracking-[0.2em] italic">
-                                        <span className="text-slate-700">{q.count}</span>
-                                        <span className="text-slate-700">MAX {q.limit}</span>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </section>
-
-                {/* Main Dashboard Rows */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    {/* Left: Alerts & Active Loans */}
-                    <div className="xl:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    {/* Left Column: Operations & Risk */}
+                    <div className="lg:col-span-2 space-y-12">
                         <section>
                             <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3 mb-6">
                                 <span className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center text-xs font-black shadow-inner">!</span>
@@ -311,201 +199,102 @@ export default async function SuperAdminPage({
                             </div>
                         </section>
 
+                        {/* Withdrawals Management Section */}
                         <section>
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-xs font-black shadow-inner">L</span>
-                                    Échéances Imminentes (Top 5)
-                                </h3>
-                                <Link href="/admin/loans" className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic hover:underline">Gestion des Prêts</Link>
-                            </div>
-                            <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="bg-slate-950/50 border-b border-white/5">
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Client</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Montant</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Échéance</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Contact</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {urgentLoans?.map(loan => (
-                                            <tr key={loan.id} className="hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <p className="text-xs font-black text-slate-200 italic">{loan.user?.prenom} {loan.user?.nom}</p>
-                                                        <p className="text-[10px] font-bold text-slate-600 lowercase">{loan.user?.email}</p>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <p className="text-sm font-black text-white italic">{loan.amount.toLocaleString()} F</p>
-                                                        <div className="w-full bg-white/5 h-1 rounded-full mt-1 overflow-hidden">
-                                                            <div
-                                                                className={`h-full transition-all ${loan.status === 'overdue' ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                                                style={{ width: `${Math.min(100, (Number(loan.amount_paid || 0) / Number(loan.amount)) * 100)}%` }}
-                                                            ></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-[10px] font-black uppercase italic ${new Date(loan.due_date) < new Date() ? 'text-red-500 animate-pulse' : 'text-amber-500'}`}>
-                                                        {new Date(loan.due_date).toLocaleDateString()}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    {loan.user?.whatsapp && (
-                                                        <a
-                                                            href={`https://wa.me/${loan.user.whatsapp.replace(/\D/g, '')}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all shadow-lg shadow-emerald-500/10 group/wa active:scale-95"
-                                                            title={`Contacter ${loan.user.prenom}`}
-                                                        >
-                                                            <svg className="w-3.5 h-3.5 transition-transform group-hover/wa:rotate-12" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-                                                            <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">WhatsApp</span>
-                                                        </a>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {(!urgentLoans || urgentLoans.length === 0) && (
-                                            <tr>
-                                                <td colSpan={4} className="px-6 py-12 text-center text-slate-700 font-black italic uppercase tracking-widest text-[10px]">Aucun prêt actif à risque imminent</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
                         </section>
 
                         <section>
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-xs font-black shadow-inner">S</span>
-                                    Historique Abonnements
+                                    <span className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-xs font-black shadow-inner">Q</span>
+                                    Santé des Quotas {globalQuotas.some(q => q.status === 'danger') && <span className="animate-ping w-2 h-2 rounded-full bg-red-500"></span>}
                                 </h3>
-                                <Link href="/admin/super/subscriptions" className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic hover:underline">Voir tout</Link>
+                                <Link href="/admin/settings" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 hover:text-blue-500 transition-colors italic border-b border-white/5 pb-1">
+                                    Ajuster Limites <ChevronRight size={14} />
+                                </Link>
                             </div>
-                            <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="bg-slate-950/50 border-b border-white/5">
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Client</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Plan</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Montant</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase italic">Statut</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {recentSubs?.map(sub => (
-                                            <tr key={sub.id} className="hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4 text-xs font-black text-slate-300 italic">{sub.user?.prenom} {sub.user?.nom}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-[9px] font-black uppercase tracking-tighter border border-blue-500/20 italic">
-                                                        {sub.plan?.name}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-[11px] font-black text-white italic">{sub.plan?.price?.toLocaleString() || '0'} F</td>
-                                                <td className="px-6 py-4 text-right pr-6">
-                                                    <span className={`text-[9px] font-black uppercase italic ${sub.status === 'active' ? 'text-emerald-500' : sub.status === 'rejected' ? 'text-red-500' : 'text-amber-500'}`}>
-                                                        {sub.status === 'active' ? 'Validé' : sub.status === 'rejected' ? 'Rejeté' : 'En attente'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {globalQuotas.map((quota, i) => (
+                                    <div key={i} className="glass-panel p-6 bg-slate-900/50 border-slate-800">
+                                        <div className="flex justify-between items-end mb-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{quota.label}</p>
+                                                <p className="text-lg font-black text-white italic tracking-tighter uppercase">{quota.value} / {quota.limit}</p>
+                                            </div>
+                                            <p className={`text-xl font-black italic ${quota.status === 'danger' ? 'text-red-500' : quota.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                                {Math.round(quota.percent)}%
+                                            </p>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                                            <div
+                                                className={`h-full transition-all duration-1000 ${quota.status === 'danger' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]' : quota.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                style={{ width: `${quota.percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </section>
                     </div>
 
-                    {/* Right: Performance Audit & Tools */}
+                    {/* Right Column: Performance Audit */}
                     <div className="space-y-8">
                         <section>
-                            <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3 mb-6">
-                                <span className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-xs font-black shadow-inner">P</span>
-                                Performance Audit.
-                            </h3>
-                            <div className="glass-panel p-6 space-y-4 bg-slate-900/50 border-slate-800">
-                                {adminPerformance?.map((admin, i) => (
-                                    <div key={i} className="p-4 rounded-2xl bg-slate-950 border border-white/5 flex flex-col gap-3">
-                                        <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-xs font-black shadow-inner">P</span>
+                                    Performance & Gains
+                                </h3>
+                            </div>
+
+                            <div className="space-y-3">
+                                {adminPerformance?.map((admin: any, i) => (
+                                    <div key={i} className="glass-panel p-4 bg-slate-900/50 border-slate-800 group hover:border-white/10 transition-all shadow-lg">
+                                        <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div>
-                                                    <p className="text-xs font-black text-white italic uppercase tracking-tight">{admin.prenom} {admin.nom}</p>
-                                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{admin.roles?.[0]}</p>
+                                                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center text-xs font-black text-blue-500 shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                    {admin.prenom[0]}{admin.nom[0]}
                                                 </div>
-                                                {admin.whatsapp && (
-                                                    <a
-                                                        href={`https://wa.me/${admin.whatsapp.replace(/\D/g, '')}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shrink-0"
-                                                        title={`Contacter ${admin.prenom}`}
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-                                                    </a>
-                                                )}
+                                                <div>
+                                                    <p className="text-sm font-black text-white italic uppercase tracking-tight">{admin.prenom} {admin.nom}</p>
+                                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">{admin.roles[0].replace('admin_', '')}</p>
+                                                </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-lg font-black text-blue-500 leading-none">{admin.totalActions}</p>
-                                                <p className="text-[8px] font-black text-slate-700 uppercase tracking-widest italic">Actions</p>
+                                                <div className="flex items-center gap-1 justify-end text-emerald-500">
+                                                    <CheckmarkOutline size={12} />
+                                                    <p className="text-lg font-black italic tracking-tighter leading-none">{admin.totalEarnings.toLocaleString()} F</p>
+                                                </div>
+                                                <p className="text-[8px] font-black text-slate-700 uppercase tracking-widest italic">Gains Réalisés</p>
                                             </div>
                                         </div>
+
                                         <div className="flex gap-2">
-                                            {(admin.roles?.includes('admin_kyc') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
-                                                <div className="flex-1 text-center p-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
-                                                    <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">KYC</p>
-                                                    <p className="text-[10px] font-black text-slate-300">{admin.details.kycCount}</p>
-                                                </div>
-                                            )}
-                                            {(admin.roles?.includes('admin_loan') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
-                                                <div className="flex-1 text-center p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                                                    <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Prêts</p>
-                                                    <p className="text-[10px] font-black text-slate-300">{admin.details.loanCount}</p>
-                                                </div>
-                                            )}
-                                            {(admin.roles?.includes('admin_repayment') || admin.roles?.includes('admin_comptable') || admin.roles?.includes('superadmin') || admin.roles?.includes('owner')) && (
-                                                <div className="flex-1 text-center p-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
-                                                    <p className="text-[8px] font-black text-slate-600 uppercase italic mb-1">Remb.</p>
-                                                    <p className="text-[10px] font-black text-slate-300">{admin.details.repaymentCount}</p>
-                                                </div>
-                                            )}
+                                            <div className="flex-1 h-1 bg-slate-950 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500" style={{ width: `${(admin.details.kycCount / (Math.max(admin.totalActions, 1))) * 100}%` }} />
+                                            </div>
+                                            <div className="flex-1 h-1 bg-slate-950 rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-500" style={{ width: `${(admin.details.loanCount / (Math.max(admin.totalActions, 1))) * 100}%` }} />
+                                            </div>
+                                            <div className="flex-1 h-1 bg-slate-950 rounded-full overflow-hidden">
+                                                <div className="h-full bg-purple-500" style={{ width: `${(admin.details.repaymentCount / (Math.max(admin.totalActions, 1))) * 100}%` }} />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        <section className="space-y-4">
-                            <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3 mb-6">
-                                <span className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-xs font-black shadow-inner">G</span>
-                                Gouvernance.
-                            </h3>
-                            <div className="glass-panel p-8 space-y-4 bg-slate-900/50 border-slate-800">
-                                <Link href="/admin/super/users" className="flex items-center justify-between p-5 rounded-2xl bg-slate-950 border border-white/5 hover:border-blue-500/30 transition-all group">
-                                    <span className="font-black text-slate-200 italic tracking-tight">Utilisateurs & Rôles</span>
-                                    <ChevronRight size={20} className="w-5 h-5 text-slate-700 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                                </Link>
-                                <Link href="/admin/super/offers" className="flex items-center justify-between p-5 rounded-2xl bg-slate-950 border border-white/5 hover:border-blue-500/30 transition-all group">
-                                    <span className="font-black text-slate-200 italic tracking-tight">Paramètres Offres</span>
-                                    <ChevronRight size={20} className="w-5 h-5 text-slate-700 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                                </Link>
+                        <div className="glass-panel p-6 bg-blue-600/5 border-blue-500/10 flex flex-col items-center justify-center text-center space-y-4">
+                            <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/10">
+                                <Wallet size={20} />
                             </div>
-
-                            <div className="glass-panel p-8 relative overflow-hidden group bg-slate-900/50 border-slate-800">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors"></div>
-                                <h4 className="text-xl font-black mb-2 text-white italic tracking-tighter uppercase relative z-10">Data Audit.</h4>
-                                <p className="text-slate-500 text-[10px] font-black relative z-10 mb-6 italic uppercase tracking-widest leading-relaxed">Génération de rapports d&apos;activité consolidés.</p>
-                                <a href="/api/admin/audit/export" download className="block">
-                                    <button className="premium-button w-full py-4 relative z-10 active:scale-95 shadow-2xl text-[10px]">
-                                        Télécharger Rapports
-                                    </button>
-                                </a>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Note Système</p>
+                                <p className="text-xs font-bold text-slate-400 leading-relaxed italic">Les gains de dossier sont bloqués tant que le prêt n'est pas soldé (Status Paid).</p>
                             </div>
-                        </section>
+                        </div>
                     </div>
                 </div>
             </div>

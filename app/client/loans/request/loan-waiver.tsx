@@ -138,13 +138,13 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         </div>
 
                         <p>
-                            reconnais avoir reçu de <strong>Creditly</strong>, dans le cadre d’une collaboration privée, un prêt sans intérêt d’un montant de <strong className="text-slate-900 italic">{loanData.amount.toLocaleString()} FCFA</strong> auquel s'ajoutent des frais de dossier de <strong className="text-slate-900 italic">500 FCFA</strong>, soit un montant total de :
+                            reconnais avoir reçu de <strong>Creditly</strong>, dans le cadre d’une collaboration privée, un prêt sans intérêt d’un montant de <strong className="text-slate-900 italic">{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> auquel s'ajoutent des frais de dossier de <strong className="text-slate-900 italic">500 FCFA</strong>, soit un montant total de :
                         </p>
 
                         <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">
                             <div>
                                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Total à rembourser</p>
-                                <p className="text-lg font-black text-slate-900 italic">{totalToRepay.toLocaleString()} FCFA</p>
+                                <p className="text-lg font-black text-slate-900 italic">{totalToRepay.toLocaleString('fr-FR')} FCFA</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Écrit en lettres</p>
@@ -339,12 +339,12 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         </p>
 
                         <p className="text-justify">
-                            Reconnais par la présente, avoir contracté auprès de la plateforme <strong>Creditly</strong> un prêt de type "Avance sur Revenu" d'un montant de <strong>{loanData.amount.toLocaleString()} FCFA</strong> avec des frais de dossier fixes de <strong>500 FCFA</strong>, soit un montant total de :
+                            Reconnais par la présente, avoir contracté auprès de la plateforme <strong>Creditly</strong> un prêt de type "Avance sur Revenu" d'un montant de <strong>{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> avec des frais de dossier fixes de <strong>500 FCFA</strong>, soit un montant total de :
                         </p>
 
                         <div className="flex justify-center my-8">
                             <div className="border-2 border-black p-6 bg-gray-50 text-center min-w-[300px] shadow-sm">
-                                <p className="text-2xl font-black mb-1">{totalToRepay.toLocaleString()} FCFA</p>
+                                <p className="text-2xl font-black mb-1">{totalToRepay.toLocaleString('fr-FR')} FCFA</p>
                                 <p className="text-[10px] font-medium italic border-t border-gray-300 pt-2 text-gray-600 uppercase">
                                     {(amountInWords + ' francs CFA').toUpperCase()}
                                 </p>

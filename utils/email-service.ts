@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const adminEmail = process.env.ADMIN_EMAIL || 'creditly001@gmail.com';
+const darylEmail = 'darylggt23@gmail.com';
 
 type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION';
 
@@ -95,14 +96,49 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     }
 
     try {
-        await resend.emails.send({
-            from: 'Creditly Notifications <onboarding@resend.dev>',
-            to: adminEmail,
-            subject: subject,
-            html: html,
-        });
-    } catch (error) {
-        console.error('Erreur lors de l\'envoi de la notification Resend:', error);
+        // 1. Envoi immédiat à Daryl
+        if (darylEmail) {
+            console.log(`[EmailService] Tentative d'envoi PRIORITAIRE à : ${darylEmail}`);
+            resend.emails.send({
+                from: 'Creditly Notifications <onboarding@resend.dev>',
+                to: darylEmail,
+                subject: `[PRIORITAIRE] ${subject}`,
+                html: html,
+            }).then(() => console.log(`[EmailService] Notification PRIORITAIRE envoyée à ${darylEmail}`))
+                .catch(e => console.error(`[EmailService] Erreur notification Daryl :`, e));
+        }
+
+        // 2. Envoi différé au reste de l'équipe (délai 5 min)
+        if (adminEmail) {
+            // On nettoie la liste pour éviter les doublons avec Daryl
+            const others = adminEmail.split(',')
+                .map(e => e.trim())
+                .filter(e => e !== darylEmail && e !== '');
+
+            if (others.length > 0) {
+                console.log(`[EmailService] Programmation envoi différé (5min) pour : ${others.join(', ')}`);
+
+                setTimeout(async () => {
+                    try {
+                        console.log(`[EmailService] Exécution de l'envoi différé pour : ${others.join(', ')}`);
+                        const { error } = await resend.emails.send({
+                            from: 'Creditly Notifications <onboarding@resend.dev>',
+                            to: others,
+                            subject: subject,
+                            html: html,
+                        });
+                        if (error) console.error(`[EmailService] Erreur Resend (Différé) :`, error);
+                        else console.log(`[EmailService] Notifications différées envoyées avec succès.`);
+                    } catch (err) {
+                        console.error(`[EmailService] Crash envoi différé :`, err);
+                    }
+                }, 300000); // 5 minutes
+            } else {
+                console.log(`[EmailService] Aucun autre administrateur à notifier en différé.`);
+            }
+        }
+    } catch (globalError) {
+        console.error('[EmailService] Erreur critique sendAdminNotification :', globalError);
     }
 }
 
@@ -281,12 +317,29 @@ export async function sendWeeklyReport(data: WeeklyReportData) {
     `;
 
     try {
+        // Envoi immédiat au Boss
         await resend.emails.send({
             from: 'Creditly Reports <reports@resend.dev>',
-            to: 'darylggt24@gmail.com', // Compte cible demandé
-            subject: subject,
+            to: darylEmail,
+            subject: `[REPORTING] ${subject}`,
             html: html,
         });
+
+        // Envoi retardé pour les autres (5 min) si configuré
+        if (adminEmail && adminEmail !== darylEmail) {
+            setTimeout(async () => {
+                try {
+                    await resend.emails.send({
+                        from: 'Creditly Reports <reports@resend.dev>',
+                        to: adminEmail,
+                        subject: subject,
+                        html: html,
+                    });
+                } catch (e) {
+                    console.error('Erreur rapport différé:', e);
+                }
+            }, 300000);
+        }
     } catch (error) {
         console.error('Erreur rapport hebdo:', error);
     }

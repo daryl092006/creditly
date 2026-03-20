@@ -782,3 +782,80 @@ export async function createDirectRepayment(formData: FormData) {
 
     return { success: true }
 }
+
+// --- ADMIN WITHDRAWALS ACTIONS ---
+
+export async function requestWithdrawal(amount: number, method: string, details: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const adminId = user?.id
+
+    if (!adminId) return { error: "Non authentifié." }
+
+    // Check Balance - REALIZED Gains ONLY (from Paid Loans)
+    const { data: commissions } = await supabase
+        .from('admin_commissions')
+        .select('amount, loan:loan_id(status)')
+        .eq('admin_id', adminId)
+
+    const realizedComms = commissions?.filter((c: any) =>
+        c.loan?.status === 'paid' || c.type === 'repayment_reward' // Repayment reward is earned instantly as the money just came in
+    ).reduce((acc, c) => acc + Number(c.amount), 0) || 0
+
+    const { data: pendingWithdrawals } = await supabase
+        .from('admin_withdrawals')
+        .select('amount')
+        .eq('admin_id', adminId)
+        .in('status', ['pending', 'approved'])
+
+    const totalWithdrawn = pendingWithdrawals?.reduce((acc, w) => acc + Number(w.amount), 0) || 0
+    const balance = realizedComms - totalWithdrawn
+
+    if (amount > balance) {
+        return { error: `Solde retirable insuffisant. Seuls les dossiers ENTIÈREMENT REMBOURSÉS génèrent des gains retirables. Disponible : ${balance.toLocaleString('fr-FR')} F.` }
+    }
+
+    const { error } = await supabase
+        .from('admin_withdrawals')
+        .insert({
+            admin_id: adminId,
+            amount,
+            method,
+            payment_details: details,
+            status: 'pending'
+        })
+
+    if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    revalidatePath('/admin/profile')
+    revalidatePath('/admin/super')
+    return { success: true }
+}
+
+export async function updateWithdrawalStatus(withdrawalId: string, status: 'approved' | 'rejected', rejectionReason?: string) {
+    const role = await getCurrentUserRole()
+    if (!role || !['superadmin', 'admin_comptable', 'owner'].includes(role)) {
+        return { error: "Accès refusé." }
+    }
+
+    const supabaseAdmin = await createAdminClient()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
+    const adminId = user?.id
+
+    const { error } = await supabaseAdmin
+        .from('admin_withdrawals')
+        .update({
+            status,
+            processed_at: new Date().toISOString(),
+            processed_by: adminId,
+            rejection_reason: rejectionReason
+        })
+        .eq('id', withdrawalId)
+
+    if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    revalidatePath('/admin/profile')
+    revalidatePath('/admin/super')
+    return { success: true }
+}

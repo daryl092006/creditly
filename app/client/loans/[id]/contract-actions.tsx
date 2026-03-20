@@ -140,12 +140,12 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
 
                             <p className="text-justify italic">
                                 Je soussigné(e), Monsieur/Madame <strong>{profile.prenom} {profile.nom}</strong>,
-                                reconnaît avoir contracté auprès de <strong>Creditly</strong> un prêt de <strong>{loan.amount.toLocaleString()} FCFA</strong>
+                                reconnaît avoir contracté auprès de <strong>Creditly</strong> un prêt de <strong>{loan.amount.toLocaleString('fr-FR')} FCFA</strong>
                                 {hasFee ? <> (majoré de 500 F de frais)</> : ''}.
                             </p>
 
                             <div className="p-4 bg-gray-50 border-2 border-double border-black text-center">
-                                <p className="text-2xl font-black italic">{totalAmount.toLocaleString()} FCFA</p>
+                                <p className="text-2xl font-black italic">{totalAmount.toLocaleString('fr-FR')} FCFA</p>
                                 <p className="text-[8px] font-black uppercase text-gray-500 mt-1">{amountInWords} FRANCS CFA</p>
                             </div>
 
