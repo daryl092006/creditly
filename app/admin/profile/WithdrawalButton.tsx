@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wallet, Send } from '@carbon/icons-react'
+import { Wallet, CheckmarkFilled, Warning } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { ActionButton } from '@/app/components/ui/ActionButton'
 import { requestWithdrawal } from '../actions'
@@ -70,7 +70,7 @@ export function WithdrawalButton({ balance }: { balance: number }) {
                 {success ? (
                     <div className="py-8 text-center space-y-4 animate-fade-in">
                         <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                            <Send size={32} />
+                            <CheckmarkFilled size={32} />
                         </div>
                         <h4 className="text-xl font-black text-white uppercase italic tracking-tighter">Demande envoyée !</h4>
                         <p className="text-slate-500 font-bold text-xs italic uppercase tracking-widest">
@@ -122,7 +122,8 @@ export function WithdrawalButton({ balance }: { balance: number }) {
                         </div>
 
                         {error && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest text-center italic rounded-xl animate-shake">
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest text-center italic rounded-xl animate-shake flex items-center justify-center gap-2">
+                                <Warning size={14} />
                                 {error}
                             </div>
                         )}
@@ -130,14 +131,14 @@ export function WithdrawalButton({ balance }: { balance: number }) {
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="flex-1 py-4 bg-slate-800 text-slate-500 font-black uppercase italic rounded-xl hover:text-white transition-all"
+                                className="flex-1 py-4 bg-slate-800 text-slate-500 font-black uppercase italic rounded-xl hover:text-white transition-all text-xs"
                             >
                                 Annuler
                             </button>
                             <ActionButton
                                 onClick={handleRequest}
                                 loading={loading}
-                                className="flex-[2] py-4 bg-blue-600 text-white font-black uppercase italic rounded-xl"
+                                className="flex-[2] py-4 bg-blue-600 text-white font-black uppercase italic rounded-xl text-xs"
                             >
                                 Envoyer la demande
                             </ActionButton>

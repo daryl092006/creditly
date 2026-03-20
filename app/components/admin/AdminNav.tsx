@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signout } from '@/app/auth/actions'
-import { Logout, Settings, UserMultiple, Currency, Menu, Close } from '@carbon/icons-react'
+import { Logout, UserMultiple, List, Close } from '@carbon/icons-react'
 import { Logo } from '@/app/components/ui/Logo'
 
 type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | null
@@ -39,7 +38,6 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
                         <Logo text={isAdminMaster ? 'Creditly Master' : 'Creditly Admin'} />
                     </Link>
 
-                    {/* Desktop Links */}
                     <div className="hidden lg:flex items-center gap-1">
                         {links.map((link) => (
                             <Link
@@ -58,23 +56,15 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
                         <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">{userRoles[0]?.replace('admin_', '')}</p>
                     </div>
 
-                    <form action={signout} className="hidden sm:block">
-                        <button type="submit" className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-95 shadow-lg shadow-black/20">
-                            <Logout size={20} />
-                        </button>
-                    </form>
-
-                    {/* Hamburger Button */}
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         className="lg:hidden w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center text-white active:scale-90 transition-all shadow-lg shadow-black/20"
                     >
-                        {isMenuOpen ? <Close size={24} /> : <Menu size={24} />}
+                        {isMenuOpen ? <Close size={24} /> : <List size={24} />}
                     </button>
                 </div>
             </div>
 
-            {/* Mobile Menu Overlay */}
             {isMenuOpen && (
                 <div className="lg:hidden fixed inset-x-0 top-[73px] bottom-0 bg-slate-950/95 backdrop-blur-2xl z-[99] border-t border-white/5 animate-fade-in p-6 overflow-y-auto">
                     <div className="flex flex-col gap-2">
@@ -89,16 +79,6 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
                                 <div className={`w-2 h-2 rounded-full ${pathname === link.href ? 'bg-white shadow-[0_0_10px_white]' : 'bg-slate-800'}`}></div>
                             </Link>
                         ))}
-
-                        <div className="mt-8 pt-8 border-t border-white/5">
-                            <form action={signout}>
-                                <button type="submit" className="w-full p-5 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-black uppercase tracking-widest italic flex items-center justify-center gap-3 active:scale-95 transition-transform">
-                                    <Logout size={20} />
-                                    Se déconnecter de l'administration
-                                </button>
-                            </form>
-                            <p className="text-center text-[10px] font-black text-slate-700 uppercase italic mt-6 tracking-widest">Creditly Admin Mobile v2.0</p>
-                        </div>
                     </div>
                 </div>
             )}
