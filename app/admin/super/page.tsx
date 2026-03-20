@@ -82,9 +82,9 @@ export default async function SuperAdminPage({
     }).filter(q => q.limit >= 0)
 
     const { data: admins } = await supabase.from('users').select('id, nom, prenom, roles').not('roles', 'cs', '{"client"}')
-    const { data: kycData } = await supabase.from('kyc_submissions').select('admin_id, status').gte('created_at', startDate).lte('created_at', endDate).not('admin_id', 'is', null)
-    const { data: loanData } = await supabase.from('prets').select('admin_id, status, created_at').gte('created_at', startDate).lte('created_at', endDate).not('admin_id', 'is', null)
-    const { data: repaymentData } = await supabase.from('remboursements').select('admin_id, status').gte('created_at', startDate).lte('created_at', endDate).not('admin_id', 'is', null)
+    const { data: kycData } = await supabase.from('kyc_submissions').select('admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null)
+    const { data: loanData } = await supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null)
+    const { data: repaymentData } = await supabase.from('remboursements').select('admin_id, status').gte('updated_at', startDate).lte('updated_at', endDate).not('admin_id', 'is', null)
 
     const { data: totalCommissions, error: errComm } = await supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type')
     const { data: pendingWithdrawals, error: errWith } = await supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false })
