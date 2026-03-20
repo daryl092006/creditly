@@ -147,13 +147,14 @@ export default async function FinanceAuditPage({
     const { data: allWithTotal } = await supabase.from('admin_withdrawals').select('amount').eq('status', 'approved')
 
     // CASH RECONCILIATION (Flux réels d'argent entrant/sortant)
+    const INITIAL_CAPITAL = 2000000
     const totalCashIn = (allRembTotal?.reduce((acc, r) => acc + Number(r.amount) + (Number(r.surplus_amount) || 0), 0) || 0) +
-                       (allSubsTotal?.reduce((acc, s: any) => acc + Number(s.plan?.price || 0), 0) || 0)
-    
+        (allSubsTotal?.reduce((acc, s: any) => acc + Number(s.plan?.price || 0), 0) || 0)
+
     const totalCashOut = (allLoansTotal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0) +
-                        (allWithTotal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0)
-    
-    const theoreticalCashBalance = totalCashIn - totalCashOut
+        (allWithTotal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0)
+
+    const theoreticalCashBalance = INITIAL_CAPITAL + totalCashIn - totalCashOut
 
     const sortedJournal = journal.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 100)
 
@@ -192,20 +193,20 @@ export default async function FinanceAuditPage({
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[100px] -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-1000"></div>
                     <div className="relative z-10">
                         <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic flex items-center gap-2">
-                             <CheckmarkFilled size={14} /> Solde Théorique des Comptes Mobile Money
+                            <CheckmarkFilled size={14} /> Solde Théorique des Comptes Mobile Money
                         </p>
                         <h2 className="text-5xl font-black text-white italic tracking-tighter">
                             {theoreticalCashBalance.toLocaleString()} <span className="text-sm uppercase not-italic">FCFA</span>
                         </h2>
-                        <p className="text-[9px] text-blue-100 font-bold mt-2 italic uppercase">Ce qui devrait être dans vos caisses actuellement</p>
+                        <p className="text-[9px] text-blue-100 font-bold mt-2 italic uppercase">Ce qui devrait être dans vos caisses (Inclus apport 2.000.000 F)</p>
                     </div>
-                    <div className="flex gap-4 relative z-10">
+                    <div className="flex gap-4 relative z-10 text-center">
                         <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 group-hover:bg-white/15 transition-all">
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Total Reçu (In)</p>
+                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Entrées (Total)</p>
                             <p className="text-xl font-black text-white italic tracking-tighter">+{totalCashIn.toLocaleString()} F</p>
                         </div>
                         <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 group-hover:bg-white/15 transition-all">
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Total Décaissé (Out)</p>
+                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Sorties (Total)</p>
                             <p className="text-xl font-black text-white italic tracking-tighter">-{totalCashOut.toLocaleString()} F</p>
                         </div>
                     </div>
