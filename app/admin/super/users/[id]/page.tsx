@@ -127,7 +127,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                             <hr className="border-white/5" />
 
                             <div>
-                                <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-6 italic">Informations Garant</h3>
+                                <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-6 italic">Personne de référence</h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-center text-slate-500">
@@ -145,7 +145,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                             <Flash size={20} />
                                         </div>
                                         <div>
-                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">WhatsApp Garant</p>
+                                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">WhatsApp Référence</p>
                                             <p className="text-sm font-bold text-white italic">{user.guarantor_whatsapp || 'N/A'}</p>
                                         </div>
                                     </div>

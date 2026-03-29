@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
-import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User } from '@carbon/icons-react'
+import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User, Information } from '@carbon/icons-react'
 
 import { DashboardFilters } from '../super/DashboardFilters'
 
@@ -10,7 +10,7 @@ export default async function FinanceAuditPage({
 }: {
     searchParams: any
 }) {
-    // 1. Security check
+    // 1. Contrôle de sécurité (Admin, Comptable ou Propriétaire)
     await requireAdminRole(['superadmin', 'admin_comptable', 'owner'])
 
     let params = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams || {}))
@@ -33,17 +33,14 @@ export default async function FinanceAuditPage({
 
     const supabase = await createClient()
 
-    // 2. Fetch Data with careful handling
+    // 2. Récupération des données (Période sélectionnée)
     const { data: subs, error: errSubs } = await supabase.from('user_subscriptions').select('*, user:user_id(prenom, nom), plan:abonnements(name, price)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: commissions, error: errComm } = await supabase.from('admin_commissions').select('*, admin:admin_id(prenom, nom), loan:loan_id(user_id, status)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: withdrawals, error: errWith } = await supabase.from('admin_withdrawals').select('*, admin:admin_id(prenom, nom)').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: paidLoans } = await supabase.from('prets').select('id, created_at, status').eq('status', 'paid').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: paidLoans } = await supabase.from('prets').select('id, created_at, status, service_fee').eq('status', 'paid').gte('created_at', startDate).lte('created_at', endDate)
     const { data: allRemboursements } = await supabase.from('remboursements').select('*, user:user_id(prenom, nom)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
 
-    // Gain dossier net Creditly (200 F par dossier remboursé)
-    const totalDossierGains = (paidLoans?.length || 0) * 200
-
-    // 3. Error Diagnostic Screen
+    // Diagnostic d'erreur
     if (errSubs || errComm || errWith) {
         console.error("Finance Audit Error:", { errSubs, errComm, errWith })
         return (
@@ -51,298 +48,320 @@ export default async function FinanceAuditPage({
                 <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-red-500/20 shadow-xl shadow-red-500/10">
                     <Warning size={40} />
                 </div>
-                <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-4">Erreur de Synchronisation</h1>
-                <p className="text-slate-500 italic max-w-md mx-auto mb-10 leading-relaxed">
-                    Le grand livre financier ne peut pas être généré car certaines tables système sont manquantes ou inaccessibles.
-                </p>
-                <div className="glass-panel p-6 bg-slate-900 border-slate-800 inline-block text-left">
-                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3">Détails techniques :</p>
-                    <code className="text-xs text-slate-400 font-mono">
-                        {errSubs?.message || errComm?.message || errWith?.message || "Erreur de connexion Supabase"}
-                    </code>
-                </div>
+                <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-4">Erreur Système</h1>
+                <p className="text-slate-500 italic max-w-md mx-auto mb-10 leading-relaxed">Impossible de générer le rapport financier. Erreur de connexion au serveur.</p>
+                <code className="text-xs text-slate-400 font-mono bg-slate-900 p-4 border border-slate-800 rounded-xl">{errSubs?.message || errComm?.message || errWith?.message || "Erreur Inconnue"}</code>
             </div>
         )
     }
 
-    // 4. Processing Ledger (Journal)
-    let totalRevenue = 0
+    // 4. Construction du Livre-Journal (Audit des flux de la période)
     const journal: any[] = []
+    let periodSubsTotal = 0
+    let periodFeesTotal = 0
+    let periodPenaltiesTotal = 0
 
-    // Subscriptions Revenue
+    // Revenus Abonnements
     subs?.forEach((s: any) => {
         const u = s.user as any
         const p = s.plan as any
         const price = Number(p?.price) || 0
-        totalRevenue += price
+        periodSubsTotal += price
         journal.push({
             date: s.created_at,
-            type: 'SUBSCRIPTION',
+            type: 'REVENUE_SUBS',
             amount: price,
             label: `Abonnement ${p?.name || 'Inconnu'}`,
-            user: u ? `${u.prenom} ${u.nom}` : 'Utilisateur Inconnu',
-            status: s.status === 'active' ? 'COMPLETED' : 'PENDING'
-        })
-    })
-
-    // Dossier Fees (Net Platform Gain)
-    paidLoans?.forEach((l: any) => {
-        totalRevenue += 200
-        journal.push({
-            date: l.created_at,
-            type: 'DOSSIER_FEE',
-            amount: 200,
-            label: `Frais Dossier Net (Ref. ${l.id.slice(0, 5)})`,
-            user: 'Plateforme',
+            user: u ? `${u.prenom} ${u.nom}` : 'Utilisateur',
             status: 'COMPLETED'
         })
     })
 
-    // Penalties (Surplus)
+    // Revenus Frais de Service (Gross) - 500 F par dossier soldé
+    paidLoans?.forEach((l: any) => {
+        const fee = Number(l.service_fee) || 500
+        periodFeesTotal += fee
+        journal.push({
+            date: l.created_at,
+            type: 'REVENUE_FEE',
+            amount: fee,
+            label: `Frais de Service (Dossier ${l.id.slice(0, 5)})`,
+            user: 'Système',
+            status: 'COMPLETED'
+        })
+    })
+
+    // Revenus Pénalités (Surplus)
     allRemboursements?.forEach((r: any) => {
         const surplus = Number(r.surplus_amount) || 0
         if (surplus > 0) {
-            totalRevenue += surplus
+            periodPenaltiesTotal += surplus
             const u = r.user as any
             journal.push({
                 date: r.created_at,
-                type: 'PENALTY',
+                type: 'REVENUE_PENALTY',
                 amount: surplus,
-                label: `Pénalité/Surplus Recouvré`,
+                label: `Surplus de Recouvrement`,
                 user: u ? `${u.prenom} ${u.nom}` : 'Client',
                 status: 'COMPLETED'
             })
         }
     })
 
-    // Commissions (Outflow/Internal)
+    // Dépenses : Commissions Agents
     commissions?.forEach((c: any) => {
         const a = c.admin as any
         journal.push({
             date: c.created_at,
-            type: 'COMMISSION',
+            type: 'EXPENSE_COMMISSION',
             amount: -Number(c.amount),
-            label: `Com. ${c.type.replace('_', ' ')}`,
-            user: a ? `${a.prenom} ${a.nom}` : 'Système',
-            status: 'PROVISIONED'
+            label: `Commission ${c.type.replace('_', ' ')}`,
+            user: a ? `${a.prenom} ${a.nom}` : 'Admin',
+            status: 'OWED'
         })
     })
 
-    // Withdrawals (Cash out)
+    // Flux de trésorerie : Retraits validés
     withdrawals?.forEach((w: any) => {
         const a = w.admin as any
         journal.push({
             date: w.created_at,
-            type: 'WITHDRAWAL',
+            type: 'CASH_OUT',
             amount: -Number(w.amount),
-            label: `Retrait Admin`,
-            user: a ? `${a.prenom} ${a.nom}` : 'Admin Inconnu',
-            status: w.status === 'approved' ? 'COMPLETED' : w.status === 'rejected' ? 'CANCELLED' : 'PENDING'
+            label: `Retrait d'Argent (Liquidité)`,
+            user: a ? `${a.prenom} ${a.nom}` : 'Admin',
+            status: w.status === 'approved' ? 'COMPLETED' : 'PENDING'
         })
     })
 
-    const { data: allRembTotal } = await supabase.from('remboursements').select('amount, surplus_amount').eq('status', 'verified')
-    const { data: allSubsTotal } = await supabase.from('user_subscriptions').select('plan:abonnements(price)').eq('status', 'active')
-    const { data: allLoansTotal } = await supabase.from('prets').select('amount').in('status', ['approved', 'active', 'paid', 'overdue'])
-    const { data: allWithTotal } = await supabase.from('admin_withdrawals').select('amount').eq('status', 'approved')
-
-    // CASH RECONCILIATION (Flux réels d'argent entrant/sortant)
-    const INITIAL_CAPITAL = 2000000
-    const totalCashIn = (allRembTotal?.reduce((acc, r) => acc + Number(r.amount) + (Number(r.surplus_amount) || 0), 0) || 0) +
-        (allSubsTotal?.reduce((acc, s: any) => acc + Number(s.plan?.price || 0), 0) || 0)
-
-    const totalCashOut = (allLoansTotal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0) +
-        (allWithTotal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0)
-
-    const theoreticalCashBalance = INITIAL_CAPITAL + totalCashIn - totalCashOut
-
     const sortedJournal = journal.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 100)
 
-    const { data: allLoans, error: errLoans } = await supabase.from('prets').select('*').in('status', ['approved', 'active', 'paid', 'overdue'])
+    // --- 5. CALCULS FINANCIERS GLOBAUX (RECONCILIATION) ---
+    // Ces calculs couvrent TOUTE l'histoire de la plateforme pour équilibrer les comptes.
+    const INITIAL_CAPITAL = 2000000
 
-    // Calculs "Expert Comptable"
-    // Calculs "Expert Comptable"
-    const capitalPrete = allLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
-    const totalAttendu = allLoans?.reduce((acc, l) => {
+    const { data: allRembGlobal } = await supabase.from('remboursements').select('amount_declared').eq('status', 'verified')
+    const { data: allSubsGlobal } = await supabase.from('user_subscriptions').select('plan:abonnements(price)').eq('status', 'active')
+    const { data: allLoansGlobal } = await supabase.from('prets').select('amount').in('status', ['approved', 'active', 'paid', 'overdue'])
+    const { data: allWithGlobal } = await supabase.from('admin_withdrawals').select('amount').eq('status', 'approved')
+
+    const totalGlobalCashIn = (allRembGlobal?.reduce((acc, r) => acc + Number(r.amount_declared), 0) || 0) +
+        (allSubsGlobal?.reduce((acc, s: any) => acc + Number(s.plan?.price || 0), 0) || 0)
+
+    const totalGlobalCashOut = (allLoansGlobal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0) +
+        (allWithGlobal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0)
+
+    const theoreticalCashBalance = INITIAL_CAPITAL + totalGlobalCashIn - totalGlobalCashOut
+
+    // --- 6. AUDIT PROBABILISTE DU CAPITAL (ENCOURS) ---
+    const { data: allLoansAudit } = await supabase.from('prets').select('*').in('status', ['approved', 'active', 'paid', 'overdue'])
+    const capitalPrete = allLoansAudit?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
+    const totalAttendu = allLoansAudit?.reduce((acc, l) => {
         const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
         return acc + (Number(l.amount) + fee);
     }, 0) || 0
-    const dejaRecouvre = allLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
+    const dejaRecouvre = allLoansAudit?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
     const resteARecouvrer = Math.max(0, totalAttendu - dejaRecouvre)
-    const margeProjetee = totalAttendu - capitalPrete
 
-    const totalWithdrawals = withdrawals?.filter(w => w.status === 'approved').reduce((acc, w) => acc + Number(w.amount), 0) || 0
-    const totalCommissionsValue = commissions?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
-    const netProfit = totalRevenue - totalCommissionsValue
+    // --- 7. PERFORMANCE DE LA PÉRIODE ---
+    // Revenu Brut = Abonnements + Frais (500F) + Pénalités
+    const periodGrossRevenue = periodSubsTotal + periodFeesTotal + periodPenaltiesTotal
+    // Commissions totales de la période
+    const periodCommissions = commissions?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
+    // Profit Net = Brut - Commissions
+    const periodNetProfit = periodGrossRevenue - periodCommissions
 
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">
             <div className="admin-container">
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8">
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         <div className="flex items-center gap-3">
                             <span className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <Currency size={24} />
                             </span>
-                            <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">Audit Comptable</h1>
+                            <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">Audit Financier</h1>
                         </div>
-                        <p className="text-slate-500 font-bold italic leading-relaxed">Vision experte du capital, des marges et du recouvrement.</p>
+                        <div className="flex flex-col gap-1">
+                            <p className="text-slate-500 font-bold italic leading-relaxed">Transparence totale des flux, marges et rentabilité nette.</p>
+                            <div className="flex items-center gap-2 text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1 rounded-full border border-blue-500/20 w-fit">
+                                <Information size={12} />
+                                <span className="font-black uppercase tracking-widest">Calculs en temps réel basés sur le grand livre</span>
+                            </div>
+                        </div>
                     </div>
 
                     <DashboardFilters currentMonth={month} currentYear={year} currentPeriod={period} />
                 </header>
 
-                {/* CASH RECONCILIATION BANNER */}
-                <div className="mb-12 p-8 bg-blue-600 rounded-[2rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[100px] -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-1000"></div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic flex items-center gap-2">
-                            <CheckmarkFilled size={14} /> Solde Théorique des Comptes Mobile Money
+                {/* SECTION 1: RÉCONCILIATION DE CAISSE (MOBILE MONEY) */}
+                <div className="mb-12 p-8 bg-blue-600 rounded-[2.5rem] shadow-2xl relative overflow-hidden group border border-blue-400/20">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
+                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
+                        <div className="lg:col-span-2">
+                            <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-3 italic flex items-center gap-2">
+                                <Wallet size={16} /> Solde Théorique Mobile Money (Audit Global)
+                            </p>
+                            <h2 className="text-6xl font-black text-white italic tracking-tighter mb-4">
+                                {theoreticalCashBalance.toLocaleString('fr-FR')} <span className="text-xl uppercase not-italic opacity-70">FCFA</span>
+                            </h2>
+                            <div className="flex flex-wrap gap-3">
+                                <div className="px-4 py-2 bg-black/20 backdrop-blur-md rounded-xl border border-white/10">
+                                    <p className="text-[10px] text-blue-100 font-bold italic uppercase">
+                                        Formule : Capital Initial ({INITIAL_CAPITAL.toLocaleString()} F) + Total Entrées - Total Sorties
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/10 backdrop-blur-md px-6 py-5 rounded-3xl border border-white/10 group-hover:bg-white/15 transition-all">
+                                <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Total Entrées (Cash-In)</p>
+                                <p className="text-2xl font-black text-white italic tracking-tighter">+{totalGlobalCashIn.toLocaleString('fr-FR')} F</p>
+                                <p className="text-[8px] text-blue-200/60 mt-2 leading-tight uppercase font-bold italic">Remboursements + Abonnements</p>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-md px-6 py-5 rounded-3xl border border-white/10 group-hover:bg-white/15 transition-all">
+                                <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Total Sorties (Cash-Out)</p>
+                                <p className="text-2xl font-black text-white italic tracking-tighter">-{totalGlobalCashOut.toLocaleString('fr-FR')} F</p>
+                                <p className="text-[8px] text-blue-200/60 mt-2 leading-tight uppercase font-bold italic">Prêts Capital + Retraits Admin</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SECTION 2: PERFORMANCE DE LA PÉRIODE (KPI RENTABILITÉ) */}
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-3 italic">
+                    <ArrowUpRight size={18} /> Performance de la Période ({period === 'week' ? 'Semaine' : 'Mois'})
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                    {/* REVENU BRUT */}
+                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 hover:border-emerald-500/30 transition-all shadow-xl group">
+                        <div className="flex justify-between items-start mb-4">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Revenu Brut<br />(Gross Revenue)</p>
+                            <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                <ArrowUpRight size={16} />
+                            </span>
+                        </div>
+                        <p className="text-3xl font-black text-white italic tracking-tighter mb-2">
+                            {periodGrossRevenue.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic font-bold">F</span>
                         </p>
-                        <h2 className="text-5xl font-black text-white italic tracking-tighter">
-                            {theoreticalCashBalance.toLocaleString('fr-FR')} <span className="text-sm uppercase not-italic">FCFA</span>
-                        </h2>
-                        <p className="text-[9px] text-blue-100 font-bold mt-2 italic uppercase">Ce qui devrait être dans vos caisses (Inclus apport 2.000.000 F)</p>
+                        <hr className="border-white/5 mb-3" />
+                        <p className="text-[9px] text-slate-500 font-bold uppercase italic leading-relaxed">
+                            <span className="text-emerald-500">Formule :</span> Abo ({periodSubsTotal.toLocaleString()} F) + Frais Service ({periodFeesTotal.toLocaleString()} F) + Pénalités ({periodPenaltiesTotal.toLocaleString()} F)
+                        </p>
                     </div>
-                    <div className="flex gap-4 relative z-10 text-center">
-                        <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 group-hover:bg-white/15 transition-all">
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Entrées (Total)</p>
-                            <p className="text-xl font-black text-white italic tracking-tighter">+{totalCashIn.toLocaleString('fr-FR')} F</p>
+
+                    {/* COMMISSIONS DUES */}
+                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all shadow-xl group">
+                        <div className="flex justify-between items-start mb-4">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Dépenses Agents<br />(Commissions)</p>
+                            <span className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <UserMultiple size={16} />
+                            </span>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 group-hover:bg-white/15 transition-all">
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 italic">Sorties (Total)</p>
-                            <p className="text-xl font-black text-white italic tracking-tighter">-{totalCashOut.toLocaleString('fr-FR')} F</p>
+                        <p className="text-3xl font-black text-blue-500 italic tracking-tighter mb-2">
+                            {periodCommissions.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic font-bold">F</span>
+                        </p>
+                        <hr className="border-white/5 mb-3" />
+                        <p className="text-[9px] text-slate-500 font-bold uppercase italic leading-relaxed">
+                            <span className="text-blue-500">Formule :</span> Somme de toutes les commissions (KYC + Prêt + Remboursement) générées sur la période.
+                        </p>
+                    </div>
+
+                    {/* PROFIT NET */}
+                    <div className="glass-panel p-6 bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500 transition-all shadow-2xl relative overflow-hidden group">
+                        <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic leading-tight">Profit Net<br />(Net Profit)</p>
+                            <span className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/50">
+                                <CheckmarkFilled size={16} />
+                            </span>
                         </div>
+                        <p className="text-3xl font-black text-white italic tracking-tighter mb-2 relative z-10">
+                            {periodNetProfit.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic font-bold">F</span>
+                        </p>
+                        <hr className="border-emerald-500/10 mb-3 relative z-10" />
+                        <p className="text-[9px] text-slate-400 font-bold uppercase italic leading-relaxed relative z-10">
+                            <span className="text-emerald-500">Formule :</span> Revenu Brut ({periodGrossRevenue.toLocaleString()} F) - Commissions ({periodCommissions.toLocaleString()} F)
+                        </p>
+                    </div>
+
+                    {/* MARGE DE RÉCUPÉRATION (RECOVERY) */}
+                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 hover:border-amber-500/30 transition-all shadow-xl group">
+                        <div className="flex justify-between items-start mb-4">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Reste à Recouvrer<br />(Encours Global)</p>
+                            <span className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                <Time size={16} />
+                            </span>
+                        </div>
+                        <p className="text-3xl font-black text-amber-500 italic tracking-tighter mb-2">
+                            {resteARecouvrer.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic font-bold">F</span>
+                        </p>
+                        <hr className="border-white/5 mb-3" />
+                        <p className="text-[9px] text-slate-500 font-bold uppercase italic leading-relaxed">
+                            <span className="text-amber-500">Formule :</span> Capital + Frais attendus ({totalAttendu.toLocaleString()} F) - Déjà Payé ({dejaRecouvre.toLocaleString()} F)
+                        </p>
                     </div>
                 </div>
 
-                {/* KPI Section 1: Capital & Marge */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-xl">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">Capital Prêté (Sorti)</p>
-                            <p className="text-2xl font-black text-white italic tracking-tighter">
-                                {capitalPrete.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-emerald-500/30 transition-all shadow-xl">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">Intérêts & Frais (Marge)</p>
-                            <p className="text-2xl font-black text-emerald-500 italic tracking-tighter">
-                                {margeProjetee.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-amber-500/30 transition-all shadow-xl">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">Déjà Recouvré</p>
-                            <p className="text-2xl font-black text-amber-500 italic tracking-tighter">
-                                {dejaRecouvre.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-red-600/10 border-red-500/20 flex flex-col justify-between group hover:border-red-500 transition-all shadow-xl">
-                        <div>
-                            <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1 italic">Reste à Recouvrer</p>
-                            <p className="text-2xl font-black text-white italic tracking-tighter">
-                                {resteARecouvrer.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* KPI Section 2: Flux Plateforme */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-emerald-500/30 transition-all shadow-2xl relative overflow-hidden">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Revenus Encaissés</p>
-                            <p className="text-3xl font-black text-white italic tracking-tighter">
-                                {totalRevenue.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic">F</span>
-                            </p>
-                            <p className="text-[9px] text-slate-700 font-black mt-2 italic uppercase">Abonnements + Dossiers Remboursés</p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-2xl relative overflow-hidden">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Dettes Commissions</p>
-                            <p className="text-3xl font-black text-blue-500 italic tracking-tighter">
-                                {totalCommissionsValue.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic">F</span>
-                            </p>
-                            <p className="text-[9px] text-slate-700 font-black mt-2 italic uppercase">Dû aux agents</p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-red-500/30 transition-all shadow-2xl relative overflow-hidden">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Sorties de Caisse</p>
-                            <p className="text-3xl font-black text-red-500 italic tracking-tighter">
-                                {totalWithdrawals.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic">F</span>
-                            </p>
-                            <p className="text-[9px] text-slate-700 font-black mt-2 italic uppercase">Retraits validés</p>
-                        </div>
-                    </div>
-                    <div className="glass-panel p-6 bg-blue-600/10 border-blue-500/30 flex flex-col justify-between group hover:border-blue-500 transition-all shadow-2xl relative overflow-hidden">
-                        <div>
-                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 italic">Profit Net Réel</p>
-                            <p className="text-3xl font-black text-white italic tracking-tighter">
-                                {netProfit.toLocaleString('fr-FR')} <span className="text-xs ml-1 uppercase not-italic">F</span>
-                            </p>
-                            <p className="text-[9px] text-slate-500 font-black mt-2 italic uppercase">Solde après commissions</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="glass-panel overflow-hidden border-slate-800 shadow-2xl">
+                {/* SECTION 3: JOURNAL DÉTAILLÉ */}
+                <div className="glass-panel overflow-hidden border-slate-800 shadow-2xl bg-slate-900/40">
                     <div className="px-8 py-6 bg-slate-950/50 border-b border-white/5 flex justify-between items-center">
-                        <h3 className="text-sm font-black text-white italic tracking-widest uppercase flex items-center gap-3">
-                            <List size={20} className="text-blue-500" />
-                            Journal des Opérations
-                        </h3>
+                        <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <List size={20} />
+                            </span>
+                            <h3 className="text-sm font-black text-white italic tracking-widest uppercase">Journal des Flux Financiers</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-black italic uppercase tracking-widest">100 dernières opérations</p>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[800px]">
+                        <table className="w-full text-left border-collapse min-w-[900px]">
                             <thead>
-                                <tr className="bg-slate-950/50 border-b border-white/5">
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Date</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Type</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Libellé</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Tiers / Agent</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-right">Montant</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-center">Statut</th>
+                                <tr className="bg-slate-950/30 border-b border-white/5">
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Date & Heure</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Nature du Flux</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Détails de l'Opération</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Tiers / Admin</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-right">Impact Caisse</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-center">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 text-sm">
-                                {sortedJournal.length > 0 ? sortedJournal.map((entry, i) => (
+                                {sortedJournal.length > 0 ? sortedJournal.map((entry: any, i: number) => (
                                     <tr key={i} className="hover:bg-white/5 transition-colors group">
                                         <td className="px-8 py-5">
                                             <p className="text-slate-400 font-bold italic">{new Date(entry.date).toLocaleDateString('fr-FR')}</p>
                                             <p className="text-[10px] text-slate-600 font-mono tracking-tighter italic">{new Date(entry.date).toLocaleTimeString('fr-FR')}</p>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${entry.type === 'SUBSCRIPTION' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                entry.type === 'WITHDRAWAL' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                    'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${entry.type.startsWith('REVENUE') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                    entry.type.startsWith('EXPENSE') ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                        'bg-red-500/10 text-red-500 border-red-500/20'
                                                 }`}>
-                                                {entry.type}
+                                                {entry.type.replace('_', ' ')}
                                             </span>
                                         </td>
                                         <td className="px-8 py-5">
                                             <p className="text-white font-black italic tracking-tight">{entry.label}</p>
                                         </td>
-                                        <td className="px-8 py-5 flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/5 flex items-center justify-center text-[10px] font-black text-blue-500">
+                                        <td className="px-8 py-5 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/5 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all">
                                                 <User size={14} />
                                             </div>
                                             <p className="text-slate-300 font-bold italic">{entry.user}</p>
                                         </td>
-                                        <td className={`px-8 py-5 text-right font-black italic text-lg tracking-tighter ${entry.amount > 0 ? 'text-emerald-500' : 'text-slate-300'}`}>
-                                            {entry.amount.toLocaleString('fr-FR')} F
+                                        <td className="px-8 py-5 text-right">
+                                            <p className={`font-black italic text-lg tracking-tighter ${entry.amount > 0 ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                                {entry.amount > 0 ? '+' : ''}{entry.amount.toLocaleString('fr-FR')} <span className="text-[10px] not-italic opacity-50">F</span>
+                                            </p>
                                         </td>
                                         <td className="px-8 py-5 text-center">
-                                            <div className="flex items-center justify-center gap-2">
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-white/5">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${entry.status === 'COMPLETED' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                                    entry.status === 'PENDING' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                                                        'bg-slate-600'
+                                                        entry.status === 'OWED' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
+                                                            'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
                                                     }`} />
                                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">{entry.status}</p>
                                             </div>
@@ -350,8 +369,11 @@ export default async function FinanceAuditPage({
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={6} className="px-8 py-20 text-center">
-                                            <p className="text-slate-600 font-black uppercase italic tracking-[0.3em]">Aucune opération enregistrée</p>
+                                        <td colSpan={6} className="px-8 py-24 text-center">
+                                            <div className="flex flex-col items-center gap-4 opacity-30">
+                                                <Document size={48} />
+                                                <p className="text-slate-400 font-black uppercase italic tracking-[0.3em]">Aucune donnée sur cette période</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

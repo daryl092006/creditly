@@ -191,10 +191,10 @@ function SignupForm() {
                     </div>
 
                     <div className="space-y-6 pt-4">
-                        <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Infos sur mon Garant</h3>
+                        <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Ma personne de référence</h3>
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom du Garant</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Prénom (Référence)</label>
                                 <input
                                     name="guarantor_prenom"
                                     type="text"
@@ -206,7 +206,7 @@ function SignupForm() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom du Garant</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-left block">Nom (Référence)</label>
                                 <input
                                     name="guarantor_nom"
                                     type="text"
@@ -220,7 +220,7 @@ function SignupForm() {
                         </div>
 
                         <div className="space-y-2 text-left">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp du Garant</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">WhatsApp (Référence)</label>
                             <input
                                 name="guarantor_whatsapp"
                                 type="text"

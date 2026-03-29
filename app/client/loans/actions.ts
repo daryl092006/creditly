@@ -67,13 +67,17 @@ export async function requestLoan(
     // We fetch user details again or use what we have. 
     // The RPC insert worked, so we proceed.
     const { data: profile } = await supabase.from('users').select('nom, prenom').eq('id', user.id).single()
-    sendAdminNotification('LOAN_REQUEST', {
-        userEmail: user.email!,
-        userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-        amount: amount,
-        payoutNetwork: payoutNetwork,
-        payoutPhone: payoutPhone
-    }).catch(err => console.error('Notification Error:', err))
+    try {
+        await sendAdminNotification('LOAN_REQUEST', {
+            userEmail: user.email!,
+            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            amount: amount,
+            payoutNetwork: payoutNetwork,
+            payoutPhone: payoutPhone
+        })
+    } catch (err) {
+        console.error('Notification Error:', err)
+    }
 
     revalidatePath('/client/dashboard')
     return { success: 'PretEngage' }
@@ -154,11 +158,15 @@ export async function submitRepayment(formData: FormData) {
 
         // 3. Notify Admin (Async)
         const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
-        sendAdminNotification('REPAYMENT', {
-            userEmail: user.email!,
-            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: numAmount
-        }).catch(err => console.error('Notification Error:', err))
+        try {
+            await sendAdminNotification('REPAYMENT', {
+                userEmail: user.email!,
+                userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                amount: numAmount
+            })
+        } catch (err) {
+            console.error('Notification Error:', err)
+        }
 
         revalidatePath('/client/loans')
         revalidatePath(`/client/loans/${loanId}`)
