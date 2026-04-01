@@ -3,14 +3,12 @@ import { redirect } from 'next/navigation'
 import LoanRequestForm from './loan-form'
 import Link from 'next/link'
 import { ArrowLeft, CloseFilled, Information } from '@carbon/icons-react'
-import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export default async function LoanRequestPage() {
     const supabase = await createClient()
     // Lazy update of system statuses
     await supabase.rpc('auto_update_system_statuses')
 
-    const quotasStatus = await checkGlobalQuotasStatus()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return redirect('/auth/login')
@@ -167,7 +165,6 @@ export default async function LoanRequestPage() {
 
             <LoanRequestForm
                 subscription={sub}
-                quotasStatus={quotasStatus}
                 userData={userData || { nom: '', prenom: '' }}
                 repaymentPhones={repaymentPhones}
             />

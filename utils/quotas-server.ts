@@ -59,21 +59,25 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
             }
         });
 
-        const { data: allPlans } = await supabase.from('abonnements').select('id, max_loan_amount');
+        const { data: allPlans } = await supabase.from('abonnements').select('id, name, max_loan_amount');
         const plans = (allPlans || []) as unknown as Abonnement[];
 
         const status: Record<string, { count: number, limit: number, reached: boolean }> = {};
 
         plans.forEach((p) => {
             const pid = p.id;
-            // The table global_quotas is indexed by AMOUNT, not PLAN_ID
+            
+            // Try to find quota by plan_id first, then by amount (handling migration)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const q = limits.find((ql) => Number(ql.amount) === Number(p.max_loan_amount));
+            const q = limits.find((ql: any) => 
+                (ql.plan_id && ql.plan_id === pid) || 
+                (!ql.plan_id && Number(ql.amount) === Number(p.max_loan_amount))
+            );
 
             // DEFAULT TO -1 (UNLIMITED) if not in the quotas table
             const limit = q ? parseInt(q.monthly_limit.toString()) : -1;
             const count = counts[pid] || 0;
-            const reached = limit >= 0 ? count >= limit : false; // If limit is negative, it's unlimited
+            const reached = limit >= 0 ? count >= limit : false;
 
             const quotaObj = {
                 count,
@@ -81,16 +85,8 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
                 reached
             };
 
+            // Index ONLY by plan_id to avoid duplicates in dashboards
             status[pid] = quotaObj;
-
-            // Also index by amount for the UI (Dashboard & Request Form)
-            if (p.max_loan_amount) {
-                const amtKey = p.max_loan_amount.toString();
-                // If multiple plans have the same amount, we prioritize the one with a limit set
-                if (!status[amtKey] || (limit > 0 && status[amtKey].limit === 0)) {
-                    status[amtKey] = quotaObj;
-                }
-            }
         });
 
         return status;

@@ -146,10 +146,13 @@ export default async function SubscriptionsPage() {
                                 ))}
 
                                 {quotasStatus[plan.id]?.reached && (
-                                    <div className="mt-8 px-4 py-4 rounded-xl bg-slate-950/50 border border-amber-500/20 text-center animate-fade-in">
-                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed italic">
-                                            Plus de place ce mois-ci <br />
-                                            <span className="text-[7px] text-slate-600 italic lowercase tracking-normal font-bold">Revenez le 1er du mois prochain, il y aura de la place.</span>
+                                    <div className="mt-8 px-4 py-5 rounded-2xl bg-red-500/5 border border-red-500/20 text-center animate-fade-in shadow-lg shadow-red-500/5">
+                                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-relaxed italic mb-1">
+                                            ⚠️ OFFRE SATURÉE CE MOIS-CI
+                                        </p>
+                                        <p className="text-[8px] text-slate-400 italic font-bold leading-tight">
+                                            Le quota maximum de clients a été atteint. <br />
+                                            Revenez le <span className="text-white">1er du mois prochain</span> pour souscrire.
                                         </p>
                                     </div>
                                 )}

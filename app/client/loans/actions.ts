@@ -114,21 +114,23 @@ export async function submitRepayment(formData: FormData) {
 
     const { loanId, amount: numAmount, proof: file } = validationResult.data;
 
-    // 0. Server-side validation of remaining balance
+    // FETCH LOAN WITH FULL DETAILS
     const { data: loan, error: loanError } = await supabase
         .from('prets')
-        .select('amount, amount_paid')
+        .select('amount, amount_paid, service_fee, created_at, status, due_date')
         .eq('id', loanId)
         .single()
 
     if (loanError || !loan) return { error: 'Prêt introuvable' }
 
-    const remaining = Number(loan.amount) - (Number(loan.amount_paid) || 0)
-    /*
-    if (numAmount > remaining) {
-        return { error: `Le montant (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remaining.toLocaleString('fr-FR')} F).` }
+    // Use centralized calc
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+    const { totalDebt } = calculateLoanDebt(loan as any)
+
+    // STRICT VALIDATION: Server-side check for any surplus
+    if (numAmount > totalDebt + 1) {
+        return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${totalDebt.toLocaleString('fr-FR')} F, incluant pénalités éventuelles). Veuillez recalculer.` }
     }
-    */
 
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()

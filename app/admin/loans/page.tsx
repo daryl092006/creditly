@@ -46,35 +46,44 @@ export default async function AdminLoanPage({
         Celtiis: settingsMap['repayment_phone_celtiis'] || '+229 01 44 14 00 67'
     }
 
-    const rows = loans?.map(loan => ({
-        id: loan.id,
-        user: `${loan.user?.prenom} ${loan.user?.nom} (${loan.user?.email})`,
-        profile: loan.user,
-        whatsapp: loan.user?.whatsapp || loan.user?.telephone,
-        amount: Number(loan.amount),
-        service_fee: Number(loan.service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0),
-        amount_paid: loan.amount_paid || 0,
-        plan: loan.plan?.name || 'N/A',
-        date: loan.request_date,
-        due_date: loan.due_date,
-        status: (loan.status === 'active' || loan.status === 'overdue') && (loan as any).repayments?.some((r: any) => r.status === 'pending')
-            ? 'Vérification'
-            : loan.status,
-        payout_phone: loan.payout_phone,
-        payout_name: loan.payout_name,
-        payout_network: loan.payout_network,
-        borrower_birth_date: loan.borrower_birth_date,
-        borrower_address: loan.borrower_address,
-        borrower_city: loan.borrower_city,
-        borrower_profession: loan.borrower_profession,
-        borrower_id_details: loan.borrower_id_details,
-        waiver_signed_at: loan.waiver_signed_at,
-        admin: loan.admin ? {
-            name: `${loan.admin.prenom} ${loan.admin.nom}`,
-            role: loan.admin.roles?.[0],
-            whatsapp: loan.admin.whatsapp
-        } : null
-    })) || []
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+
+    const rows = loans?.map(loan => {
+        const { principle, fee, totalDebt, latePenalties, daysLate } = calculateLoanDebt(loan as any)
+        
+        return {
+            id: loan.id,
+            user: `${loan.user?.prenom} ${loan.user?.nom} (${loan.user?.email})`,
+            profile: loan.user,
+            whatsapp: loan.user?.whatsapp || loan.user?.telephone,
+            amount: principle,
+            service_fee: fee,
+            late_penalties: latePenalties,
+            total_due: totalDebt,
+            days_late: daysLate,
+            amount_paid: Number(loan.amount_paid) || 0,
+            plan: loan.plan?.name || 'N/A',
+            date: loan.request_date,
+            due_date: loan.due_date,
+            status: (loan.status === 'active' || loan.status === 'overdue') && (loan as any).repayments?.some((r: any) => r.status === 'pending')
+                ? 'Vérification'
+                : loan.status,
+            payout_phone: loan.payout_phone,
+            payout_name: loan.payout_name,
+            payout_network: loan.payout_network,
+            borrower_birth_date: loan.borrower_birth_date,
+            borrower_address: loan.borrower_address,
+            borrower_city: loan.borrower_city,
+            borrower_profession: loan.borrower_profession,
+            borrower_id_details: loan.borrower_id_details,
+            waiver_signed_at: loan.waiver_signed_at,
+            admin: loan.admin ? {
+                name: `${loan.admin.prenom} ${loan.admin.nom}`,
+                role: loan.admin.roles?.[0],
+                whatsapp: loan.admin.whatsapp
+            } : null
+        }
+    }) || []
 
     // Get Current User Role for UI logic
     const currentUserRole = await getCurrentUserRole()

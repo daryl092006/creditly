@@ -5,36 +5,56 @@ import { SubmitButton } from '@/app/components/ui/SubmitButton'
 import { Rocket } from '@carbon/icons-react'
 import { updateOfferAndQuotas } from './actions'
 
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
+import Link from 'next/link'
+
 interface OfferCardProps {
     offer: any
-    quota: number
+    quota: {
+        count: number
+        limit: number
+        reached: boolean
+    }
 }
 
 export function OfferCard({ offer, quota }: OfferCardProps) {
+    const remaining = Math.max(0, quota.limit - quota.count);
+    const percent = quota.limit > 0 ? (quota.count / quota.limit) * 100 : 0;
+
     return (
         <div key={offer.id} className="glass-panel p-8 bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all relative overflow-hidden group text-left">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-[60px] -mr-16 -mt-16 transition-all group-hover:bg-blue-600/10"></div>
             <form action={updateOfferAndQuotas} className="space-y-6 relative z-10">
                 <input type="hidden" name="id" value={offer.id} />
 
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center font-black text-xl border border-blue-500/20 shadow-inner">
                             {(offer.name || 'P').charAt(0)}
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white italic uppercase tracking-tighter leading-none mb-1">{offer.name}</h3>
-                            <p className="text-[10px] font-bold text-slate-600 font-mono">ID: {offer.id.substring(0, 8)}...</p>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${quota.reached ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                                    {quota.count} / {quota.limit} VENDUS
+                                </span>
+                                <Link href={`/admin/super/subscriptions?plan=${offer.name}`} className="text-[8px] font-bold text-blue-400 hover:text-white underline underline-offset-2 uppercase tracking-tighter">
+                                    Voir la liste
+                                </Link>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-500 italic mt-1">
+                                {remaining > 0 ? `Encore ${remaining} places disponibles` : 'FORFAIT COMPLET'}
+                            </p>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Quota Mensuel</label>
+                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Limite Mensuelle</label>
                         <input
                             name={`quota_${offer.id}`}
                             type="number"
-                            defaultValue={quota}
-                            className="w-20 bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2 text-center text-xs font-black text-emerald-500 focus:border-emerald-500 transition-colors"
+                            defaultValue={quota.limit}
+                            className={`w-20 bg-slate-950 border rounded-lg p-2 text-center text-xs font-black transition-colors ${quota.reached ? 'border-red-500 text-red-500' : 'border-slate-800 text-white focus:border-blue-500'}`}
                         />
                     </div>
                 </div>

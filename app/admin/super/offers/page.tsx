@@ -5,11 +5,14 @@ import { SubmitButton } from '@/app/components/ui/SubmitButton'
 import { Rocket } from '@carbon/icons-react'
 import { OfferCard } from './OfferCard'
 
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
+import { requireAdminRole } from '@/utils/admin-security'
+
 export default async function OffersPage() {
+    await requireAdminRole(['superadmin'])
     const supabase = await createAdminClient()
     const { data: offers } = await supabase.from('abonnements').select('*').order('price')
-    const { data: quotas } = await supabase.from('global_quotas').select('*')
-    const quotaMap = (quotas || []).reduce((acc: any, q: any) => ({ ...acc, [q.plan_id]: q.monthly_limit }), {})
+    const quotaMap = await checkGlobalQuotasStatus()
 
     return (
         <div className="py-10 md:py-16 animate-fade-in text-slate-300">
@@ -42,7 +45,7 @@ export default async function OffersPage() {
                             <OfferCard
                                 key={offer.id}
                                 offer={offer}
-                                quota={quotaMap[offer.id] || 0}
+                                quota={quotaMap[offer.id] || { count: 0, limit: 0, reached: false }}
                             />
                         ))}
 

@@ -62,7 +62,7 @@ export default async function SuperAdminPage({
     const { count: pendingSubs } = await supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
     const { count: pendingRepayments } = await supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending')
 
-    const globalQuotas = await checkGlobalQuotasStatus()
+    const globalQuotas = await checkGlobalQuotasStatus(month, year)
     const { data: allOffersNames } = await supabase.from('abonnements').select('id, name, max_loan_amount')
     const offersMap: Record<string, string> = {}
     allOffersNames?.forEach(o => {
@@ -76,6 +76,7 @@ export default async function SuperAdminPage({
             label: name,
             value: val.count,
             limit: val.limit,
+            remaining: Math.max(0, val.limit - val.count),
             percent: val.limit > 0 ? (val.count / val.limit) * 100 : val.limit === 0 ? 100 : 0,
             status: val.reached ? 'danger' : (val.limit > 0 && val.count / val.limit > 0.8) ? 'warning' : 'success'
         }
@@ -208,10 +209,18 @@ export default async function SuperAdminPage({
                                             <div>
                                                 <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{quota.label}</p>
                                                 <p className="text-lg font-black text-white italic tracking-tighter uppercase">{quota.value} / {quota.limit}</p>
+                                                <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${quota.status === 'danger' ? 'text-red-500' : 'text-slate-500'}`}>
+                                                    {quota.remaining <= 0 ? 'COMPLET' : `Encore ${quota.remaining} libre(s)`}
+                                                </p>
                                             </div>
-                                            <p className={`text-xl font-black italic ${quota.status === 'danger' ? 'text-red-500' : quota.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                {Math.round(quota.percent || 0)}%
-                                            </p>
+                                            <div className="text-right">
+                                                <p className={`text-xl font-black italic ${quota.status === 'danger' ? 'text-red-500' : quota.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                                    {Math.round(quota.percent || 0)}%
+                                                </p>
+                                                <Link href={`/admin/super/subscriptions?plan=${quota.label}`} className="text-[7px] font-black text-blue-500 hover:text-white uppercase tracking-[0.2em] transition-all underline decoration-blue-500/30">
+                                                    Voir Liste
+                                                </Link>
+                                            </div>
                                         </div>
                                         <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
                                             <div className={`h-full transition-all duration-1000 ${quota.status === 'danger' ? 'bg-red-500' : quota.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${quota.percent}%` }} />

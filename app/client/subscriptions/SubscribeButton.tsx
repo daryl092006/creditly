@@ -19,10 +19,14 @@ export default function SubscribeButton({
         <div className="space-y-3">
             {disabled ? (
                 <button
-                    className="premium-button w-full py-5 !rounded-2xl bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
+                    className={`premium-button w-full py-5 !rounded-2xl shadow-none border ${
+                        isQuotaFull 
+                        ? 'bg-red-500/10 text-red-500 border-red-500/30 font-black' 
+                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
                     disabled
                 >
-                    {isQuotaFull ? 'Limite Atteinte' : isModification ? 'Déjà Actif' : 'Payé / En attente'}
+                    {isQuotaFull ? '❌ QUOTA MENSUEL ATTEINT' : isModification ? 'Déjà Actif' : 'Payé / En attente'}
                 </button>
             ) : (
                 <Link

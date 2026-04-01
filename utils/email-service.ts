@@ -4,9 +4,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const resendDaryl = new Resend(process.env.RESEND_API_KEY_DARYL || process.env.RESEND_API_KEY);
 
 const adminEmail = process.env.ADMIN_EMAIL || 'creditly001@gmail.com';
-const darylEmail = 'darylggt23@gmail.com';
-// Note: Actuellement configuré pour creditly001 uniquement car pas de domaine vérifié sur Resend.
-const OWNER_EMAIL = 'creditly001@gmail.com'; 
+const OWNER_EMAIL = 'creditly001@gmail.com';
 
 type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION';
 
@@ -20,8 +18,7 @@ interface NotificationData {
 }
 
 /**
- * Envoie une notification aux administrateurs.
- * Temporairement redirigé vers l'owner du compte Resend uniquement.
+ * Envoie une notification aux administrateurs via Resend.
  */
 export async function sendAdminNotification(type: NotificationType, data: NotificationData) {
     if (!process.env.RESEND_API_KEY) {
@@ -104,38 +101,18 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     }
 
     try {
-        // Envoi à Daryl pour prévisualisation
-        await resendDaryl.emails.send({
-            from: 'Creditly Preview <onboarding@resend.dev>',
-            to: darylEmail,
-            subject: `🚨 [PREVIEW] ${subject}`,
-            html: `
-                <div style="background-color: #fefce8; padding: 15px; border: 1px solid #fef08a; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif;">
-                    <p style="margin: 0; color: #854d0e; font-size: 13px; font-weight: bold;">
-                        💡 CECI EST UNE PRÉ-NOTIFICATION (Review). 
-                        L'email officiel sera envoyé à l'administration (${adminEmail}) dans 5 minutes.
-                    </p>
-                </div>
-                ${html}
-            `,
-        });
-
-        // Envoi PLANIFIÉ dans 5 minutes pour l'administration officielle (ou OWNER_EMAIL si adminEmail n'est pas configuré)
-        const destinationEmail = adminEmail || OWNER_EMAIL;
-        const scheduledDate = new Date(Date.now() + 5 * 60 * 1000);
         await resend.emails.send({
             from: 'Creditly Notifications <onboarding@resend.dev>',
-            to: destinationEmail,
+            to: adminEmail || OWNER_EMAIL,
             subject: subject,
             html: html,
-            scheduledAt: scheduledDate.toISOString()
         });
     } catch (error) {
-        console.error('Erreur notifications admin:', error);
+        console.error('Erreur notifications admin (Resend):', error);
     }
 }
 
-type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION';
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED';
 
 interface UserEmailData {
     email: string;
@@ -146,55 +123,121 @@ interface UserEmailData {
 }
 
 /**
- * Envoie un email à l'utilisateur.
+ * Envoie un email à l'utilisateur via Resend.
  */
 export async function sendUserEmail(type: UserNotificationType, data: UserEmailData) {
     if (!process.env.RESEND_API_KEY) return;
 
-    let subject = `Creditly - Notification ${type}`;
-    let html = `
-        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-            <h2>Bonjour ${data.name},</h2>
-            <p>Nous vous informons de la mise à jour suivante concernant votre compte Creditly :</p>
-            <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Statut :</strong> ${type}</p>
-                ${data.amount ? `<p><strong>Montant :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p>` : ''}
-                ${data.details ? `<p><strong>Détails :</strong> ${data.details}</p>` : ''}
-            </div>
-            <p>Merci de votre confiance.</p>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Accéder à mon espace</a>
-        </div>
-    `;
+    let subject = `Creditly - Notification`;
+    let html = '';
+
+    // Personnalisation par type
+    switch (type) {
+        case 'LOAN_APPROVED':
+        case 'LOAN_ACTIVE':
+            subject = `✅ Votre prêt Creditly est approuvé !`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #059669;">Bonjour ${data.name},</h2>
+                    <p>🎉 Bonne nouvelle ! Votre demande de prêt a été <strong>approuvée</strong>.</p>
+                    ${data.amount ? `<p><strong>Montant :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p>` : ''}
+                    ${data.details ? `<p><strong>Informations :</strong> ${data.details}</p>` : ''}
+                    <p>Vous recevrez votre virement très prochainement sur votre compte Mobile Money.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon tableau de bord</a>
+                </div>
+            `;
+            break;
+        case 'LOAN_REJECTED':
+            subject = `❌ Mise à jour de votre demande de prêt Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">Bonjour ${data.name},</h2>
+                    <p>Nous avons examiné votre demande de prêt et nous ne sommes malheureusement pas en mesure de la valider pour le moment.</p>
+                    ${data.details ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;"><p><strong>Motif :</strong> ${data.details}</p></div>` : ''}
+                    <p>Vous pouvez soumettre une nouvelle demande une fois la situation régularisée.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon tableau de bord</a>
+                </div>
+            `;
+            break;
+        case 'KYC_APPROVED':
+            subject = `✅ Identité vérifiée - Compte Creditly activé`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #059669;">Bonjour ${data.name},</h2>
+                    <p>Votre identité a été <strong>vérifiée avec succès</strong>. Vous pouvez maintenant souscrire un abonnement et faire votre première demande de prêt !</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Accéder à mon espace</a>
+                </div>
+            `;
+            break;
+        case 'KYC_REJECTED':
+            subject = `❌ Vérification d'identité - Action requise`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">Bonjour ${data.name},</h2>
+                    <p>Votre dossier KYC n'a pas pu être validé.</p>
+                    ${data.details ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;"><p><strong>Motif :</strong> ${data.details}</p></div>` : ''}
+                    <p>Veuillez soumettre à nouveau votre dossier avec les corrections nécessaires.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/kyc" style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Mettre à jour mon dossier</a>
+                </div>
+            `;
+            break;
+        case 'REPAYMENT_VALIDATED':
+            subject = `✅ Remboursement validé - Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #059669;">Bonjour ${data.name},</h2>
+                    <p>Votre remboursement a été <strong>validé</strong>. Merci !</p>
+                    ${data.amount ? `<p><strong>Montant enregistré :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p>` : ''}
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon tableau de bord</a>
+                </div>
+            `;
+            break;
+        case 'REPAYMENT_REJECTED':
+            subject = `⚠️ Remboursement non confirmé - Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #d97706;">Bonjour ${data.name},</h2>
+                    <p>Votre preuve de remboursement n'a pas pu être confirmée.</p>
+                    ${data.details ? `<div style="background-color: #fffbeb; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d97706;"><p><strong>Motif :</strong> ${data.details}</p></div>` : ''}
+                    <p>Veuillez soumettre à nouveau votre preuve de paiement ou contacter le support.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon tableau de bord</a>
+                </div>
+            `;
+            break;
+        case 'SUBSCRIPTION':
+            subject = `✅ Votre abonnement Creditly est actif !`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #6366f1;">Bonjour ${data.name},</h2>
+                    <p>Félicitations ! Votre souscription à l'offre <strong>${data.planName || 'Creditly'}</strong> a été validée.</p>
+                    <p>Vous avez maintenant accès aux demandes de prêts correspondant à votre palier.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Accéder à mon espace</a>
+                </div>
+            `;
+            break;
+        case 'SUBSCRIPTION_REJECTED':
+            subject = `❌ Mise à jour de votre souscription Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">Bonjour ${data.name},</h2>
+                    <p>Nous n'avons pas pu valider votre demande de souscription pour le moment.</p>
+                    ${data.details ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;"><p><strong>Motif :</strong> ${data.details}</p></div>` : ''}
+                    <p>Veuillez vérifier vos informations ou contacter le support si vous pensez qu'il s'agit d'une erreur.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/subscriptions" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Réessayer la souscription</a>
+                </div>
+            `;
+            break;
+    }
 
     try {
-        // Envoi à Daryl pour prévisualisation
-        await resendDaryl.emails.send({
-            from: 'Creditly Preview <onboarding@resend.dev>',
-            to: darylEmail,
-            subject: `🚨 [PREVIEW CLIENT] ${subject}`,
-            html: `
-                <div style="background-color: #fefce8; padding: 15px; border: 1px solid #fef08a; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif;">
-                    <p style="margin: 0; color: #854d0e; font-size: 13px; font-weight: bold;">
-                        💡 PRÉ-NOTIFICATION (Review Client). 
-                        L'email officiel sera envoyé au client (${data.email}) dans 5 minutes.
-                    </p>
-                </div>
-                ${html}
-            `,
-        });
-
-        // Envoi à l'utilisateur (redirigé vers OWNER_EMAIL pendant les tests si nécessaire, ou direct)
-        // Actuellement konfiguré pour envoyer réellement à l'utilisateur après 5 min de délai
-        const scheduledDate = new Date(Date.now() + 5 * 60 * 1000);
         await resend.emails.send({
-            from: 'Creditly <notifications@resend.dev>',
+            from: 'Creditly <onboarding@resend.dev>',
             to: data.email,
             subject: subject,
             html: html,
-            scheduledAt: scheduledDate.toISOString()
         });
     } catch (error) {
-        console.error('[EmailService] Erreur sendUserEmail:', error);
+        console.error('[EmailService] Erreur sendUserEmail (Resend):', error);
     }
 }
 
@@ -217,20 +260,34 @@ export async function sendWeeklyReport(data: WeeklyReportData) {
         const subject = `[REPORT] Rapport Hebdomadaire - ${data.startDate}`;
         const html = `<h2>Rapport Financier</h2><p>Revenus: ${formattedTotal}</p>`;
 
-        await resendDaryl.emails.send({
-            from: 'Creditly Reports <reports@resend.dev>',
-            to: darylEmail,
-            subject: subject,
-            html: html,
-        });
-
         await resend.emails.send({
-            from: 'Creditly <onboarding@resend.dev>',
+            from: 'Creditly Reports <onboarding@resend.dev>',
             to: OWNER_EMAIL,
             subject: subject,
             html: html,
         });
     } catch (error) {
-        console.error('[EmailService] Erreur sendWeeklyReport:', error);
+        console.error('[EmailService] Erreur sendWeeklyReport (Resend):', error);
+    }
+}
+
+export async function sendPreNotification(email: string, name: string, message: string) {
+    if (!process.env.RESEND_API_KEY_DARYL) return;
+
+    try {
+        await resendDaryl.emails.send({
+            from: 'Creditly Alert <onboarding@resend.dev>',
+            to: email,
+            subject: '🔔 Rappel imminent - Creditly',
+            html: `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #ea580c;">Bonjour ${name},</h2>
+                    <p>${message}</p>
+                    <p style="font-size: 12px; color: #666; margin-top: 20px;">Ceci est un rappel automatique envoyé 5 minutes avant l'échéance.</p>
+                </div>
+            `,
+        });
+    } catch (error) {
+        console.error('[EmailService] Erreur sendPreNotification (Daryl):', error);
     }
 }

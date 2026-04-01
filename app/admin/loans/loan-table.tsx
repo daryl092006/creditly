@@ -620,11 +620,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
 
                             <div className="text-center p-8 bg-gray-50 border-4 border-double border-black">
                                 <div className="font-black text-4xl italic tracking-tighter mb-2">
-
-                                    {(new Date(viewWaiver.date) >= new Date('2026-03-09T00:00:00') ? viewWaiver.amount + 500 : viewWaiver.amount).toLocaleString('fr-FR')} FCFA
-
                                     {(viewWaiver.amount + (viewWaiver.service_fee || 0)).toLocaleString('fr-FR')} FCFA
-
                                 </div>
                                 <div className="text-[10px] font-black uppercase text-gray-500 border-t border-gray-200 pt-2 inline-block px-10">
                                     {numberToFrench(viewWaiver.amount + (viewWaiver.service_fee || 0)).toUpperCase()} FRANCS CFA
@@ -636,7 +632,9 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             </p>
 
                             <div className="text-center py-4 bg-gray-100 border-x-4 border-black font-black text-2xl underline decoration-double">
-                                {viewWaiver.due_date || '________________'}
+                                {viewWaiver.due_date
+                                    ? new Date(viewWaiver.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                                    : viewWaiver.status === 'pending' ? 'À définir après approbation' : '________________'}
                             </div>
 
                             <div className="space-y-3 bg-gray-50 p-6 border-2 border-black">

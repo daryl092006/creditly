@@ -17,17 +17,9 @@ interface Subscription {
     }
 }
 
-interface QuotaStatus {
-    [key: number]: {
-        count: number;
-        limit: number;
-        reached: boolean;
-    }
-}
 
-export default function LoanRequestForm({ subscription, quotasStatus, userData, repaymentPhones }: {
+export default function LoanRequestForm({ subscription, userData, repaymentPhones }: {
     subscription: Subscription,
-    quotasStatus: QuotaStatus,
     userData: {
         nom: string,
         prenom: string,
@@ -63,11 +55,6 @@ export default function LoanRequestForm({ subscription, quotasStatus, userData, 
 
         if (amount > subscription.plan.max_loan_amount) {
             setError('La somme est trop élevée pour votre forfait.')
-            return false
-        }
-
-        if (quotasStatus[amount]?.reached) {
-            setError(`Cette somme (${amount.toLocaleString('fr-FR')} FCFA) n'est plus disponible ce mois-ci. Essayez un autre montant ou revenez le mois prochain.`)
             return false
         }
 

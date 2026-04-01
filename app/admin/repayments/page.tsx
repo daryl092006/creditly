@@ -21,32 +21,37 @@ export default async function AdminRepaymentPage({
         .from('remboursements')
         .select(`
             *,
-            loan:prets(amount, amount_paid, service_fee, created_at),
+            loan:prets(amount, amount_paid, service_fee, created_at, status, due_date),
             user:users!remboursements_user_id_fkey(email, nom, prenom, whatsapp, telephone),
             admin:users!remboursements_admin_id_fkey(email, nom, prenom, roles, whatsapp)
         `)
         .eq('status', statusFilter)
         .order('created_at', { ascending: false })
 
-    const rows = repayments?.map(r => ({
-        id: r.id,
-        loan_id: r.loan_id,
-        user_id: r.user_id,
-        user: `${r.user?.prenom} ${r.user?.nom} (${r.user?.email})`,
-        whatsapp: r.user?.whatsapp || r.user?.telephone,
-        loan_amount: (Number(r.loan?.amount) || 0) + (Number((r.loan as any)?.service_fee) || (new Date(r.loan?.created_at!) >= new Date('2026-03-09') ? 500 : 0)),
-        loan_amount_paid: r.loan?.amount_paid || 0,
-        amount_declared: r.amount_declared,
-        surplus_amount: r.surplus_amount || 0,
-        proof_url: r.proof_url,
-        date: r.created_at,
-        status: r.status,
-        admin: r.admin ? {
-            name: `${r.admin.prenom} ${r.admin.nom}`,
-            role: r.admin.roles?.[0],
-            whatsapp: r.admin.whatsapp
-        } : null
-    })) || []
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+
+    const rows = repayments?.map(r => {
+        const { totalDebt } = calculateLoanDebt(r.loan as any)
+        return {
+            id: r.id,
+            loan_id: r.loan_id,
+            user_id: r.user_id,
+            user: `${r.user?.prenom} ${r.user?.nom} (${r.user?.email})`,
+            whatsapp: r.user?.whatsapp || r.user?.telephone,
+            loan_amount: totalDebt,
+            loan_amount_paid: r.loan?.amount_paid || 0,
+            amount_declared: r.amount_declared,
+            surplus_amount: r.surplus_amount || 0,
+            proof_url: r.proof_url,
+            date: r.created_at,
+            status: r.status,
+            admin: r.admin ? {
+                name: `${r.admin.prenom} ${r.admin.nom}`,
+                role: r.admin.roles?.[0],
+                whatsapp: r.admin.whatsapp
+            } : null
+        }
+    }) || []
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">

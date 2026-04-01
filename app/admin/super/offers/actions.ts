@@ -103,6 +103,7 @@ export async function updateOfferAndQuotas(formData: FormData) {
 
 export async function updateQuotas(formData: FormData) {
     const supabase = await createAdminClient()
+    const amount = parseFloat(formData.get('max_loan_amount') as string);
 
     // Extract all keys that look like quota_XXXX
     const entries = Array.from(formData.entries());
@@ -112,20 +113,37 @@ export async function updateQuotas(formData: FormData) {
             const val = parseInt(value as string);
             return {
                 plan_id: key.replace('quota_', ''),
+                amount: amount,
                 monthly_limit: isNaN(val) ? 0 : val
             };
         });
 
-    console.log('Final quota updates to apply:', quotaUpdates);
+    console.log('Applying robust quota updates:', quotaUpdates);
 
     for (const update of quotaUpdates) {
-        const { error } = await supabase
+        // Try plan_id first (modern way)
+        let { error } = await supabase
             .from('global_quotas')
-            .upsert(update, { onConflict: 'plan_id' });
+            .upsert({
+                plan_id: update.plan_id,
+                monthly_limit: update.monthly_limit
+            }, { onConflict: 'plan_id' });
+
+        // If it fails because column doesn't exist, fallback to amount-based
+        if (error && (error.code === '42703' || error.message.includes('plan_id'))) {
+            console.log('plan_id not found, falling back to amount-based quota for:', update.amount);
+            const { error: fallbackError } = await supabase
+                .from('global_quotas')
+                .upsert({
+                    amount: update.amount,
+                    monthly_limit: update.monthly_limit
+                }, { onConflict: 'amount' });
+            error = fallbackError;
+        }
 
         if (error) {
-            console.error('CRITICAL: Quota update failed for plan', update.plan_id, ':', error);
-            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)} (Plan: ${update.plan_id})`);
+            console.error('CRITICAL: Quota update failed for', update.plan_id, ':', error);
+            throw new Error(`Erreur lors de la mise à jour du quota: ${getUserFriendlyErrorMessage(error)}`);
         }
     }
 }

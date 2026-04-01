@@ -18,13 +18,11 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         setError(null)
 
         const numAmount = Number(amount)
-        // Check disabled to allow for penalty payments
-        /*
-        if (numAmount > remainingBalance) {
-            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remainingBalance.toLocaleString('fr-FR')} F).`)
+        // STRICT VALIDATION: Refuse directly if amount exceeds total debt (including penalties)
+        if (numAmount > remainingBalance + 1) {
+            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remainingBalance.toLocaleString('fr-FR')} F). Veuillez vérifier le montant exact dû.`)
             return
         }
-        */
 
         const formData = new FormData()
         formData.append('loanId', loanId)

@@ -35,7 +35,7 @@ interface Subscription {
     }
 }
 
-export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
+export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows: Subscription[], initialPlan?: string }) {
     const router = useRouter()
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [confirmSub, setConfirmSub] = useState<Subscription | null>(null)
@@ -44,15 +44,25 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'expired' | 'rejected'>('all')
+    const [planFilter, setPlanFilter] = useState(initialPlan)
+
+    // Get unique plans from rows for the filter
+    const availablePlans = Array.from(new Set(rows.map(r => r.plan.name))).sort();
 
     const filteredRows = rows.filter(sub => {
         const isExpired = (sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date()) || sub.status === 'expired';
-        if (statusFilter === 'all') return true;
-        if (statusFilter === 'pending') return sub.status === 'pending';
-        if (statusFilter === 'active') return sub.status === 'active' && !isExpired;
-        if (statusFilter === 'expired') return isExpired;
-        if (statusFilter === 'rejected') return sub.status === 'rejected';
-        return true;
+        
+        // Status filter
+        let matchesStatus = true;
+        if (statusFilter === 'pending') matchesStatus = sub.status === 'pending';
+        else if (statusFilter === 'active') matchesStatus = sub.status === 'active' && !isExpired;
+        else if (statusFilter === 'expired') matchesStatus = isExpired;
+        else if (statusFilter === 'rejected') matchesStatus = sub.status === 'rejected';
+
+        // Plan filter
+        const matchesPlan = planFilter === 'all' || sub.plan.name === planFilter;
+
+        return matchesStatus && matchesPlan;
     });
 
     const getFullUrl = (path: string) => {
@@ -96,28 +106,48 @@ export default function SubscriptionTable({ rows }: { rows: Subscription[] }) {
     return (
         <div className="relative animate-fade-in">
             {/* Filter Bar */}
-            <div className="flex flex-wrap gap-2 mb-8 bg-slate-900/50 p-2 rounded-2xl border border-white/5 backdrop-blur-sm">
-                {[
-                    { id: 'all', label: 'Tout', count: rows.length },
-                    { id: 'pending', label: 'En attente', count: rows.filter(r => r.status === 'pending').length },
-                    { id: 'active', label: 'Actifs', count: rows.filter(r => r.status === 'active' && (!r.end_date || new Date(r.end_date) >= new Date())).length },
-                    { id: 'expired', label: 'Expirés', count: rows.filter(r => (r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()) || r.status === 'expired').length },
-                    { id: 'rejected', label: 'Refusés', count: rows.filter(r => r.status === 'rejected').length },
-                ].map((f) => (
+            <div className="space-y-4 mb-8">
+                <div className="flex flex-wrap gap-2 bg-slate-900/50 p-2 rounded-2xl border border-white/5 backdrop-blur-sm">
+                    {[
+                        { id: 'all', label: 'Toutes les étapes', count: rows.length },
+                        { id: 'pending', label: 'En attente', count: rows.filter(r => r.status === 'pending').length },
+                        { id: 'active', label: 'Actifs', count: rows.filter(r => r.status === 'active' && (!r.end_date || new Date(r.end_date) >= new Date())).length },
+                        { id: 'expired', label: 'Expirés', count: rows.filter(r => (r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()) || r.status === 'expired').length },
+                        { id: 'rejected', label: 'Refusés', count: rows.filter(r => r.status === 'rejected').length },
+                    ].map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setStatusFilter(f.id as any)}
+                            className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-3 ${statusFilter === f.id
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 active:scale-95'
+                                : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
+                                }`}
+                        >
+                            {f.label}
+                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black ${statusFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                {f.count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2 bg-slate-900/30 p-2 rounded-2xl border border-white/5">
                     <button
-                        key={f.id}
-                        onClick={() => setStatusFilter(f.id as any)}
-                        className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-3 ${statusFilter === f.id
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 active:scale-95'
-                            : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
-                            }`}
+                        onClick={() => setPlanFilter('all')}
+                        className={`px-4 py-2 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${planFilter === 'all' ? 'bg-white text-black' : 'text-slate-500 hover:bg-white/5'}`}
                     >
-                        {f.label}
-                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black ${statusFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                            {f.count}
-                        </span>
+                        Tous les Forfaits
                     </button>
-                ))}
+                    {availablePlans.map(planName => (
+                        <button
+                            key={planName}
+                            onClick={() => setPlanFilter(planName)}
+                            className={`px-4 py-2 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${planFilter === planName ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500 hover:bg-white/5'}`}
+                        >
+                            {planName}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {filteredRows.length === 0 ? (

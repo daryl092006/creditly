@@ -11,8 +11,11 @@ BEGIN
     WHERE status = 'active' AND end_date < NOW();
 
     -- 2. Marquer les Prêts en retard (Prêts actifs dont l'échéance est passée)
+    -- IMPORTANT: On exclut les prêts déjà entièrement remboursés (amount_paid >= amount + service_fee)
     UPDATE public.prets
     SET status = 'overdue'
-    WHERE status = 'active' AND due_date < NOW();
+    WHERE status = 'active'
+      AND due_date < NOW()
+      AND COALESCE(amount_paid, 0) < (amount + COALESCE(service_fee, 0));
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

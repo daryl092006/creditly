@@ -3,7 +3,10 @@ import Link from 'next/link'
 import SubscriptionTable from './SubscriptionTable'
 import { requireAdminRole } from '@/utils/admin-security'
 
-export default async function AdminSubscriptionsPage() {
+export default async function AdminSubscriptionsPage({ searchParams }: { searchParams: any }) {
+    const params = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams || {}))
+    const initialPlan = params.plan || 'all';
+
     await requireAdminRole(['superadmin', 'admin_comptable'])
     const supabase = await createClient()
     const { data: allSubs } = await supabase
@@ -32,7 +35,7 @@ export default async function AdminSubscriptionsPage() {
                 </div>
 
                 <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                    <SubscriptionTable rows={allSubs || []} />
+                    <SubscriptionTable rows={allSubs || []} initialPlan={initialPlan} />
                 </div>
             </div>
         </div>

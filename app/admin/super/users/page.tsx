@@ -3,6 +3,7 @@ import UserManagementTable from './user-table'
 import Link from 'next/link'
 import { ChevronLeft } from '@carbon/icons-react'
 import { requireAdminRole } from '@/utils/admin-security'
+import { calculateLoanDebt } from '@/utils/loan-utils'
 
 export default async function UserManagementPage() {
     await requireAdminRole(['superadmin', 'owner', 'admin_comptable'])
@@ -15,13 +16,13 @@ export default async function UserManagementPage() {
 
     const { data: activeLoans } = await supabase
         .from('prets')
-        .select('user_id, amount, amount_paid')
+        .select('user_id, amount, amount_paid, service_fee, created_at, status, due_date')
         .in('status', ['active', 'overdue'])
 
     const userDebts = new Map<string, number>()
     activeLoans?.forEach(l => {
-        const debt = (l.amount || 0) - (l.amount_paid || 0)
-        userDebts.set(l.user_id, (userDebts.get(l.user_id) || 0) + debt)
+        const { totalDebt } = calculateLoanDebt(l as any)
+        userDebts.set(l.user_id, (userDebts.get(l.user_id) || 0) + totalDebt)
     })
 
     const rows = users?.map(u => ({

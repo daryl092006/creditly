@@ -87,11 +87,14 @@ export default async function ClientDashboard() {
     // Fetch active loans for "En-cours total"
     const { data: activeLoans } = await supabase
         .from('prets')
-        .select('amount, amount_paid, service_fee')
+        .select('amount, amount_paid, service_fee, created_at, status, due_date')
         .eq('user_id', user.id)
         .in('status', ['active', 'overdue'])
 
-    const totalOutstanding = activeLoans?.reduce((acc, loan) => acc + (Number(loan.amount) + (Number(loan.service_fee) || 0) - (Number(loan.amount_paid) || 0)), 0) || 0
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+    const totalOutstanding = activeLoans?.reduce((acc, loan) => {
+        return acc + calculateLoanDebt(loan as any).totalDebt;
+    }, 0) || 0
 
     // Fetch recent activities for notifications
     const { data: recentLoans } = await supabase

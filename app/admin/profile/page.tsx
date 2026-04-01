@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { UserProfileForm } from './UserProfileForm'
 import { WithdrawalButton } from './WithdrawalButton'
@@ -34,7 +34,8 @@ export default async function AdminProfilePage() {
 
     // 1. Fetch Performance Metrics
     const FEE_START_DATE = new Date('2026-03-09T00:00:00')
-    const { data: loans } = await supabase
+    const supabaseAdmin = await createAdminClient()
+    const { data: loans } = await supabaseAdmin
         .from('prets')
         .select('id, status, created_at')
         .eq('admin_id', profile.id)
@@ -43,13 +44,13 @@ export default async function AdminProfilePage() {
     const totalApproved = loans?.filter(l => ['approved', 'active', 'paid', 'overdue'].includes(l.status)).length || 0
     const totalFullyPaid = loans?.filter(l => l.status === 'paid').length || 0
 
-    // 2. Fetch Commissions & Realized Balance
-    const { data: commissions } = await supabase
+    // 2. Fetch Commissions & Realized Balance using Admin Client to bypass RLS
+    const { data: commissions } = await supabaseAdmin
         .from('admin_commissions')
         .select('amount, type, loan:loan_id(status)')
         .eq('admin_id', profile.id)
 
-    const { data: withdrawals } = await supabase
+    const { data: withdrawals } = await supabaseAdmin
         .from('admin_withdrawals')
         .select('amount, status')
         .eq('admin_id', profile.id)

@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User, Information } from '@carbon/icons-react'
 
@@ -32,13 +31,14 @@ export default async function FinanceAuditPage({
     }
 
     const supabase = await createClient()
+    const supabaseAdmin = await createAdminClient()
 
-    // 2. Récupération des données (Période sélectionnée)
-    const { data: subs, error: errSubs } = await supabase.from('user_subscriptions').select('*, user:user_id(prenom, nom), plan:abonnements(name, price)').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: commissions, error: errComm } = await supabase.from('admin_commissions').select('*, admin:admin_id(prenom, nom), loan:loan_id(user_id, status)').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: withdrawals, error: errWith } = await supabase.from('admin_withdrawals').select('*, admin:admin_id(prenom, nom)').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: paidLoans } = await supabase.from('prets').select('id, created_at, status, service_fee').eq('status', 'paid').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: allRemboursements } = await supabase.from('remboursements').select('*, user:user_id(prenom, nom)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
+    // 2. Récupération des données (Période sélectionnée) - Bypassing RLS for audit
+    const { data: subs, error: errSubs } = await supabaseAdmin.from('user_subscriptions').select('*, user:user_id(prenom, nom), plan:abonnements(name, price)').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: commissions, error: errComm } = await supabaseAdmin.from('admin_commissions').select('*, admin:admin_id(prenom, nom), loan:loan_id(user_id, status)').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: withdrawals, error: errWith } = await supabaseAdmin.from('admin_withdrawals').select('*, admin:admin_id(prenom, nom)').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: paidLoans } = await supabaseAdmin.from('prets').select('id, created_at, status, service_fee').eq('status', 'paid').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: allRemboursements } = await supabaseAdmin.from('remboursements').select('*, user:user_id(prenom, nom), surplus_amount').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
 
     // Diagnostic d'erreur
     if (errSubs || errComm || errWith) {

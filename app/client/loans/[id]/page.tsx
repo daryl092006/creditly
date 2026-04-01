@@ -191,7 +191,11 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                                 </div>
                                 <div className="p-6 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
                                     <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic">Reste à payer</p>
-                                    <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount + (loan.service_fee || 0) - (loan.amount_paid || 0)).toLocaleString('fr-FR')} FCFA</p>
+                                    {(() => {
+                                        const fee = Number(loan.service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0);
+                                        const remaining = (Number(loan.amount) || 0) + fee - (Number(loan.amount_paid) || 0);
+                                        return <p className="text-3xl font-black text-white tracking-tighter italic">{remaining.toLocaleString('fr-FR')} FCFA</p>
+                                    })()}
                                 </div>
                             </div>
                         </div>

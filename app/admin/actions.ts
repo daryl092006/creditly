@@ -215,6 +215,14 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
             updates.due_date = activeSub.end_date
             updates.status = 'active'
 
+            // CORRECTIF : Écrire service_fee dans la DB à l'approbation
+            // Sans ça, service_fee reste null en DB et l'UI affiche un montant incorrect
+            // alors que le backend calcule en ajoutant 500 via fallback → incohérence
+            const fee = Number(loan.service_fee) || (new Date(loan.created_at!) >= new Date('2026-03-09') ? 500 : 0)
+            if (!loan.service_fee && fee > 0) {
+                updates.service_fee = fee
+            }
+
             // --- COMMISSION SHARING LOGIC ---
             // 1. Get KYC Admin for this user
             const { data: kyc } = await supabase
@@ -225,8 +233,6 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
 
             const kycAdminId = kyc?.admin_id
             const loanAdminId = adminId
-
-            const fee = Number(loan.service_fee) || (new Date(loan.created_at!) >= new Date('2026-03-09') ? 500 : 0)
 
             if (fee >= 500 && (kycAdminId || loanAdminId)) {
                 const commissions = []
@@ -321,35 +327,41 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     const { data: repayment } = await supabase.from('remboursements').select('*').eq('id', repaymentId).single()
     if (!repayment) return { success: true } // Should not happen, but safe
 
+    // SÉCURITÉ : Ne pas traiter un remboursement déjà validé ou rejeté
+    // (Évite les doubles écritures et les faux surplus si l'admin clique deux fois)
+    if (repayment.status === 'verified' && status === 'verified') {
+        return { error: "Ce remboursement a déjà été validé." }
+    }
+
     // 3. Update Loan Balance if Verified
     if (status === 'verified') {
-        const amountVerified = repayment.amount_declared
-        const { data: loan } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at').eq('id', repayment.loan_id).single()
+        const amountVerified = Number(repayment.amount_declared) || 0
+        const { data: loan } = await supabase.from('prets').select('id, amount, amount_paid, service_fee, created_at, status, due_date').eq('id', repayment.loan_id).single()
 
         if (loan) {
+            const { calculateLoanDebt } = await import('@/utils/loan-utils')
+            const { totalDebt, fee, principle } = calculateLoanDebt(loan as any)
             const currentPaid = Number(loan.amount_paid) || 0
-            const fee = Number(loan.service_fee) || (new Date(loan.created_at!) >= new Date('2026-03-09') ? 500 : 0)
-            const totalLoanAmount = Number(loan.amount) + fee
-            const remainingToPay = Math.max(0, totalLoanAmount - currentPaid)
+            const totalLoanAmount = principle + fee // Base amount without periodic penalties for status check
 
-            let amountAppliedToLoan = amountVerified
-            let surplusGenerated = 0
-
-            // Si le montant versé dépasse ce qui reste à payer sur le prêt
-            if (amountVerified > remainingToPay) {
-                amountAppliedToLoan = remainingToPay
-                surplusGenerated = amountVerified - remainingToPay
+            // STRICT VALIDATION: Refuse validation if receipt amount exceeds current total debt
+            if (amountVerified > totalDebt + 1) {
+                return { error: `Validation refusée : Le reçu (${amountVerified.toLocaleString('fr-FR')} F) dépasse la dette totale actuelle (${totalDebt.toLocaleString('fr-FR')} F, pénalités incluses). Rejeter le reçu.` }
             }
 
+            const amountAppliedToLoan = amountVerified
+            const surplusGenerated = Math.max(0, amountVerified - (totalDebt - currentPaid))
             const newTotalPaid = currentPaid + amountAppliedToLoan
             const isFullyPaid = newTotalPaid >= totalLoanAmount
 
             // Mettre à jour le prêt
+            // On force 'paid' si soldé (même si le prêt était en 'overdue')
+            // Si pas encore soldé, on ne touche pas au statut (undefined = pas de changement)
             await supabase
                 .from('prets')
                 .update({
                     amount_paid: newTotalPaid,
-                    status: isFullyPaid ? 'paid' : undefined
+                    ...(isFullyPaid ? { status: 'paid' } : {})
                 })
                 .eq('id', repayment.loan_id)
 
@@ -359,25 +371,27 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     .from('remboursements')
                     .update({ surplus_amount: surplusGenerated })
                     .eq('id', repaymentId)
-
-                // Note: On ne crédite plus le solde surplus de l'utilisateur car le surplus est désormais considéré comme une pénalité perçue par la plateforme.
             }
 
-            // --- REPAYMENT COMMISSION ---
-            // On donne 100 F à celui qui valide le remboursement (seulement si le prêt a des frais de 500 F)
-            const { count } = await supabase
-                .from('admin_commissions')
-                .select('*', { count: 'exact', head: true })
-                .eq('loan_id', repayment.loan_id)
-                .eq('type', 'repayment_reward')
+            // --- REPAYMENT COMMISSION (Only if fee was charged) ---
+            const commissionAmount = 100
+            
+            if (fee > 0) { // Only if there's a service fee on this loan
+                const { count } = await supabase
+                    .from('admin_commissions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('loan_id', loan.id)
+                    .eq('type', 'repayment_reward')
 
-            if ((count || 0) === 0 && adminId && fee >= 500) {
-                await supabase.from('admin_commissions').insert({
-                    loan_id: repayment.loan_id,
-                    admin_id: adminId,
-                    amount: 100,
-                    type: 'repayment_reward'
-                })
+                if ((count || 0) === 0 && adminId) {
+                    await supabase.from('admin_commissions').insert({
+                        loan_id: loan.id,
+                        admin_id: adminId,
+                        amount: commissionAmount,
+                        type: 'repayment_reward',
+                        created_at: new Date().toISOString()
+                    })
+                }
             }
             // --- END REPAYMENT COMMISSION ---
         }
@@ -578,6 +592,21 @@ export async function rejectSubscription(subId: string, reason: string) {
         .eq('id', subId)
 
     if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+    // NOTIFY USER OF REJECTION
+    const { sendUserEmail } = await import('@/utils/email-service')
+    const { data: sub } = await supabase.from('user_subscriptions').select('user_id').eq('id', subId).single()
+    if (sub) {
+        const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', sub.user_id).single()
+        if (userData?.email) {
+            await sendUserEmail('SUBSCRIPTION_REJECTED', {
+                email: userData.email,
+                name: `${userData.prenom} ${userData.nom}`,
+                details: reason
+            })
+        }
+    }
+
     revalidatePath('/admin/super/subscriptions')
     revalidatePath('/client/dashboard')
     revalidatePath('/client/subscriptions')
@@ -690,14 +719,14 @@ export async function createDirectRepayment(formData: FormData) {
     const supabase = await createAdminClient()
     const supabaseUser = await createClientAuth()
     const { data: { user: adminUser } } = await supabaseUser.auth.getUser()
-    const adminId = adminUser?.id
+    const uId = adminUser?.id
 
     const loanId = formData.get('loanId') as string
     const userId = formData.get('userId') as string
-    const amount = Number(formData.get('amount'))
+    const numAmount = Number(formData.get('amount'))
     const proofFile = formData.get('proof') as File | null
 
-    if (!loanId || !userId || !amount) {
+    if (!loanId || !userId || !numAmount) {
         return { error: "Informations manquantes." }
     }
 
@@ -718,30 +747,33 @@ export async function createDirectRepayment(formData: FormData) {
     const { data: loan } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at').eq('id', loanId).single()
     if (!loan) return { error: "Prêt introuvable." }
 
-    const currentPaid = Number(loan.amount_paid) || 0
-    const fee = Number(loan.service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0)
-    const totalLoanAmount = Number(loan.amount) + fee
-    const remainingToPay = Math.max(0, totalLoanAmount - currentPaid)
+    // Validation du montant (Calcul incluant pénalités)
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+    const { totalDebt } = calculateLoanDebt(loan as any)
 
-    let amountAppliedToLoan = amount
-    let surplusGenerated = 0
-
-    if (amount > remainingToPay) {
-        amountAppliedToLoan = remainingToPay
-        surplusGenerated = amount - remainingToPay
+    if (numAmount > totalDebt + 1) {
+        return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse le solde restant (Base + Pénalités: ${totalDebt.toLocaleString('fr-FR')} F).` }
     }
+
+    const currentPaid = Number(loan.amount_paid) || 0
+    const principle = Number(loan.amount) || 0
+    const fee = Number(loan.service_fee) || (new Date(loan.created_at!) >= new Date('2026-03-09') ? 500 : 0)
+    const totalLoanAmount = principle + fee
+    
+    let amountAppliedToLoan = numAmount
+    let surplusGenerated = Math.max(0, numAmount - (totalDebt - currentPaid))
 
     const { data: repayment, error: repError } = await supabase
         .from('remboursements')
         .insert({
             loan_id: loanId,
             user_id: userId,
-            amount_declared: amount,
-            surplus_amount: surplusGenerated,
-            proof_url: proofPath,
+            amount_declared: numAmount,
+            proof_url: 'direct_admin_repayment',
             status: 'verified',
-            admin_id: adminId,
-            validated_at: new Date().toISOString()
+            admin_id: uId,
+            validated_at: new Date().toISOString(),
+            surplus_amount: surplusGenerated
         })
         .select()
         .single()
@@ -756,26 +788,29 @@ export async function createDirectRepayment(formData: FormData) {
         .from('prets')
         .update({
             amount_paid: newTotalPaid,
-            status: isFullyPaid ? 'paid' : undefined
+            ...(isFullyPaid ? { status: 'paid' } : {})
         })
         .eq('id', loanId)
 
     // Note: On ne crédite plus le solde surplus de l'utilisateur ici non plus (considéré comme pénalité).
 
-    // --- REPAYMENT COMMISSION (Direct) ---
-    const { count } = await supabase
-        .from('admin_commissions')
-        .select('*', { count: 'exact', head: true })
-        .eq('loan_id', loanId)
-        .eq('type', 'repayment_reward')
+    // --- REPAYMENT COMMISSION (Direct) (Only if fee was charged) ---
+    if (fee > 0) {
+        const { count } = await supabase
+            .from('admin_commissions')
+            .select('*', { count: 'exact', head: true })
+            .eq('loan_id', loanId)
+            .eq('type', 'repayment_reward')
 
-    if ((count || 0) === 0 && adminId) {
-        await supabase.from('admin_commissions').insert({
-            loan_id: loanId,
-            admin_id: adminId,
-            amount: 100,
-            type: 'repayment_reward'
-        })
+        if ((count || 0) === 0 && uId) {
+            await supabase.from('admin_commissions').insert({
+                loan_id: loanId,
+                admin_id: uId,
+                amount: 100,
+                type: 'repayment_reward',
+                created_at: new Date().toISOString()
+            })
+        }
     }
     // --- END REPAYMENT COMMISSION ---
 
