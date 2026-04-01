@@ -13,7 +13,7 @@ export default async function AdminLoanPage({
 
 
     // Security Check
-    await requireAdminRole(['admin_loan', 'superadmin', 'admin_comptable'])
+    await requireAdminRole(['admin_loan', 'superadmin', 'admin_comptable', 'owner'])
 
     const supabase = await createClient()
 

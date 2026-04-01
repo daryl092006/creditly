@@ -14,6 +14,39 @@ export async function submitKyc(formData: FormData) {
         return { error: "Vous devez être connecté pour soumettre votre dossier KYC." }
     }
 
+    // Process any missing profile updates from formData
+    const updates: Record<string, any> = {}
+    const fields = ['nom', 'prenom', 'birth_date', 'whatsapp', 'profession', 'guarantor_nom', 'guarantor_prenom', 'guarantor_whatsapp']
+    for (const field of fields) {
+        if (formData.has(field) && formData.get(field)) {
+            updates[field] = formData.get(field)
+        }
+    }
+    
+    // Check whatsapp uniqueness if provided
+    if (updates.whatsapp) {
+        const { data: existingPhone } = await supabase
+            .from('users')
+            .select('id')
+            .eq('whatsapp', updates.whatsapp)
+            .neq('id', user.id)
+            .single()
+
+        if (existingPhone) {
+            return { error: "Ce numéro WhatsApp est déjà utilisé par un autre compte." }
+        }
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await supabase.from('users').update(updates).eq('id', user.id)
+    }
+
+    // Verify after potential updates
+    const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+    if (!profile.nom || !profile.prenom || !profile.birth_date || !profile.whatsapp || !profile.profession || !profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
+        return { error: "Veuillez remplir toutes les informations d'identité demandées." }
+    }
+
     const idCard = formData.get('id_card') as File
     const selfie = formData.get('selfie') as File
     const proofOfResidence = formData.get('proof_of_residence') as File

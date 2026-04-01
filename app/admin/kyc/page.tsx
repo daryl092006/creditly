@@ -5,32 +5,20 @@ import { CheckmarkFilled, CloseFilled } from '@carbon/icons-react'
 
 export default async function AdminKycPage() {
     // Security Check
-    await requireAdminRole(['admin_kyc', 'superadmin'])
+    await requireAdminRole(['admin_kyc', 'superadmin', 'admin_comptable', 'owner'])
 
     const supabase = await createClient()
 
     // 1. Fetch Pending Submissions (For Action)
     const { data: submissions } = await supabase
         .from('kyc_submissions')
-        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone)`)
+        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone, birth_date, profession, guarantor_nom, guarantor_prenom, guarantor_whatsapp)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
     // 2. Fetch History (Read-Only: Approved/Rejected)
     const { data: history } = await supabase
         .from('kyc_submissions')
-        // Simplified query to let Supabase resolve the relationship automatically or via the admin_id FK
-        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone), admin:users!kyc_submissions_admin_id_fkey(email, nom, prenom, roles, whatsapp)`)
-        // If the above fails, one might try: .select(`*, user:users!...(..), admin:admin_id(email, ...)`) but admin_id is the column.
-        // The current code is likely correct IF the constraint name is exact.
-        // However, to be safe and "ensure" visibility, we can try to trust it or just perform a second check.
-        // Given the user report, I will KEEP it but add a comment that this depends on the foreign key name 'kyc_submissions_admin_id_fkey'.
-        // Actually, let's try to remove the explicit name if possible to be more generic, BUT since there are 2 FKs to users, we CANNOT.
-        // Actually, let's try to remove the explicit name if possible to be more generic, BUT since there are 2 FKs to users, we CANNOT.
-        // So I will assume the code IS correct but maybe the data is missing.
-        // I will make NO CHANGE to the query if I can't verify the DB, but I will improve the UI to handle missing data better.
-        // Wait, I see "Validé par" column header in line 75. And body in 114.
-        // I will add a fallback display using admin_id if admin object is null, just to show SOMETHING.
         .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone), admin:users!kyc_submissions_admin_id_fkey(email, nom, prenom, roles, whatsapp)`)
         .in('status', ['approved', 'rejected'])
         .order('reviewed_at', { ascending: false })
@@ -43,6 +31,10 @@ export default async function AdminKycPage() {
         name: `${sub.user?.prenom} ${sub.user?.nom}`,
         whatsapp: sub.user?.whatsapp || sub.user?.telephone,
         date: sub.created_at,
+        birth_date: sub.user?.birth_date,
+        profession: sub.user?.profession,
+        guarantor_name: sub.user?.guarantor_prenom ? `${sub.user?.guarantor_prenom} ${sub.user?.guarantor_nom}` : undefined,
+        guarantor_whatsapp: sub.user?.guarantor_whatsapp,
         docs: [
             { type: 'id_card', url: sub.id_card_url },
             { type: 'selfie', url: sub.selfie_url },

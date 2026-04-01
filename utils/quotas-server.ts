@@ -1,5 +1,19 @@
 import { createAdminClient } from './supabase/server';
 
+interface SubPreview {
+    plan_id: string;
+}
+
+interface QuotaLimit {
+    amount: number;
+    monthly_limit: number;
+}
+
+interface Abonnement {
+    id: string;
+    max_loan_amount: number;
+}
+
 export async function checkGlobalQuotasStatus(month?: number, year?: number) {
     try {
         const supabase = await createAdminClient();
@@ -22,7 +36,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
             return {};
         }
 
-        if (!quotaLimits) return {};
+        const limits = (quotaLimits || []) as unknown as QuotaLimit[];
 
         // 2. Get Subscriptions for period
         const { data: subs, error: subError } = await supabase
@@ -38,7 +52,7 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         }
 
         const counts: Record<string, number> = {};
-        (subs || []).forEach((sub: any) => {
+        (subs as unknown as SubPreview[] || []).forEach((sub) => {
             const pid = sub.plan_id;
             if (pid) {
                 counts[pid] = (counts[pid] || 0) + 1;
@@ -46,16 +60,18 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
         });
 
         const { data: allPlans } = await supabase.from('abonnements').select('id, max_loan_amount');
-        const plans = (allPlans || []) as { id: string, max_loan_amount: number }[];
+        const plans = (allPlans || []) as unknown as Abonnement[];
 
         const status: Record<string, { count: number, limit: number, reached: boolean }> = {};
 
         plans.forEach((p) => {
             const pid = p.id;
-            const q = (quotaLimits || []).find((ql: any) => ql.plan_id === pid);
+            // The table global_quotas is indexed by AMOUNT, not PLAN_ID
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const q = limits.find((ql) => Number(ql.amount) === Number(p.max_loan_amount));
 
             // DEFAULT TO -1 (UNLIMITED) if not in the quotas table
-            const limit = q ? parseInt(q.monthly_limit) : -1;
+            const limit = q ? parseInt(q.monthly_limit.toString()) : -1;
             const count = counts[pid] || 0;
             const reached = limit >= 0 ? count >= limit : false; // If limit is negative, it's unlimited
 

@@ -1,55 +1,76 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
     try {
-        // Security Check - Only superndmins and admin_comptable can export full audit
+        // Security Check - Only superadmins, admin_comptable and owner can export full audit
         await requireAdminRole(['superadmin', 'admin_comptable', 'owner'])
         
-        const supabase = await createClient()
+        // Use Admin Client to bypass RLS for the comprehensive audit
+        const supabase = await createAdminClient()
 
         // Fetch Data for Audit
-        const { data: users } = await supabase.from('users').select('*')
         const { data: loans } = await supabase.from('prets').select('*, user:users(nom, prenom, email)')
         const { data: repayments } = await supabase.from('remboursements').select('*, user:users(nom, prenom, email)')
         const { data: subscriptions } = await supabase.from('user_subscriptions').select('*, user:users(nom, prenom, email), plan:abonnements(name, price)')
 
-        // Helper to convert to CSV
-        const toCSV = (data: any[]) => {
-            if (!data || data.length === 0) return ''
-            const headers = Object.keys(data[0])
-            const rows = data.map(obj => 
-                headers.map(header => {
-                    const val = obj[header]
-                    if (typeof val === 'object' && val !== null) {
-                        return JSON.stringify(val).replace(/"/g, '""')
-                    }
-                    return `"${String(val).replace(/"/g, '""')}"`
+        // Improved CSV formatter with headers and BOM
+        const formatSection = (title: string, headers: string[], rows: any[]) => {
+            const sectionTitle = `${title.toUpperCase()}\n`;
+            const headerRow = headers.join(',') + '\n';
+            const dataRows = rows.map(r => 
+                headers.map(h => {
+                    const val = r[h] === null || r[h] === undefined ? '' : r[h];
+                    return `"${String(val).replace(/"/g, '""')}"`;
                 }).join(',')
-            )
-            return [headers.join(','), ...rows].join('\n')
+            ).join('\n');
+            return sectionTitle + headerRow + dataRows + '\n\n';
         }
 
-        // Combine all into one multi-section CSV (simple approach) or just choose one main table
-        // For a true "Audit", let's export Loans as the primary financial document
-        const csvContent = toCSV(loans?.map(l => ({
+        let csvContent = '\uFEFF'; // Excel UTF-8 BOM
+
+        // 1. LOANS SECTION
+        const loanRows = (loans || []).map(l => ({
             ID: l.id,
+            Date: new Date(l.request_date).toLocaleDateString('fr-FR'),
             Client: `${l.user?.prenom} ${l.user?.nom}`,
             Email: l.user?.email,
             Montant: l.amount,
-            Payé: l.amount_paid,
+            Paye: l.amount_paid,
             Status: l.status,
-            Date_Demande: l.request_date,
             Echeance: l.due_date,
-            Phone_Payout: l.payout_phone,
-            Network: l.payout_network
-        })) || [])
+            Reseau: l.payout_network,
+            Numero: l.payout_phone
+        }))
+        csvContent += formatSection('Rapport des Prets', ['Date', 'Client', 'Email', 'Montant', 'Paye', 'Status', 'Echeance', 'Reseau', 'Numero'], loanRows)
+
+        // 2. REPAYMENTS SECTION
+        const repaymentRows = (repayments || []).map(r => ({
+            Date: new Date(r.created_at).toLocaleDateString('fr-FR'),
+            Client: `${r.user?.prenom} ${r.user?.nom}`,
+            Email: r.user?.email,
+            Somme_Declaree: r.amount_declared,
+            Status: r.status,
+            Date_Validation: r.validated_at ? new Date(r.validated_at).toLocaleDateString('fr-FR') : '-'
+        }))
+        csvContent += formatSection('Rapport des Remboursements', ['Date', 'Client', 'Email', 'Somme_Declaree', 'Status', 'Date_Validation'], repaymentRows)
+
+        // 3. SUBSCRIPTIONS SECTION
+        const subRows = (subscriptions || []).map(s => ({
+            Date: new Date(s.created_at).toLocaleDateString('fr-FR'),
+            Client: `${s.user?.prenom} ${s.user?.nom}`,
+            Forfait: s.plan?.name,
+            Prix: s.plan?.price,
+            Status: s.status,
+            Paiement: s.amount_paid
+        }))
+        csvContent += formatSection('Rapport des Abonnements', ['Date', 'Client', 'Forfait', 'Prix', 'Status', 'Paiement'], subRows)
 
         return new NextResponse(csvContent, {
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
-                'Content-Disposition': `attachment; filename=creditly_audit_${new Date().toISOString().split('T')[0]}.csv`,
+                'Content-Disposition': `attachment; filename=creditly_rapport_complet_${new Date().toISOString().split('T')[0]}.csv`,
             },
         })
 

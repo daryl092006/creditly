@@ -620,7 +620,11 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
 
                             <div className="text-center p-8 bg-gray-50 border-4 border-double border-black">
                                 <div className="font-black text-4xl italic tracking-tighter mb-2">
+
+                                    {(new Date(viewWaiver.date) >= new Date('2026-03-09T00:00:00') ? viewWaiver.amount + 500 : viewWaiver.amount).toLocaleString('fr-FR')} FCFA
+
                                     {(viewWaiver.amount + (viewWaiver.service_fee || 0)).toLocaleString('fr-FR')} FCFA
+
                                 </div>
                                 <div className="text-[10px] font-black uppercase text-gray-500 border-t border-gray-200 pt-2 inline-block px-10">
                                     {numberToFrench(viewWaiver.amount + (viewWaiver.service_fee || 0)).toUpperCase()} FRANCS CFA

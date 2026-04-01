@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { Currency, Document, ChevronRight, Filter, CheckmarkFilled, Time, Wallet, Checkmark, UserMultiple, Identification, RequestQuote, Receipt } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, Identification, RequestQuote, Receipt } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
@@ -16,7 +16,7 @@ export default async function SuperAdminPage({
     await requireAdminRole(['superadmin', 'admin_comptable', 'owner'])
 
     // Safety check for searchParams (handling both Sync/Async for Next v14/15)
-    let params = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams || {}))
+    const params = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams || {}))
 
     const now = new Date()
     const period = params.period || 'month'
@@ -101,7 +101,7 @@ export default async function SuperAdminPage({
         )
     }
 
-    const adminPerformance = admins?.map((admin: any) => {
+    const adminPerformance = (admins || []).map((admin: any) => {
         const kycCount = kycData?.filter(a => a.admin_id === admin.id).length || 0
         const loanCountRaw = loanData?.filter(a => a.admin_id === admin.id) || []
         const loanCountTotal = loanCountRaw.length
@@ -115,7 +115,7 @@ export default async function SuperAdminPage({
             totalEarnings: totalRealizedGains,
             details: { kycCount, loanCount: loanCountTotal, loanApprovedCount, repaymentCount }
         }
-    }).sort((a: any, b: any) => (b.totalActions || 0) - (a.totalActions || 0)) || []
+    }).filter((a: any) => a.totalActions > 0 || (a.roles || []).includes('owner')).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">

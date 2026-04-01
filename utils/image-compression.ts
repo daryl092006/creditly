@@ -5,7 +5,7 @@
 export async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promise<File> {
     if (!file.type.startsWith('image/')) return file // Ne pas compresser les PDF par exemple
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const reader = new FileReader()
         reader.readAsDataURL(file)
         reader.onload = (event) => {

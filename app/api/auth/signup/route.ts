@@ -31,6 +31,20 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Check whatsapp uniqueness
+        const { data: existingPhone } = await supabase
+            .from('users')
+            .select('id')
+            .eq('whatsapp', whatsapp)
+            .single()
+
+        if (existingPhone) {
+            return NextResponse.json(
+                { error: "Ce numéro WhatsApp est déjà associé à un autre compte." },
+                { status: 400 }
+            )
+        }
+
         // Auth signup
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,

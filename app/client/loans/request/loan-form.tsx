@@ -67,7 +67,7 @@ export default function LoanRequestForm({ subscription, quotasStatus, userData, 
         }
 
         if (quotasStatus[amount]?.reached) {
-            setError(`Cette somme (${amount.toLocaleString('fr-FR')} F) n'est plus disponible ce mois-ci. Essayez un autre montant ou revenez le mois prochain.`)
+            setError(`Cette somme (${amount.toLocaleString('fr-FR')} FCFA) n'est plus disponible ce mois-ci. Essayez un autre montant ou revenez le mois prochain.`)
             return false
         }
 

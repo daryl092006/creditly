@@ -37,6 +37,13 @@ export async function requestLoan(
         return { error: validationResult.error.issues[0].message };
     }
 
+    const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+
+    // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
+    if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
+        return { error: "⚠️ Profil Incomplet. Veuillez renseigner les informations de votre personne de référence dans l'onglet 'Mes Informations' de votre Dashboard avant de faire un prêt." }
+    }
+
     // 1. Atomic Transaction (Race Condition Fix)
     const { data: rpcData, error: rpcError } = await supabase.rpc('request_loan_transaction', {
         p_amount: amount,
@@ -66,7 +73,6 @@ export async function requestLoan(
     // 2. Notify Admin (Async)
     // We fetch user details again or use what we have. 
     // The RPC insert worked, so we proceed.
-    const { data: profile } = await supabase.from('users').select('nom, prenom').eq('id', user.id).single()
     try {
         await sendAdminNotification('LOAN_REQUEST', {
             userEmail: user.email!,

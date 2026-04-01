@@ -1,8 +1,37 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { ChevronLeft, User, Identification, Document, Money, Time, CheckmarkFilled, Misuse, Flash, Star } from '@carbon/icons-react'
+import { ChevronLeft, User, Identification, Document, Money, Time, Flash, Star } from '@carbon/icons-react'
 import { notFound } from 'next/navigation'
 import { getSignedProofUrl } from '@/app/admin/actions'
+
+interface Abonnement {
+    name: string;
+    price: number;
+    max_loan_amount: number;
+}
+
+interface UserSubscription {
+    id: string;
+    user_id: string;
+    plan_id: string;
+    status: string;
+    start_date: string | null;
+    end_date: string | null;
+    created_at: string;
+    plan?: Abonnement;
+}
+
+interface Loan {
+    id: string;
+    user_id: string;
+    amount: number;
+    amount_paid: number;
+    status: string;
+    due_date: string | null;
+    created_at: string;
+    service_fee?: number;
+    snapshot?: Abonnement;
+}
 
 export default async function UserDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -16,15 +45,28 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
     const { data: kyc } = await supabase.from('kyc_submissions').select('*').eq('user_id', id).single()
 
     // Fetch Loans
-    const { data: loans } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*)').eq('user_id', id).order('created_at', { ascending: false })
+    const { data: loansResult } = await supabase.from('prets').select('*, snapshot:subscription_snapshot_id(*)').eq('user_id', id).order('created_at', { ascending: false })
+    const loans = (loansResult || []) as unknown as Loan[]
 
     // Fetch Subscriptions
-    const { data: subs } = await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', id).order('created_at', { ascending: false })
+    const { data: subsResult } = await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', id).order('created_at', { ascending: false })
+    const subs = (subsResult || []) as unknown as UserSubscription[]
 
     // Get Signed URLs for KYC docs if they exist
     const idCardUrl = kyc?.id_card_url ? (await getSignedProofUrl(kyc.id_card_url, 'kyc-documents')).url : null
     const selfieUrl = kyc?.selfie_url ? (await getSignedProofUrl(kyc.selfie_url, 'kyc-documents')).url : null
     const residenceUrl = kyc?.proof_of_residence_url ? (await getSignedProofUrl(kyc.proof_of_residence_url, 'kyc-documents')).url : null
+
+    // Calculate Debt
+    const activeLoans = loans.filter(l => ['active', 'overdue'].includes(l.status))
+    const totalDebt = activeLoans.reduce((acc, l) => {
+        const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
+        const amount = Number(l.amount) || 0;
+        const paid = Number(l.amount_paid) || 0;
+        return acc + (amount + fee - paid);
+    }, 0);
+
+    const activeSub = subs.find(s => s.status === 'active');
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
@@ -37,7 +79,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                         </Link>
                         <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">{user.prenom} {user.nom}</h1>
                         <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">
-                            Dossier complet et historique des activités de l'utilisateur.
+                            Dossier complet et historique des activités de l&apos;utilisateur.
                         </p>
                     </div>
                     <div className="px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4">
@@ -60,10 +102,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                         <div>
                                             <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Dette Totale</p>
                                             <p className="text-xl font-black text-red-500 italic tracking-tighter">
-                                                {(loans?.filter(l => ['active', 'overdue'].includes(l.status)).reduce((acc, l) => {
-                                                    const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
-                                                    return acc + (Number(l.amount) + fee - (Number(l.amount_paid) || 0));
-                                                }, 0) || 0).toLocaleString('fr-FR')} <span className="text-[8px] not-italic text-slate-700">F</span>
+                                                {totalDebt.toLocaleString('fr-FR')} <span className="text-[8px] not-italic text-slate-700">F</span>
                                             </p>
                                         </div>
                                     </div>
@@ -190,26 +229,21 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                         {/* active Sub info maybe? */}
                         <div className="glass-panel p-8 bg-slate-900/50 border-white/5">
                             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-8 italic">Abonnement Actuel</h3>
-                            {subs?.find(s => s.status === 'active') ? (
-                                (() => {
-                                    const activeSub = subs.find(s => s.status === 'active')!;
-                                    return (
-                                        <div className="flex items-center gap-8">
-                                            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-                                                <Star size={32} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic leading-none mb-2">Statut : Actif</p>
-                                                <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter tabular-nums leading-none">
-                                                    Plan {activeSub.plan?.name}
-                                                </h4>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase italic mt-1">
-                                                    Expire le {new Date(activeSub.end_date!).toLocaleDateString('fr-FR')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )
-                                })()
+                            {activeSub ? (
+                                <div className="flex items-center gap-8">
+                                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                                        <Star size={32} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest italic leading-none mb-2">Statut : Actif</p>
+                                        <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter tabular-nums leading-none">
+                                            Plan {activeSub.plan?.name}
+                                        </h4>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase italic mt-1">
+                                            Expire le {new Date(activeSub.end_date!).toLocaleDateString('fr-FR')}
+                                        </p>
+                                    </div>
+                                </div>
                             ) : (
                                 <p className="text-xs font-bold text-slate-600 italic">Aucun abonnement actif.</p>
                             )}

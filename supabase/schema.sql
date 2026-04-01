@@ -148,7 +148,7 @@ alter table public.kyc_submissions enable row level security;
 create policy "Users view own kyc" on public.kyc_submissions for select using (auth.uid() = user_id);
 create policy "Users upload kyc" on public.kyc_submissions for insert with check (auth.uid() = user_id and status = 'pending');
 create policy "KYC Admin can view and update" on public.kyc_submissions for all using (
-    public.check_user_role(array['admin_kyc', 'superadmin']::public.user_role[])
+    public.check_user_role(array['admin_kyc', 'admin_comptable', 'superadmin', 'owner']::public.user_role[])
 );
 
 -- 6. LOANS (Prets)
@@ -174,7 +174,7 @@ alter table public.prets enable row level security;
 create policy "Users view own loans" on public.prets for select using (auth.uid() = user_id);
 create policy "Users request loans" on public.prets for insert with check (auth.uid() = user_id and status = 'pending');
 create policy "Loan Admin can view and update" on public.prets for all using (
-    public.check_user_role(array['admin_loan', 'superadmin']::public.user_role[])
+    public.check_user_role(array['admin_loan', 'admin_comptable', 'superadmin', 'owner']::public.user_role[])
 );
 
 -- 7. REPAYMENTS (Remboursements)
