@@ -15,6 +15,7 @@ export async function updateOffer(formData: FormData) {
     const max_loans_per_month = parseInt(formData.get('max_loans_per_month') as string) || 0
     const max_loan_amount = parseFloat(formData.get('max_loan_amount') as string) || 0
     const repayment_delay_days = parseInt(formData.get('repayment_delay_days') as string) || 0
+    const service_fee = parseInt(formData.get('service_fee') as string) || 0
 
     console.log('Updating offer:', id, { name, price });
 
@@ -23,7 +24,8 @@ export async function updateOffer(formData: FormData) {
         price,
         max_loans_per_month,
         max_loan_amount,
-        repayment_delay_days
+        repayment_delay_days,
+        service_fee
     }
 
     const { error } = await supabase
@@ -45,13 +47,15 @@ export async function createOffer(formData: FormData) {
     const max_loans_per_month = parseInt(formData.get('max_loans_per_month') as string)
     const max_loan_amount = parseFloat(formData.get('max_loan_amount') as string)
     const repayment_delay_days = parseInt(formData.get('repayment_delay_days') as string)
+    const service_fee = parseInt(formData.get('service_fee') as string)
 
     const newItem = {
         name,
         price,
         max_loans_per_month,
         max_loan_amount,
-        repayment_delay_days
+        repayment_delay_days,
+        service_fee
     }
 
     const { error } = await supabase

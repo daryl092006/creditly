@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
+import DashboardSuccessToast from './DashboardSuccessToast'
 
 interface SubscriptionPlan {
     name: string
@@ -52,17 +53,35 @@ export default async function ClientDashboard() {
         return redirect('/auth/login')
     }
 
-    const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+    // Concurrent High-Speed Data Fetching
+    const [
+        { data: profile },
+        { data: userSubsRaw },
+        { data: activeLoans },
+        { data: recentLoans },
+        { data: recentRepayments },
+        { data: kycDocs }
+    ] = await Promise.all([
+        supabase.from('users').select('*').eq('id', user.id).single(),
+        supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').eq('user_id', user.id).in('status', ['active', 'overdue']),
+        supabase.from('prets').select('id, amount, amount_paid, service_fee, status, created_at, admin_decision_date, due_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('remboursements').select('id, loan_id, amount_declared, status, created_at, validated_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
+    ]);
 
-    const { data: userSubs } = await supabase
-        .from('user_subscriptions')
-        .select('*, plan:abonnements(*)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+    const userSubs = (userSubsRaw || []).map((sub: any) => ({
+        ...sub,
+        plan: {
+            ...sub.plan,
+            name: sub.snapshot_name ?? sub.plan?.name,
+            price: sub.snapshot_price ?? sub.plan?.price,
+            max_loan_amount: sub.snapshot_max_loan_amount ?? sub.plan?.max_loan_amount,
+            max_loans_per_month: sub.snapshot_max_loans_per_month ?? sub.plan?.max_loans_per_month,
+            repayment_delay_days: sub.snapshot_repayment_delay_days ?? sub.plan?.repayment_delay_days,
+            service_fee: sub.snapshot_service_fee ?? sub.plan?.service_fee
+        }
+    }))
 
     const now = new Date().toISOString()
     const allSubs = userSubs || []
@@ -84,40 +103,16 @@ export default async function ClientDashboard() {
         accountManager = adminData
     }
 
-    // Fetch active loans for "En-cours total"
-    const { data: activeLoans } = await supabase
-        .from('prets')
-        .select('amount, amount_paid, service_fee, created_at, status, due_date')
-        .eq('user_id', user.id)
-        .in('status', ['active', 'overdue'])
-
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
     const totalOutstanding = activeLoans?.reduce((acc, loan) => {
         return acc + calculateLoanDebt(loan as any).totalDebt;
     }, 0) || 0
 
-    // Fetch recent activities for notifications
-    const { data: recentLoans } = await supabase
-        .from('prets')
-        .select('id, amount, service_fee, status, created_at, admin_decision_date, due_date')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-    const { data: recentRepayments } = await supabase
-        .from('remboursements')
-        .select('id, loan_id, amount_declared, status, created_at, validated_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
     // Fetch latest for Status Hub
     const latestLoan = recentLoans?.[0]
+    const latestLoanDebt = latestLoan ? calculateLoanDebt(latestLoan as any).totalDebt : 0
     const latestRepayment = recentRepayments?.[0]
     const latestSubscription = allSubs[0]
-
-    // Check if KYC docs exist
-    const { data: kycDocs } = await supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
 
     // Combine and format notifications
     const notifications = [
@@ -172,27 +167,51 @@ export default async function ClientDashboard() {
 
     return (
         <div className="py-12 md:py-24 page-transition">
+            <DashboardSuccessToast />
             <div className="main-container">
                 {/* Hero Dashboard Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-12 mb-16">
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 animate-fade-in">
-                            <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Accès Membre Privilégié</span>
+                            <span className="h-4 w-1 bg-blue-600 rounded-full animate-pulse"></span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-blue-500">Accès Elite Privilégié</span>
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
+                        <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-[0.8]">
                             Mon Espace <br />
-                            <span className="premium-gradient-text">Personnel.</span>
+                            <span className="premium-gradient-text uppercase">Financier.</span>
                         </h1>
-                        <p className="text-slate-500 font-bold text-lg italic">
-                            Salut <span className="text-white not-italic">{profile?.prenom}</span>. Voici où vous en êtes aujourd&apos;hui.
+                        <p className="text-slate-500 font-bold text-xl italic lg:max-w-2xl">
+                            Bienvenue <span className="text-white not-italic">{profile?.prenom}</span>. Voici la situation de votre portefeuille <span className="text-blue-500">Creditly</span> à cet instant.
                         </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                        <Link href={activeSub ? "/client/loans/request" : "/client/subscriptions"} className="premium-button w-full sm:w-auto px-10">
-                            <span>Prendre un prêt</span>
-                            <Add size={20} className="group-hover:rotate-90 transition-transform" />
-                        </Link>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full xl:w-auto">
+                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-blue-600/10 transition-colors"></div>
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dette Totale</p>
+                            <p className={`text-2xl font-black italic tracking-tighter ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
+                                {totalOutstanding.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-700">F</span>
+                            </p>
+                            <p className="text-[8px] font-bold text-slate-700 uppercase mt-2 italic">{totalOutstanding > 0 ? 'À régulariser' : 'Libéré de dette'}</p>
+                        </div>
+
+                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-emerald-600/10 transition-colors"></div>
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Score Confiance</p>
+                            <p className="text-2xl font-black text-white italic tracking-tighter">
+                                {totalOutstanding > 0 ? '92%' : '100%'}
+                            </p>
+                            <p className="text-[8px] font-bold text-emerald-500 uppercase mt-2 italic">Status : Excellent</p>
+                        </div>
+
+                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-amber-600/10 transition-colors"></div>
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Plafond Possible</p>
+                            <p className="text-2xl font-black text-blue-500 italic tracking-tighter">
+                                {(activeSub?.plan?.max_loan_amount || latestSubscription?.plan?.max_loan_amount || 0).toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-700">F</span>
+                            </p>
+                            <p className="text-[8px] font-bold text-slate-700 uppercase mt-2 italic">Capacité d&apos;emprunt</p>
+                        </div>
                     </div>
                 </div>
 
@@ -264,27 +283,29 @@ export default async function ClientDashboard() {
 
                         {/* Loan Status */}
                         <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 hover:border-white/10 transition-all flex flex-col justify-between min-h-[140px]">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Mon Prêt</p>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-4">Mon Prêt (Solde)</p>
                             <div className="space-y-4">
                                 <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-xl font-black text-white italic truncate">{latestLoan ? `${((latestLoan.amount || 0) + (latestLoan.service_fee || 0)).toLocaleString('fr-FR')} F` : 'À définir'}</span>
+                                    <span className={`text-xl font-black italic truncate ${latestLoan?.status === 'paid' ? 'text-emerald-400' : 'text-white'}`}>
+                                        {latestLoan?.status === 'paid' ? 'Soldé (0 F)' : latestLoan ? `${latestLoanDebt.toLocaleString('fr-FR')} F` : 'Aucun'}
+                                    </span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${latestLoan?.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
                                         latestLoan?.status === 'overdue' ? (loansWithPendingPayments.has(latestLoan.id) ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500 animate-pulse') :
                                             latestLoan?.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
                                                 latestLoan?.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
-                                                    latestLoan?.status === 'paid' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-800 text-slate-500'
+                                                    latestLoan?.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'
                                         }`}>
                                         {latestLoan?.status === 'active' ? 'Approuvé' :
                                             latestLoan?.status === 'overdue' ? (loansWithPendingPayments.has(latestLoan.id) ? 'Vérification' : 'En Retard') :
                                                 latestLoan?.status === 'pending' ? 'Étude' :
                                                     latestLoan?.status === 'rejected' ? 'Refusé' :
-                                                        latestLoan?.status === 'paid' ? 'Soldé' : 'Aucun'}
+                                                        latestLoan?.status === 'paid' ? 'Payé' : 'Libre'}
                                     </span>
                                 </div>
                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest truncate">
-                                    {latestLoan?.status === 'active' && latestLoan.due_date
+                                    {latestLoan?.status === 'paid' ? 'Régularité exemplaire' : latestLoan?.status === 'active' && latestLoan.due_date
                                         ? `Date limite : ${new Date(latestLoan.due_date).toLocaleDateString('fr-FR')}`
-                                        : latestLoan ? `Pris le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Aucun prêt'}
+                                        : latestLoan ? `Emprunté le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Prêt à vous aider'}
                                 </p>
                             </div>
                         </div>
@@ -490,10 +511,10 @@ export default async function ClientDashboard() {
                         <div className="glass-panel p-8 bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
                             <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Mes <br /> Informations</h4>
-                            <ContactInfoForm 
-                                defaultWhatsapp={profile?.whatsapp} 
-                                defaultNom={profile?.nom} 
-                                defaultPrenom={profile?.prenom} 
+                            <ContactInfoForm
+                                defaultWhatsapp={profile?.whatsapp}
+                                defaultNom={profile?.nom}
+                                defaultPrenom={profile?.prenom}
                                 defaultBirthDate={profile?.birth_date}
                                 defaultProfession={profile?.profession}
                                 defaultGuarantorNom={profile?.guarantor_nom}

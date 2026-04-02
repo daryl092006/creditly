@@ -14,6 +14,7 @@ interface Subscription {
         name: string;
         max_loan_amount: number;
         repayment_delay_days: number;
+        service_fee?: number;
     }
 }
 
@@ -53,13 +54,27 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
     const validateFirstStep = () => {
         setError(null)
 
-        if (amount > subscription.plan.max_loan_amount) {
-            setError('La somme est trop élevée pour votre forfait.')
+        if (!amount || amount < 1000) {
+            setError('Le montant doit être d&apos;au moins 1 000 FCFA.')
+            document.getElementById('amount')?.focus()
             return false
         }
 
-        if (!payoutPhone || !payoutName || !payoutNetwork) {
-            setError('Merci de remplir toutes les cases pour recevoir l&apos;argent.')
+        if (amount > subscription.plan.max_loan_amount) {
+            setError(`Votre limite est de ${subscription.plan.max_loan_amount.toLocaleString('fr-FR')} FCFA.`)
+            document.getElementById('amount')?.focus()
+            return false
+        }
+
+        if (!payoutPhone || payoutPhone.trim().length < 8) {
+            setError('Merci d&apos;indiquer un numéro de téléphone Mobile Money valide (8 chiffres min).')
+            document.getElementsByName('payoutPhone')[0]?.focus()
+            return false
+        }
+
+        if (!payoutName || payoutName.trim().length < 3) {
+            setError('Merci d&apos;indiquer le nom complet du titulaire du compte MoMo.')
+            document.getElementsByName('payoutName')[0]?.focus()
             return false
         }
 
@@ -95,7 +110,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                         amount,
                         payoutPhone,
                         payoutNetwork,
-                        dueDate: formattedDueDate
+                        dueDate: formattedDueDate,
+                        serviceFee: subscription.plan.service_fee ?? 500
                     }}
                     onConfirm={handleFinalSubmit}
                     onBack={() => setStep(1)}
@@ -166,7 +182,7 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                     </div>
                     <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl flex justify-between items-center">
                         <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic">Frais de dossier (Fixe)</p>
-                        <p className="text-sm font-black text-white italic">+ 500 F</p>
+                        <p className="text-sm font-black text-white italic">+ {subscription.plan.service_fee ?? 500} F</p>
                     </div>
 
                 </div>
@@ -188,6 +204,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                     <div className="space-y-3">
                         <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Numéro pour recevoir l&apos;argent</label>
                         <input
+                            id="payoutPhone"
+                            name="payoutPhone"
                             type="text"
                             placeholder="01XXXXXXXX"
                             value={payoutPhone}
@@ -210,6 +228,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                 <div className="space-y-3">
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Votre nom sur le compte Mobile Money</label>
                     <input
+                        id="payoutName"
+                        name="payoutName"
                         type="text"
                         placeholder="Ex: Jean Dupont"
                         value={payoutName}

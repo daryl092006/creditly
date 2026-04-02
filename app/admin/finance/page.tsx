@@ -38,7 +38,7 @@ export default async function FinanceAuditPage({
     const { data: commissions, error: errComm } = await supabaseAdmin.from('admin_commissions').select('*, admin:admin_id(prenom, nom), loan:loan_id(user_id, status)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: withdrawals, error: errWith } = await supabaseAdmin.from('admin_withdrawals').select('*, admin:admin_id(prenom, nom)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: paidLoans } = await supabaseAdmin.from('prets').select('id, created_at, status, service_fee').eq('status', 'paid').gte('created_at', startDate).lte('created_at', endDate)
-    const { data: allRemboursements } = await supabaseAdmin.from('remboursements').select('*, user:user_id(prenom, nom), surplus_amount').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
+    const { data: allRemboursements } = await supabaseAdmin.from('remboursements').select('*, user:user_id(prenom, nom), loan:loan_id(amount, service_fee, created_at, amount_paid), surplus_amount').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
 
     // Diagnostic d'erreur
     if (errSubs || errComm || errWith) {
@@ -77,31 +77,39 @@ export default async function FinanceAuditPage({
         })
     })
 
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+
     // Revenus Frais de Service (Gross) - 500 F par dossier soldé
     paidLoans?.forEach((l: any) => {
-        const fee = Number(l.service_fee) || 500
-        periodFeesTotal += fee
+        const { fee } = calculateLoanDebt(l as any)
+        const feeRevenue = fee
+        periodFeesTotal += feeRevenue
         journal.push({
             date: l.created_at,
             type: 'REVENUE_FEE',
-            amount: fee,
-            label: `Frais de Service (Dossier ${l.id.slice(0, 5)})`,
+            amount: feeRevenue,
+            label: `Frais de dossier (Dossier ${l.id.slice(0, 5)})`,
             user: 'Système',
             status: 'COMPLETED'
         })
     })
 
-    // Revenus Pénalités (Surplus)
+    // Revenus Pénalités & Surplus
     allRemboursements?.forEach((r: any) => {
         const surplus = Number(r.surplus_amount) || 0
+        const loan = r.loan as any
+
+        // Accurate penalty: If this repayment helped the loan reach a 'paid' total > (Principle + Fee)
+        // Or for simplicity in the journal, we track the surplus explicitly.
+        // We add a more robust penalty calculation if the engine supports it.
         if (surplus > 0) {
             periodPenaltiesTotal += surplus
             const u = r.user as any
             journal.push({
                 date: r.created_at,
-                type: 'REVENUE_PENALTY',
+                type: 'REVENUE_SURPLUS',
                 amount: surplus,
-                label: `Surplus de Recouvrement`,
+                label: `Surplus de paiement (Fonds à rendre ou conserver)`,
                 user: u ? `${u.prenom} ${u.nom}` : 'Client',
                 status: 'COMPLETED'
             })

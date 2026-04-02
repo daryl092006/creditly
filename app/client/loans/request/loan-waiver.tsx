@@ -22,6 +22,7 @@ interface WaiverProps {
         payoutPhone: string;
         payoutNetwork: string;
         dueDate: string;
+        serviceFee: number;
     };
     onConfirm: (personalData: PersonalData) => void;
     onBack: () => void;
@@ -52,8 +53,9 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
     })
     const [accepted, setAccepted] = useState(false)
     const [signature, setSignature] = useState('')
+    const [error, setError] = useState<string | null>(null)
 
-    const totalToRepay = loanData.amount + 500
+    const totalToRepay = loanData.amount + loanData.serviceFee
     const amountInWords = numberToFrench(totalToRepay)
     const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -99,6 +101,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                             <div className="space-y-1">
                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Date de naissance</label>
                                 <input
+                                    id="birthDate"
                                     type="date"
                                     value={personalData.birthDate}
                                     onChange={e => setPersonalData({ ...personalData, birthDate: e.target.value })}
@@ -108,6 +111,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                             <div className="space-y-1">
                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Votre carte d'identité (Numéro)</label>
                                 <input
+                                    id="idDetails"
                                     type="text"
                                     placeholder="Ex: CNI 102930910"
                                     value={personalData.idDetails}
@@ -118,6 +122,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                             <div className="sm:col-span-2 space-y-1">
                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Où habitez-vous ?</label>
                                 <input
+                                    id="address"
                                     type="text"
                                     placeholder="Quartier, Rue, Maison..."
                                     value={personalData.address}
@@ -128,6 +133,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                             <div className="sm:col-span-2 space-y-1">
                                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Votre travail</label>
                                 <input
+                                    id="profession"
                                     type="text"
                                     placeholder="Ex: Enseignant, Commerçant..."
                                     value={personalData.profession}
@@ -138,7 +144,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         </div>
 
                         <p>
-                            reconnais avoir reçu de <strong>Creditly</strong>, dans le cadre d’une collaboration privée, un prêt sans intérêt d’un montant de <strong className="text-slate-900 italic">{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> auquel s'ajoutent des frais de dossier de <strong className="text-slate-900 italic">500 FCFA</strong>, soit un montant total de :
+                            reconnais avoir reçu de <strong>Creditly</strong>, dans le cadre d’une collaboration privée, un prêt sans intérêt d’un montant de <strong className="text-slate-900 italic">{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> auquel s'ajoutent des frais de dossier de <strong className="text-slate-900 italic">{loanData.serviceFee.toLocaleString('fr-FR')} FCFA</strong>, soit un montant total de :
                         </p>
 
                         <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">
@@ -221,6 +227,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                     <div className="space-y-3">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic ml-1">Signature (Écrivez votre nom complet ici)</label>
                         <input
+                            id="signature"
                             type="text"
                             placeholder={`${userData.prenom} ${userData.nom}`}
                             value={signature}
@@ -275,23 +282,31 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         </div>
                     )}
                 </div>
-                <ActionButton
-                    onClick={() => onConfirm(personalData)}
-                    disabled={!canSubmit}
-                    loading={loading}
-                    className={`flex-[2] py-4 px-6 rounded-2xl font-black uppercase italic tracking-widest transition-all ${canSubmit ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 animate-pulse-slow' : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-white/5'}`}
-                >
-                    {canSubmit ? (
-                        <>
-                            Valider ma demande
-                        </>
-                    ) : (
-                        <>
-                            <Warning size={20} className="mr-2" />
-                            Remplissez tout
-                        </>
+                <div className="flex-[2] flex flex-col gap-2">
+                    {error && (
+                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest italic animate-shake">{error}</p>
                     )}
-                </ActionButton>
+                    <ActionButton
+                        onClick={() => {
+                            setError(null)
+                            if (!personalData.birthDate) { setError("Indiquez votre date de naissance."); document.getElementById('birthDate')?.focus(); return; }
+                            if (!personalData.idDetails) { setError("Le numéro de votre pièce d'identité est requis."); document.getElementById('idDetails')?.focus(); return; }
+                            if (!personalData.address) { setError("Veuillez indiquer votre adresse complète."); document.getElementById('address')?.focus(); return; }
+                            if (!personalData.profession) { setError("Votre profession est requise."); document.getElementById('profession')?.focus(); return; }
+                            if (!accepted) { setError("Veuillez accepter les conditions du contrat."); return; }
+                            if (!signature.toLowerCase().trim().includes(userNom.toLowerCase())) {
+                                setError(`Veuillez signer en tapant votre nom complet : ${userNom}`);
+                                document.getElementById('signature')?.focus();
+                                return;
+                            }
+                            onConfirm(personalData)
+                        }}
+                        loading={loading}
+                        className={`w-full py-4 px-6 rounded-2xl font-black uppercase italic tracking-widest transition-all ${canSubmit ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500' : 'bg-slate-800 text-slate-600 border border-white/5 hover:bg-slate-700 hover:text-slate-400'}`}
+                    >
+                        Valider ma demande
+                    </ActionButton>
+                </div>
             </div>
 
             {/* Hidden Printable Version - Styled for Page Print */}

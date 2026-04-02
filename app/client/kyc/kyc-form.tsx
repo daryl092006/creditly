@@ -39,16 +39,35 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                 }
             }, 120000)
 
+            // Validation des champs texte (Profil missingFields)
+            if (missingFields.length > 0) {
+                for (const field of missingFields) {
+                    const value = formData.get(field) as string;
+                    if (!value || value.trim().length < 2) {
+                        setError(`Le champ ${field} est requis ou trop court.`);
+                        setIsSubmitting(false); clearTimeout(timeoutId);
+                        document.getElementsByName(field)[0]?.focus();
+                        return;
+                    }
+                }
+            }
+
             // Validation client de la taille totale
             const idCard = formData.get('id_card') as File | null
             const selfie = formData.get('selfie') as File | null
             const residence = formData.get('proof_of_residence') as File | null
 
-            if (!idCard || !selfie || !residence) {
-                setError("Tous les documents sont requis.")
-                setIsSubmitting(false)
-                clearTimeout(timeoutId)
-                return
+            if (!idCard || idCard.size === 0) {
+                setError("Veuillez téléverser votre pièce d'identité.");
+                setIsSubmitting(false); clearTimeout(timeoutId); return;
+            }
+            if (!selfie || selfie.size === 0) {
+                setError("Veuillez téléverser votre selfie.");
+                setIsSubmitting(false); clearTimeout(timeoutId); return;
+            }
+            if (!residence || residence.size === 0) {
+                setError("Veuillez téléverser votre preuve de résidence.");
+                setIsSubmitting(false); clearTimeout(timeoutId); return;
             }
 
             // Compression des images côté client (crucial pour le mobile)
@@ -160,7 +179,7 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                                 <div className="p-6 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-6">
                                     <h3 className="text-white text-sm font-black uppercase tracking-widest italic mb-4">Informations Manquantes</h3>
                                     <p className="text-[10px] text-slate-500 font-bold mb-4">Veuillez renseigner les informations suivantes pour compléter votre profil avant de soumettre vos documents.</p>
-                                    
+
                                     <div className="space-y-4">
                                         {missingFields.includes('nom') && (
                                             <div>

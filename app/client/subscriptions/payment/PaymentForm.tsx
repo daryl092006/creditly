@@ -16,21 +16,33 @@ export default function SubscriptionPaymentForm({ planId, planPrice }: { planId:
     const [isPending, startTransition] = useTransition()
 
     const handleSubmit = async () => {
-        // ... (rest of handleSubmit) ...
-        if (!file || !amount) return
         setError(null)
+
+        if (!amount || Number(amount) <= 0) {
+            setError('Veuillez confirmer le montant payé.');
+            document.getElementById('amount')?.focus();
+            return;
+        }
+
+        if (!file) {
+            setError('Veuillez joindre la preuve de votre transfert (capture d\'écran).');
+            return;
+        }
+
+        const { compressImage } = await import('@/utils/image-compression')
+        const compressedFile = await compressImage(file)
 
         const formData = new FormData()
         formData.append('planId', planId)
         formData.append('amount', amount)
-        formData.append('proof', file)
+        formData.append('proof', compressedFile)
 
         startTransition(async () => {
             const result = await subscribeToPlan(formData)
             if (result?.error) {
                 setError(result.error)
             } else {
-                router.push('/client/subscriptions?success=AbonnementSoumis')
+                router.push('/client/dashboard?success=AbonnementSoumis')
             }
         })
     }

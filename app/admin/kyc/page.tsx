@@ -19,7 +19,7 @@ export default async function AdminKycPage() {
     // 2. Fetch History (Read-Only: Approved/Rejected)
     const { data: history } = await supabase
         .from('kyc_submissions')
-        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone), admin:users!kyc_submissions_admin_id_fkey(email, nom, prenom, roles, whatsapp)`)
+        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone), admin:users!kyc_submissions_admin_id_fkey(email, nom, prenom, roles, whatsapp), rejection_reason`)
         .in('status', ['approved', 'rejected'])
         .order('reviewed_at', { ascending: false })
         .limit(50) // Limit history for performance
@@ -110,9 +110,16 @@ export default async function AdminKycPage() {
                                                             <CheckmarkFilled /> Approuvé
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 uppercase text-[9px] font-black tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                                            <CloseFilled /> Rejeté
-                                                        </span>
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 uppercase text-[9px] font-black tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                                                                <CloseFilled /> Rejeté
+                                                            </span>
+                                                            {item.rejection_reason && (
+                                                                <span className="text-[8px] text-red-500/60 font-bold italic truncate max-w-[150px]">
+                                                                    Motif : {item.rejection_reason}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </td>
                                                 <td className="p-4">

@@ -340,9 +340,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 
         if (loan) {
             const { calculateLoanDebt } = await import('@/utils/loan-utils')
-            const { totalDebt, fee, principle } = calculateLoanDebt(loan as any)
+            const { totalDebt, fee } = calculateLoanDebt(loan as any)
             const currentPaid = Number(loan.amount_paid) || 0
-            const totalLoanAmount = principle + fee // Base amount without periodic penalties for status check
 
             // STRICT VALIDATION: Refuse validation if receipt amount exceeds current total debt
             if (amountVerified > totalDebt + 1) {
@@ -350,13 +349,14 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             }
 
             const amountAppliedToLoan = amountVerified
-            const surplusGenerated = Math.max(0, amountVerified - (totalDebt - currentPaid))
-            const newTotalPaid = currentPaid + amountAppliedToLoan
-            const isFullyPaid = newTotalPaid >= totalLoanAmount
+            const surplusGenerated = Math.max(0, amountVerified - totalDebt)
+            const newTotalPaid = currentPaid + amountVerified
+
+            // Un prêt est considéré comme soldé ssi le montant versé couvre 
+            // la dette totale actuelle (incluant pénalités)
+            const isFullyPaid = amountVerified >= totalDebt
 
             // Mettre à jour le prêt
-            // On force 'paid' si soldé (même si le prêt était en 'overdue')
-            // Si pas encore soldé, on ne touche pas au statut (undefined = pas de changement)
             await supabase
                 .from('prets')
                 .update({
@@ -375,7 +375,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 
             // --- REPAYMENT COMMISSION (Only if fee was charged) ---
             const commissionAmount = 100
-            
+
             if (fee > 0) { // Only if there's a service fee on this loan
                 const { count } = await supabase
                     .from('admin_commissions')
@@ -749,19 +749,14 @@ export async function createDirectRepayment(formData: FormData) {
 
     // Validation du montant (Calcul incluant pénalités)
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
-    const { totalDebt } = calculateLoanDebt(loan as any)
+    const { totalDebt, fee } = calculateLoanDebt(loan as any)
 
     if (numAmount > totalDebt + 1) {
         return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse le solde restant (Base + Pénalités: ${totalDebt.toLocaleString('fr-FR')} F).` }
     }
 
     const currentPaid = Number(loan.amount_paid) || 0
-    const principle = Number(loan.amount) || 0
-    const fee = Number(loan.service_fee) || (new Date(loan.created_at!) >= new Date('2026-03-09') ? 500 : 0)
-    const totalLoanAmount = principle + fee
-    
-    let amountAppliedToLoan = numAmount
-    let surplusGenerated = Math.max(0, numAmount - (totalDebt - currentPaid))
+    let surplusGenerated = Math.max(0, numAmount - totalDebt)
 
     const { data: repayment, error: repError } = await supabase
         .from('remboursements')
@@ -781,8 +776,8 @@ export async function createDirectRepayment(formData: FormData) {
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
 
     // 3. Update Balance
-    const newTotalPaid = currentPaid + amountAppliedToLoan
-    const isFullyPaid = newTotalPaid >= totalLoanAmount
+    const newTotalPaid = currentPaid + numAmount
+    const isFullyPaid = numAmount >= totalDebt
 
     await supabase
         .from('prets')
@@ -896,5 +891,32 @@ export async function updateWithdrawalStatus(withdrawalId: string, status: 'appr
 
     revalidatePath('/admin/profile')
     revalidatePath('/admin/super')
+    return { success: true }
+}
+
+export async function sendEmailToClient(userId: string, subject: string, message: string) {
+    const role = await getCurrentUserRole()
+    if (!role || !['superadmin', 'owner', 'admin_loan', 'admin_repayment', 'admin_kyc'].includes(role)) {
+        return { error: "Accès refusé." }
+    }
+
+    if (!subject || !message) {
+        return { error: "L'objet et le message sont requis." }
+    }
+
+    const supabase = await createAdminClient()
+    const { data: userData } = await supabase.from('users').select('email, nom, prenom').eq('id', userId).single()
+
+    if (!userData || !userData.email) {
+        return { error: "Impossible de trouver l'adresse email de ce client." }
+    }
+
+    const { sendDirectClientEmail } = await import('@/utils/email-service')
+    const res = await sendDirectClientEmail(userData.email, `${userData.prenom} ${userData.nom}`, subject, message)
+
+    if (res?.error) {
+        return { error: res.error }
+    }
+
     return { success: true }
 }

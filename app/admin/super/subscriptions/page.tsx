@@ -20,6 +20,19 @@ export default async function AdminSubscriptionsPage({ searchParams }: { searchP
         .order('status', { ascending: false })
         .order('created_at', { ascending: false })
 
+    const rows = (allSubs || []).map((sub: any) => ({
+        ...sub,
+        plan: {
+            ...sub.plan,
+            name: sub.snapshot_name ?? sub.plan?.name,
+            price: sub.snapshot_price ?? sub.plan?.price,
+            max_loan_amount: sub.snapshot_max_loan_amount ?? sub.plan?.max_loan_amount,
+            max_loans_per_month: sub.snapshot_max_loans_per_month ?? sub.plan?.max_loans_per_month,
+            repayment_delay_days: sub.snapshot_repayment_delay_days ?? sub.plan?.repayment_delay_days,
+            service_fee: sub.snapshot_service_fee ?? sub.plan?.service_fee
+        }
+    }))
+
     return (
         <div className="py-10 md:py-16 animate-fade-in">
             <div className="admin-container space-y-12">
@@ -35,7 +48,7 @@ export default async function AdminSubscriptionsPage({ searchParams }: { searchP
                 </div>
 
                 <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                    <SubscriptionTable rows={allSubs || []} initialPlan={initialPlan} />
+                    <SubscriptionTable rows={rows} initialPlan={initialPlan} />
                 </div>
             </div>
         </div>

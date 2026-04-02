@@ -83,6 +83,10 @@ export default async function OffersPage() {
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Délai (Jours)</label>
                                         <input name="repayment_delay_days" type="number" placeholder="7" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-bold text-white focus:border-emerald-500 transition-colors" />
                                     </div>
+                                    <div className="space-y-2 text-left">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Frais Dossier (FCFA)</label>
+                                        <input name="service_fee" type="number" placeholder="500" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-bold text-white focus:border-emerald-500 transition-colors" />
+                                    </div>
                                 </div>
                                 <div className="pt-4 flex justify-end">
                                     <SubmitButton

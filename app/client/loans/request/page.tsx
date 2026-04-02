@@ -55,7 +55,13 @@ export default async function LoanRequestPage() {
     const currentActiveCount = activeLoansCount || 0
     const currentCumulativeDebt = activeLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0
 
-    const planData = sub?.plan || { max_loan_amount: 0, max_loans_per_month: 0, name: '...' }
+    const planData = {
+        name: sub?.snapshot_name ?? sub?.plan?.name ?? '...',
+        max_loan_amount: sub?.snapshot_max_loan_amount ?? sub?.plan?.max_loan_amount ?? 0,
+        max_loans_per_month: sub?.snapshot_max_loans_per_month ?? sub?.plan?.max_loans_per_month ?? 0,
+        repayment_delay_days: sub?.snapshot_repayment_delay_days ?? sub?.plan?.repayment_delay_days ?? 0,
+        service_fee: sub?.snapshot_service_fee ?? sub?.plan?.service_fee ?? 500
+    }
     const remainingAmount = Math.max(0, planData.max_loan_amount - currentCumulativeDebt)
     const remainingLoans = Math.max(0, planData.max_loans_per_month - currentActiveCount)
 
@@ -164,7 +170,7 @@ export default async function LoanRequestPage() {
             </div>
 
             <LoanRequestForm
-                subscription={sub}
+                subscription={{ ...sub, plan: planData }}
                 userData={userData || { nom: '', prenom: '' }}
                 repaymentPhones={repaymentPhones}
             />

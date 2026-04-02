@@ -14,27 +14,40 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
     const [isPending, startTransition] = useTransition()
 
     const handleAction = async () => {
-        if (!file || !amount) return
         setError(null)
 
-        const numAmount = Number(amount)
-        // STRICT VALIDATION: Refuse directly if amount exceeds total debt (including penalties)
-        if (numAmount > remainingBalance + 1) {
-            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remainingBalance.toLocaleString('fr-FR')} F). Veuillez vérifier le montant exact dû.`)
+        if (!amount || Number(amount) <= 0) {
+            setError('Veuillez saisir le montant que vous avez envoyé.')
+            document.getElementById('amount')?.focus()
             return
         }
+
+        const numAmount = Number(amount)
+        if (numAmount > remainingBalance + 1) {
+            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remainingBalance.toLocaleString('fr-FR')} F).`)
+            document.getElementById('amount')?.focus()
+            return
+        }
+
+        if (!file) {
+            setError('Veuillez sélectionner la photo de votre reçu de paiement.')
+            return
+        }
+
+        const { compressImage } = await import('@/utils/image-compression')
+        const compressedFile = await compressImage(file)
 
         const formData = new FormData()
         formData.append('loanId', loanId)
         formData.append('amount', amount)
-        formData.append('proof', file)
+        formData.append('proof', compressedFile)
 
         startTransition(async () => {
             const result = await submitRepayment(formData)
             if (result?.error) {
                 setError(result.error)
             } else {
-                router.push('/client/loans?success=PaiementEnvoye')
+                router.push('/client/dashboard?success=PaiementEnvoye')
             }
         })
     }

@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
-import { sendAdminNotification } from '@/utils/email-service'
+import { sendAdminNotification, sendUserEmail } from '@/utils/email-service'
 
 export async function requestLoan(
     amount: number,
@@ -37,7 +37,13 @@ export async function requestLoan(
         return { error: validationResult.error.issues[0].message };
     }
 
-    const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
+
+    // Extract plan fee (fallback to 500 if not found)
+    const activeSub = (profile.subscription as any[])?.find((s: any) => s.status === 'active' || true); // Simplification, ideally filter by date
+    // Actually, it's safer to fetch the active sub specifically
+    const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
+    const plannedFee = currentSub?.plan?.service_fee ?? 500;
 
     // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
     if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
@@ -70,6 +76,11 @@ export async function requestLoan(
         return { error: result.error };
     }
 
+    // Expert Fix: Override the hardcoded 500 fee from RPC if necessary
+    if (result.loan_id && plannedFee !== 500) {
+        await supabase.from('prets').update({ service_fee: plannedFee }).eq('id', result.loan_id);
+    }
+
     // 2. Notify Admin (Async)
     // We fetch user details again or use what we have. 
     // The RPC insert worked, so we proceed.
@@ -83,6 +94,17 @@ export async function requestLoan(
         })
     } catch (err) {
         console.error('Notification Error:', err)
+    }
+
+    // 3. Notify User (Accusé de réception)
+    try {
+        await sendUserEmail('LOAN_REQUEST_RECEIVED', {
+            email: user.email!,
+            name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            amount: amount
+        })
+    } catch (err) {
+        console.error('User Notification Error:', err)
     }
 
     revalidatePath('/client/dashboard')
@@ -172,10 +194,17 @@ export async function submitRepayment(formData: FormData) {
                 userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 amount: numAmount
             })
+
+            await sendUserEmail('REPAYMENT_RECEIVED', {
+                email: user.email!,
+                name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                amount: numAmount
+            })
         } catch (err) {
             console.error('Notification Error:', err)
         }
 
+        revalidatePath('/client/dashboard')
         revalidatePath('/client/loans')
         revalidatePath(`/client/loans/${loanId}`)
         return { success: true }

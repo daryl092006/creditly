@@ -37,33 +37,56 @@ export default async function SuperAdminPage({
 
     const supabase = await createClient()
 
-    // 2. Data Fetching - Robust against failures
-    const { data: monthlySubs } = await supabase.from('user_subscriptions').select('*, plan:abonnements(price)').eq('status', 'active').gte('created_at', startDate).lte('created_at', endDate)
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+
+    // 2. Data Fetching - High-Speed Concurrent Execution
+    const [
+        { data: monthlySubs },
+        { data: allRemboursements },
+        { data: allActiveLoans },
+        { data: allPaidLoans },
+        { count: pendingKyc },
+        { count: pendingLoans },
+        { count: pendingSubs },
+        { count: pendingRepayments },
+        globalQuotas,
+        { data: allOffersNames },
+        { data: admins },
+        { data: kycData },
+        { data: loanData },
+        { data: repaymentData },
+        { data: totalCommissions, error: errComm },
+        { data: pendingWithdrawals, error: errWith }
+    ] = await Promise.all([
+        supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
+        supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
+        supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').in('status', ['active', 'overdue']),
+        supabase.from('prets').select('admin_id, created_at, status, service_fee').eq('status', 'paid'),
+        supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        checkGlobalQuotasStatus(month, year),
+        supabase.from('abonnements').select('id, name, max_loan_amount'),
+        supabase.from('users').select('id, nom, prenom, roles').overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'admin_comptable', 'superadmin', 'owner']),
+        supabase.from('kyc_submissions').select('admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null),
+        supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null),
+        supabase.from('remboursements').select('admin_id, status').gte('validated_at', startDate).lte('validated_at', endDate).not('admin_id', 'is', null),
+        supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
+        supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false })
+    ]);
+
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-
-    const { data: allRemboursements } = await supabase.from('remboursements').select('surplus_amount').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate)
     const totalPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+    const activeStats = (allActiveLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).totalDebt, 0)
+    const totalRemainingToRecover = activeStats
 
-    const { data: allActiveLoans } = await supabase.from('prets').select('amount, amount_paid').in('status', ['active', 'overdue'])
-    const totalActiveCapital = allActiveLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
-    const totalAlreadyRecovered = allActiveLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
-    const totalRemainingToRecover = totalActiveCapital - totalAlreadyRecovered
+    const totalFeesCollected = allPaidLoans?.reduce((acc, l) => acc + (Number(l.service_fee || 0) * 0.4), 0) || 0
+    const monthlyFeesRevenue = allPaidLoans?.filter(l =>
+        new Date(l.created_at) >= new Date(startDate) &&
+        new Date(l.created_at) <= new Date(endDate)
+    ).reduce((acc, l) => acc + Number(l.service_fee || 0), 0) || 0
 
-    const FEE_START_DATE = new Date('2026-03-09T00:00:00')
-    const { data: allLoansWithPossibleFees } = await supabase.from('prets').select('admin_id, created_at, status').gte('created_at', FEE_START_DATE.toISOString())
-
-    // Total Gain Dossier (Filter Only Paid)
-    const totalFeesCollected = (allLoansWithPossibleFees?.filter(l => l.status === 'paid').length || 0) * 200
-    // Gain Dossier for selected period
-    const monthlyFeesRevenue = (allLoansWithPossibleFees?.filter(l => l.status === 'paid' && new Date(l.created_at) >= new Date(startDate) && new Date(l.created_at) <= new Date(endDate)).length || 0) * 200
-
-    const { count: pendingKyc } = await supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingLoans } = await supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingSubs } = await supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    const { count: pendingRepayments } = await supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-
-    const globalQuotas = await checkGlobalQuotasStatus(month, year)
-    const { data: allOffersNames } = await supabase.from('abonnements').select('id, name, max_loan_amount')
     const offersMap: Record<string, string> = {}
     allOffersNames?.forEach(o => {
         offersMap[o.id] = o.name
@@ -82,13 +105,6 @@ export default async function SuperAdminPage({
         }
     }).filter(q => q.limit >= 0)
 
-    const { data: admins } = await supabase.from('users').select('id, nom, prenom, roles').not('roles', 'cs', '{"client"}')
-    const { data: kycData } = await supabase.from('kyc_submissions').select('admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null)
-    const { data: loanData } = await supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null)
-    const { data: repaymentData } = await supabase.from('remboursements').select('admin_id, status').gte('updated_at', startDate).lte('updated_at', endDate).not('admin_id', 'is', null)
-
-    const { data: totalCommissions, error: errComm } = await supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type')
-    const { data: pendingWithdrawals, error: errWith } = await supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false })
 
     if (errComm || errWith) {
         return (
@@ -116,7 +132,7 @@ export default async function SuperAdminPage({
             totalEarnings: totalRealizedGains,
             details: { kycCount, loanCount: loanCountTotal, loanApprovedCount, repaymentCount }
         }
-    }).filter((a: any) => a.totalActions > 0 || (a.roles || []).includes('owner')).sort((a: any, b: any) => b.totalActions - a.totalActions)
+    }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">

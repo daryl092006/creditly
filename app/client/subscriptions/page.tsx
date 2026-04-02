@@ -13,9 +13,24 @@ export default async function SubscriptionsPage() {
     const quotasStatus = await checkGlobalQuotasStatus()
 
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: allSubs } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }) : { data: [] }
+    const { data: allSubsRaw } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }) : { data: [] }
+
+    // Expert Check: Override plan data with original snapshots if they exist so the user sees exactly what they paid for
+    const allSubs = (allSubsRaw || []).map((sub: any) => ({
+        ...sub,
+        plan: {
+            ...sub.plan,
+            name: sub.snapshot_name ?? sub.plan?.name,
+            price: sub.snapshot_price ?? sub.plan?.price,
+            max_loan_amount: sub.snapshot_max_loan_amount ?? sub.plan?.max_loan_amount,
+            max_loans_per_month: sub.snapshot_max_loans_per_month ?? sub.plan?.max_loans_per_month,
+            repayment_delay_days: sub.snapshot_repayment_delay_days ?? sub.plan?.repayment_delay_days,
+            service_fee: sub.snapshot_service_fee ?? sub.plan?.service_fee
+        }
+    }))
+
     const { data: activeLoans } = user ? await supabase.from('prets').select('id').eq('user_id', user.id).in('status', ['active', 'overdue']) : { data: null }
-    
+
     const hasUnpaidLoans = activeLoans ? activeLoans.length > 0 : false;
 
     const now = new Date().toISOString()

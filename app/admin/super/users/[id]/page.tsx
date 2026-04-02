@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChevronLeft, User, Identification, Document, Money, Time, Flash, Star } from '@carbon/icons-react'
 import { notFound } from 'next/navigation'
 import { getSignedProofUrl } from '@/app/admin/actions'
+import EmailClientModal from './EmailClientModal'
 
 interface Abonnement {
     name: string;
@@ -82,9 +83,12 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                             Dossier complet et historique des activités de l&apos;utilisateur.
                         </p>
                     </div>
-                    <div className="px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4">
-                        <div className={`w-3 h-3 rounded-full ${user.is_account_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></div>
-                        <span className="text-white font-black text-xs uppercase tracking-widest italic">{user.is_account_active ? 'Compte Actif' : 'En attente'}</span>
+                    <div className="flex flex-wrap items-center gap-4">
+                        <EmailClientModal userId={user.id} userEmail={user.email} userName={`${user.prenom} ${user.nom}`} />
+                        <div className={`px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4`}>
+                            <div className={`w-3 h-3 rounded-full ${user.is_account_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></div>
+                            <span className="text-white font-black text-xs uppercase tracking-widest italic">{user.is_account_active ? 'Compte Actif' : 'En attente'}</span>
+                        </div>
                     </div>
                 </div>
 

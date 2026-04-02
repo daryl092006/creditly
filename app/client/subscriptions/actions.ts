@@ -3,7 +3,7 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
-import { sendAdminNotification } from '@/utils/email-service'
+import { sendAdminNotification, sendUserEmail } from '@/utils/email-service'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export async function subscribeToPlan(formData: FormData) {
@@ -64,6 +64,9 @@ export async function subscribeToPlan(formData: FormData) {
             return { error: getUserFriendlyErrorMessage(uploadError) }
         }
 
+        // Fetch plan details to snapshot them
+        const { data: planToSnapshot } = await adminSupabase.from('abonnements').select('*').eq('id', planId).single()
+
         // 2. Cleanup old pending/rejected attempts
         await adminSupabase
             .from('user_subscriptions')
@@ -81,7 +84,13 @@ export async function subscribeToPlan(formData: FormData) {
                 proof_url: uploadData.path,
                 is_active: false,
                 status: 'pending',
-                rejection_reason: null
+                rejection_reason: null,
+                snapshot_name: planToSnapshot?.name,
+                snapshot_price: planToSnapshot?.price,
+                snapshot_max_loans_per_month: planToSnapshot?.max_loans_per_month,
+                snapshot_max_loan_amount: planToSnapshot?.max_loan_amount,
+                snapshot_repayment_delay_days: planToSnapshot?.repayment_delay_days,
+                snapshot_service_fee: planToSnapshot?.service_fee
             })
 
         if (error) {
@@ -99,8 +108,15 @@ export async function subscribeToPlan(formData: FormData) {
                 planName: plan?.name || 'Inconnu',
                 amount: numAmount
             })
+
+            await sendUserEmail('SUBSCRIPTION_RECEIVED', {
+                email: user.email!,
+                name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                planName: plan?.name || 'Inconnu',
+                amount: numAmount
+            })
         } catch (notifErr) {
-            console.error('Erreur notification admin (non-bloquant):', notifErr)
+            console.error('Erreur notification (non-bloquant):', notifErr)
         }
 
         revalidatePath('/client/subscriptions')
