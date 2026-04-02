@@ -58,6 +58,7 @@ export async function requestLoan(
         p_payout_network: payoutNetwork,
         p_birth_date: personalData.birthDate,
         p_address: personalData.address,
+        p_city: personalData.city || 'Inconnu',
         p_id_details: personalData.idDetails,
         p_profession: personalData.profession
     });
