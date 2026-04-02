@@ -77,11 +77,8 @@ export default async function SuperAdminPage({
     ]);
 
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-    const totalPenaltiesCollected = allPaidLoans?.reduce((acc, l) => {
-        const { fee } = calculateLoanDebt(l as any)
-        const penalty = Math.max(0, Number(l.amount_paid) - (Number(l.amount) + fee))
-        return acc + penalty
-    }, 0) || 0
+    const periodPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+
     const activeStats = (allActiveLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).totalDebt, 0)
     const totalRemainingToRecover = activeStats
 
@@ -167,7 +164,7 @@ export default async function SuperAdminPage({
                     {[
                         { label: 'Revenue Période', value: monthlyRevenue + monthlyFeesRevenue, color: 'text-emerald-400', sub: `Subs + ${monthlyFeesRevenue.toLocaleString('fr-FR')} F frais`, icon: <Currency size={20} /> },
                         { label: 'Admin Gain (Total)', value: totalFeesCollected, color: 'text-blue-400', sub: 'Sur dossiers remboursés', icon: <Time size={20} /> },
-                        { label: 'Vol. Pénalités (Payé)', value: totalPenaltiesCollected, color: 'text-blue-400', sub: 'Pénalités déjà encaissées', icon: <Wallet size={20} /> },
+                        { label: 'Vol. Pénalités (Période)', value: periodPenaltiesCollected, color: 'text-blue-400', sub: 'Encaissé pendant la période', icon: <Wallet size={20} /> },
                         { label: 'Pénalités Latentes', value: currentActivePenalties, color: 'text-amber-400', sub: 'En attente (Dossiers retard)', icon: <Time size={20} /> },
                         { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document size={20} /> }
                     ].map((kpi, i) => (

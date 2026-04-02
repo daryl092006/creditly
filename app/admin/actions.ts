@@ -356,14 +356,20 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             // la dette totale actuelle (incluant pénalités)
             const isFullyPaid = amountVerified >= totalDebt
 
-            // Mettre à jour le prêt
-            await supabase
-                .from('prets')
-                .update({
-                    amount_paid: newTotalPaid,
-                    ...(isFullyPaid ? { status: 'paid' } : {})
-                })
-                .eq('id', repayment.loan_id)
+            // Mettre à jour le prêt ET le remboursement (pour tracker le surplus/pénalité)
+            await Promise.all([
+                supabase
+                    .from('prets')
+                    .update({
+                        amount_paid: newTotalPaid,
+                        ...(isFullyPaid ? { status: 'paid' } : {})
+                    })
+                    .eq('id', repayment.loan_id),
+                supabase
+                    .from('remboursements')
+                    .update({ surplus_amount: surplusGenerated })
+                    .eq('id', repaymentId)
+            ])
 
             // L'intégralité du montant vérifié est créditée au solde payé du prêt.
             // (Les pénalités éventuelles sont déduites dynamiquement lors du calcul de la dette totale).

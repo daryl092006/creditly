@@ -113,11 +113,17 @@ export default async function FinanceAuditPage({
     // Dépenses : Commissions Agents
     commissions?.forEach((c: any) => {
         const a = c.admin as any
+        let label = `Commission ${c.type.replace('_', ' ')}`;
+        if (c.type === 'kyc_reward') label = "Commission KYC (Prêt débloqué)";
+        if (c.type === 'loan_reward') label = "Commission Traitement Prêt";
+        if (c.type === 'repayment_reward') label = "Commission Validation Remboursement";
+        if (c.type === 'kyc_and_loan_reward') label = "Commission KYC + Prêt (Action cumulée)";
+
         journal.push({
             date: c.created_at,
             type: 'EXPENSE_COMMISSION',
             amount: -Number(c.amount),
-            label: `Commission ${c.type.replace('_', ' ')}`,
+            label: label,
             user: a ? `${a.prenom} ${a.nom}` : 'Admin',
             status: 'OWED'
         })
