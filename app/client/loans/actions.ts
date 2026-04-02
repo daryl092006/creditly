@@ -19,85 +19,92 @@ export async function requestLoan(
         profession: string;
     }
 ) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Not authenticated' }
+    try {
+        const { createClient, createAdminClient } = await import('@/utils/supabase/server')
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { error: 'Not authenticated' }
 
-    // 0. Input Validation
-    const { LoanRequestSchema } = await import('@/utils/validation-schemas');
-    const validationResult = LoanRequestSchema.safeParse({
-        amount,
-        payoutPhone,
-        payoutName,
-        payoutNetwork,
-        ...personalData
-    });
+        // 0. Input Validation
+        const { LoanRequestSchema } = await import('@/utils/validation-schemas');
+        const validationResult = LoanRequestSchema.safeParse({
+            amount,
+            payoutPhone,
+            payoutName,
+            payoutNetwork,
+            ...personalData
+        });
 
-    if (!validationResult.success) {
-        return { error: validationResult.error.issues[0].message };
+        if (!validationResult.success) {
+            return { error: validationResult.error.issues[0].message };
+        }
+
+        const { data: profile } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
+
+        // Fetch the active sub specifically
+        const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
+        const plannedFee = currentSub?.plan?.service_fee ?? 500;
+
+        // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
+        if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
+            return { error: "⚠️ Profil Incomplet. Veuillez renseigner les informations de votre personne de référence dans l'onglet 'Mes Informations' de votre Dashboard avant de faire un prêt." }
+        }
+
+        // 1. Atomic Transaction (Race Condition Fix)
+        const { data: rpcData, error: rpcError } = await supabase.rpc('request_loan_transaction', {
+            p_amount: amount,
+            p_payout_phone: payoutPhone,
+            p_payout_name: payoutName,
+            p_payout_network: payoutNetwork,
+            p_birth_date: personalData.birthDate,
+            p_address: personalData.address,
+            p_city: personalData.city || 'Inconnu',
+            p_id_details: personalData.idDetails,
+            p_profession: personalData.profession
+        });
+
+        if (rpcError) {
+            console.error('RPC Error:', rpcError);
+            return { error: getUserFriendlyErrorMessage(rpcError) };
+        }
+
+        // RPC returns { success: boolean, loan_id: uuid, error: string }
+        const result = rpcData as any;
+        if (result.error) {
+            return { error: result.error };
+        }
+
+        // Expert Fix: Override the hardcoded 500 fee from RPC if necessary
+        if (result.loan_id && plannedFee !== 500) {
+            await supabase.from('prets').update({ service_fee: plannedFee }).eq('id', result.loan_id);
+        }
+
+        // 2. Notify Admin & User (Async)
+        sendAdminNotification('LOAN_REQUEST', {
+            userEmail: user.email!,
+            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            amount: amount,
+            payoutNetwork: payoutNetwork,
+            payoutPhone: payoutPhone
+        }).catch(e => console.error('Admin Notif Error:', e));
+
+        sendUserEmail('LOAN_REQUEST_RECEIVED', {
+            email: user.email!,
+            name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            amount: amount
+        }).catch(e => console.error('User Notif Error:', e));
+
+        try {
+            revalidatePath('/client/dashboard')
+            return { success: 'PretEngage' }
+        } catch (e: any) {
+            console.error('Action Revalidate Panic:', e)
+            return { success: 'PretEngage' }
+        }
+    } catch (e: any) {
+        console.error('GLOBAL ACTION CRASH:', e)
+        return { error: `Côté Serveur: ${e.message || 'Inconnu'}` }
     }
-
-    const { data: profile } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
-
-    // Extract plan fee (fallback to 500 if not found)
-    const activeSub = (profile.subscription as any[])?.find((s: any) => s.status === 'active' || true); // Simplification, ideally filter by date
-    // Actually, it's safer to fetch the active sub specifically
-    const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
-    const plannedFee = currentSub?.plan?.service_fee ?? 500;
-
-    // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
-    if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
-        return { error: "⚠️ Profil Incomplet. Veuillez renseigner les informations de votre personne de référence dans l'onglet 'Mes Informations' de votre Dashboard avant de faire un prêt." }
-    }
-
-    // 1. Atomic Transaction (Race Condition Fix)
-    const { data: rpcData, error: rpcError } = await supabase.rpc('request_loan_transaction', {
-        p_amount: amount,
-        p_payout_phone: payoutPhone,
-        p_payout_name: payoutName,
-        p_payout_network: payoutNetwork,
-        p_birth_date: personalData.birthDate,
-        p_address: personalData.address,
-        p_city: personalData.city || 'Inconnu',
-        p_id_details: personalData.idDetails,
-        p_profession: personalData.profession
-    });
-
-    if (rpcError) {
-        console.error('RPC Error:', rpcError);
-        return { error: getUserFriendlyErrorMessage(rpcError) };
-    }
-
-    // RPC returns { success: boolean, loan_id: uuid, error: string }
-    // But typed as 'any' usually. Let's cast or check.
-    const result = rpcData as any;
-
-    if (result.error) {
-        return { error: result.error };
-    }
-
-    // Expert Fix: Override the hardcoded 500 fee from RPC if necessary
-    if (result.loan_id && plannedFee !== 500) {
-        await supabase.from('prets').update({ service_fee: plannedFee }).eq('id', result.loan_id);
-    }
-
-    // 2. Notify Admin & User (Async / Fire and Forget for speed)
-    sendAdminNotification('LOAN_REQUEST', {
-        userEmail: user.email!,
-        userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-        amount: amount,
-        payoutNetwork: payoutNetwork,
-        payoutPhone: payoutPhone
-    }).catch(e => console.error('Admin Notif Error:', e));
-
-    sendUserEmail('LOAN_REQUEST_RECEIVED', {
-        email: user.email!,
-        name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-        amount: amount
-    }).catch(e => console.error('User Notif Error:', e));
-
-    revalidatePath('/client/dashboard')
-    return { success: 'PretEngage' }
 }
 
 export async function submitRepayment(formData: FormData) {
