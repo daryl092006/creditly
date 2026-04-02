@@ -138,6 +138,9 @@ export default async function SuperAdminPage({
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
+    const { data: allOverdueLoans } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').eq('status', 'overdue')
+    const currentActivePenalties = (allOverdueLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).latePenalties, 0)
+
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">
             <div className="admin-container">
@@ -164,7 +167,8 @@ export default async function SuperAdminPage({
                     {[
                         { label: 'Revenue Période', value: monthlyRevenue + monthlyFeesRevenue, color: 'text-emerald-400', sub: `Subs + ${monthlyFeesRevenue.toLocaleString('fr-FR')} F frais`, icon: <Currency size={20} /> },
                         { label: 'Admin Gain (Total)', value: totalFeesCollected, color: 'text-blue-400', sub: 'Sur dossiers remboursés', icon: <Time size={20} /> },
-                        { label: 'Volume Pénalités', value: totalPenaltiesCollected, color: 'text-blue-400', sub: 'Surplus perçus périodiquement', icon: <Wallet size={20} /> },
+                        { label: 'Vol. Pénalités (Payé)', value: totalPenaltiesCollected, color: 'text-blue-400', sub: 'Pénalités déjà encaissées', icon: <Wallet size={20} /> },
+                        { label: 'Pénalités Latentes', value: currentActivePenalties, color: 'text-amber-400', sub: 'En attente (Dossiers retard)', icon: <Time size={20} /> },
                         { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document size={20} /> }
                     ].map((kpi, i) => (
                         <div key={i} className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-xl">

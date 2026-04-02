@@ -103,7 +103,7 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
 
     try {
         await resend.emails.send({
-            from: 'Creditly Notifications <onboarding@resend.dev>',
+            from: 'Creditly Notifications <creditly001@gmail.com>',
             to: ADMIN_EMAILS_LIST,
             subject: subject,
             html: html,
@@ -292,7 +292,7 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
 
     try {
         await resend.emails.send({
-            from: 'Creditly <onboarding@resend.dev>',
+            from: 'Creditly <creditly001@gmail.com>',
             to: data.email,
             subject: subject,
             html: html,
@@ -322,7 +322,7 @@ export async function sendWeeklyReport(data: WeeklyReportData) {
         const html = `<h2>Rapport Financier</h2><p>Revenus: ${formattedTotal}</p>`;
 
         await resend.emails.send({
-            from: 'Creditly Reports <onboarding@resend.dev>',
+            from: 'Creditly Reports <creditly001@gmail.com>',
             to: ADMIN_EMAILS_LIST,
             subject: subject,
             html: html,
@@ -337,7 +337,7 @@ export async function sendPreNotification(email: string, name: string, message: 
 
     try {
         await resendDaryl.emails.send({
-            from: 'Creditly Alert <onboarding@resend.dev>',
+            from: 'Creditly Alert <creditly001@gmail.com>',
             to: email,
             subject: '🔔 Rappel imminent - Creditly',
             html: `
@@ -358,7 +358,7 @@ export async function sendDirectClientEmail(email: string, name: string, subject
 
     try {
         await resend.emails.send({
-            from: 'Creditly <onboarding@resend.dev>',
+            from: 'Creditly <creditly001@gmail.com>',
             to: email,
             subject: subject,
             html: `

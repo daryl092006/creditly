@@ -311,7 +311,17 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
-    // 1. Update Repayment
+    // 1. Fetch details FIRST to check current status
+    const { data: repayment, error: fetchError } = await supabase.from('remboursements').select('*').eq('id', repaymentId).single()
+
+    if (fetchError || !repayment) return { error: 'Remboursement introuvable' }
+
+    // SÉCURITÉ : Ne pas traiter un remboursement déjà validé ou rejeté
+    if (repayment.status !== 'pending') {
+        return { error: "Ce remboursement a déjà été traité (validé ou rejeté)." }
+    }
+
+    // 2. Perform DB Update
     const { error: repError } = await supabase
         .from('remboursements')
         .update({
@@ -322,16 +332,6 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
         .eq('id', repaymentId)
 
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
-
-    // 2. Fetch details for Logic & Notification
-    const { data: repayment } = await supabase.from('remboursements').select('*').eq('id', repaymentId).single()
-    if (!repayment) return { success: true } // Should not happen, but safe
-
-    // SÉCURITÉ : Ne pas traiter un remboursement déjà validé ou rejeté
-    // (Évite les doubles écritures et les faux surplus si l'admin clique deux fois)
-    if (repayment.status === 'verified' && status === 'verified') {
-        return { error: "Ce remboursement a déjà été validé." }
-    }
 
     // 3. Update Loan Balance if Verified
     if (status === 'verified') {

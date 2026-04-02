@@ -156,20 +156,29 @@ export default async function FinanceAuditPage({
     const theoreticalCashBalance = INITIAL_CAPITAL + totalGlobalCashIn - totalGlobalCashOut
 
     // --- 6. AUDIT PROBABILISTE DU CAPITAL (ENCOURS) ---
-    const { data: allLoansAudit } = await supabase.from('prets').select('*').in('status', ['approved', 'active', 'paid', 'overdue'])
-    const capitalPrete = allLoansAudit?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
-    const totalAttendu = allLoansAudit?.reduce((acc, l) => {
-        const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
-        return acc + (Number(l.amount) + fee);
-    }, 0) || 0
-    const dejaRecouvre = allLoansAudit?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
-    const totalFeesGlobal = allLoansAudit?.reduce((acc, l) => {
-        const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
-        return acc + fee;
-    }, 0) || 0
-    const resteARecouvrer = Math.max(0, totalAttendu - dejaRecouvre)
-    const restePrincipal = Math.max(0, capitalPrete - dejaRecouvre)
-    const margeRestante = Math.max(0, resteARecouvrer - restePrincipal)
+    const { data: allActiveLoansAudit } = await supabase.from('prets').select('*').in('status', ['active', 'overdue'])
+    const { data: allHistoryLoans } = await supabase.from('prets').select('*').in('status', ['paid', 'approved', 'active', 'overdue'])
+
+    // Debt metrics based on active/overdue loans (matching Super Dashboard)
+    const activeStats = (allActiveLoansAudit || []).reduce((acc, loan) => {
+        const debt = calculateLoanDebt(loan as any);
+        const remainingPrinciple = Math.max(0, debt.principle - debt.paid);
+        return {
+            total: acc.total + debt.totalDebt,
+            principle: acc.principle + remainingPrinciple,
+            fees: acc.fees + debt.fee,
+            penalties: acc.penalties + debt.latePenalties
+        };
+    }, { total: 0, principle: 0, fees: 0, penalties: 0 });
+
+    const resteARecouvrer = activeStats.total
+    const restePrincipal = activeStats.principle
+    const margeRestante = activeStats.fees + activeStats.penalties
+    const penalitesLatentes = activeStats.penalties
+
+    // Historical audit for global cash balance (Section 5) uses allHistoryLoans if needed
+    const capitalPrete = allHistoryLoans?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
+    const dejaRecouvre = allHistoryLoans?.reduce((acc, l) => acc + (Number(l.amount_paid) || 0), 0) || 0
 
     // --- 7. PERFORMANCE DE LA PÉRIODE ---
     // Revenu Brut = Abonnements + Frais (500F) + Pénalités
@@ -310,16 +319,24 @@ export default async function FinanceAuditPage({
                                     {restePrincipal.toLocaleString('fr-FR')} <span className="text-xs not-italic">F</span>
                                 </p>
                             </div>
-                            <div>
-                                <p className="text-[9px] font-black text-amber-500 uppercase italic mb-1">Marge Attendue</p>
-                                <p className="text-2xl font-black text-white italic tracking-tighter">
-                                    {margeRestante.toLocaleString('fr-FR')} <span className="text-xs not-italic">F</span>
-                                </p>
+                            <div className="flex flex-col gap-2">
+                                <div>
+                                    <p className="text-[9px] font-black text-amber-500 uppercase italic mb-1">Marge Service</p>
+                                    <p className="text-sm font-black text-white italic tracking-tighter">
+                                        {activeStats.fees.toLocaleString('fr-FR')} <span className="text-[8px] not-italic">F</span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black text-red-400 uppercase italic mb-1">Pénalités Latentes</p>
+                                    <p className="text-sm font-black text-white italic tracking-tighter">
+                                        {penalitesLatentes.toLocaleString('fr-FR')} <span className="text-[8px] not-italic">F</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <hr className="border-white/5 mb-3" />
                         <p className="text-[9px] text-slate-500 font-bold uppercase italic leading-relaxed">
-                            <span className="text-rose-500 italic">Formule Net :</span> Capital Prêté ({capitalPrete.toLocaleString()} F) - Déjà Payé ({dejaRecouvre.toLocaleString()} F)
+                            <span className="text-rose-500 italic">Base :</span> Somme des capitaux restants dus + Frais et Pénalités sur dossiers actifs ({allActiveLoansAudit?.length || 0} dossiers).
                         </p>
                     </div>
                 </div>

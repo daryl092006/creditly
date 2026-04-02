@@ -36,6 +36,27 @@ export default async function SubscriptionsPage() {
 
     const now = new Date().toISOString()
     const activeSub = allSubs?.find((s: any) => s.status === 'active' && s.end_date && s.end_date > now)
+
+    // Check if the current active subscription is exhausted (benefits used up)
+    let isExhausted = false;
+    if (activeSub && user) {
+        const { data: loansTakenData } = await supabase
+            .from('prets')
+            .select('amount')
+            .eq('subscription_snapshot_id', activeSub.id)
+            .in('status', ['approved', 'active', 'paid', 'overdue']);
+
+        const loansCount = loansTakenData?.length || 0;
+        const totalAmountTaken = loansTakenData?.reduce((acc, l) => acc + Number(l.amount), 0) || 0;
+
+        const maxLoans = activeSub.snapshot_max_loans_per_month || activeSub.plan?.max_loans_per_month || 1;
+        const maxAmount = activeSub.snapshot_max_loan_amount || activeSub.plan?.max_loan_amount || 0;
+
+        if (loansCount >= maxLoans || (maxAmount > 0 && totalAmountTaken >= maxAmount)) {
+            isExhausted = true;
+        }
+    }
+
     const expiredSub = !activeSub ? allSubs?.find((s: any) => (s.status === 'expired' || s.status === 'active') && s.end_date && s.end_date <= now) : null
     const pendingSub = allSubs?.find((s: any) => s.status === 'pending')
     const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
@@ -181,10 +202,11 @@ export default async function SubscriptionsPage() {
                             <div className="relative z-10 w-full">
                                 <SubscribeButton
                                     planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id && !isExhausted) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans}
                                     isModification={!!activeSub && activeSub.plan_id !== plan.id}
                                     isQuotaFull={!!quotasStatus[plan.id]?.reached}
                                     hasUnpaidLoans={hasUnpaidLoans}
+                                    isExhausted={isExhausted && activeSub?.plan_id === plan.id}
                                 />
                             </div>
                         </div>
