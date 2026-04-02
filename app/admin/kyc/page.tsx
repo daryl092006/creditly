@@ -12,14 +12,14 @@ export default async function AdminKycPage() {
     // 1. Fetch Pending Submissions (For Action)
     const { data: submissions } = await supabase
         .from('kyc_submissions')
-        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone, birth_date, profession, guarantor_nom, guarantor_prenom, guarantor_whatsapp)`)
+        .select(`*, user:user_id(id, email, nom, prenom, whatsapp, telephone, birth_date, profession, guarantor_nom, guarantor_prenom, guarantor_whatsapp)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
     // 2. Fetch History (Read-Only: Approved/Rejected)
     const { data: history } = await supabase
         .from('kyc_submissions')
-        .select(`*, user:users!kyc_submissions_user_id_fkey(id, email, nom, prenom, whatsapp, telephone), admin:users!kyc_submissions_admin_id_fkey(email, nom, prenom, roles, whatsapp), rejection_reason`)
+        .select(`*, user:user_id(id, email, nom, prenom, whatsapp, telephone), admin:admin_id(email, nom, prenom, roles, whatsapp)`)
         .in('status', ['approved', 'rejected'])
         .order('reviewed_at', { ascending: false })
         .limit(50) // Limit history for performance

@@ -39,7 +39,12 @@ export async function requestLoan(
             return { error: validationResult.error.issues[0].message };
         }
 
-        const { data: profile } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
+        const { data: profile, error: profileError } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
+
+        if (profileError || !profile) {
+            console.error('Profile Load Error:', profileError);
+            return { error: "Erreur de chargement du profil utilisateur. Veuillez rafraîchir la page." };
+        }
 
         // Fetch the active sub specifically
         const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
