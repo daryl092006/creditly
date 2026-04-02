@@ -42,8 +42,9 @@ export default async function SubscriptionsPage() {
     if (activeSub && user) {
         const { data: loansTakenData } = await supabase
             .from('prets')
-            .select('amount')
-            .eq('subscription_snapshot_id', activeSub.id)
+            .select('amount, created_at')
+            .eq('user_id', user.id)
+            .gte('created_at', activeSub.start_date)
             .in('status', ['approved', 'active', 'paid', 'overdue']);
 
         const loansCount = loansTakenData?.length || 0;
