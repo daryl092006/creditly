@@ -39,7 +39,8 @@ export async function requestLoan(
             return { error: validationResult.error.issues[0].message };
         }
 
-        const { data: profile, error: profileError } = await supabase.from('users').select('*, subscription:user_subscriptions(plan:abonnements(service_fee))').eq('id', user.id).single()
+        // Fetch basic profile only for robustness
+        const { data: profile, error: profileError } = await supabase.from('users').select('*').eq('id', user.id).single()
 
         if (profileError || !profile) {
             console.error('Profile Load Error:', profileError);
