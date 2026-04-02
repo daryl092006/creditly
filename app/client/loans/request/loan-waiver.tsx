@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
 import { CheckmarkFilled, Warning, Printer, Download } from '@carbon/icons-react'
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { LoanPDFDocument } from './loan-pdf'
 import { numberToFrench } from '@/utils/formatters'
@@ -22,6 +22,7 @@ interface WaiverProps {
         payoutPhone: string;
         payoutNetwork: string;
         dueDate: string;
+        dueDateRaw: Date;
         serviceFee: number;
     };
     onConfirm: (personalData: PersonalData) => void;
@@ -57,7 +58,12 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
     const totalToRepay = loanData.amount + loanData.serviceFee
     const amountInWords = numberToFrench(totalToRepay)
-    const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    const today = new Date()
+    const todayFormatted = today.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    // Calculate exact days remaining
+    const diffTime = Math.abs(loanData.dueDateRaw.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     const handlePrint = () => {
         window.print();
@@ -75,6 +81,22 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
         personalData.idDetails &&
         personalData.profession &&
         signature.toLowerCase().trim().includes(userNom.toLowerCase())
+
+    // EXPERT: Memoize PDF to prevent re-renders on every keystroke
+    const pdfDoc = useMemo(() => {
+        if (!isClient || !canSubmit) return null;
+        return (
+            <LoanPDFDocument
+                userData={userData}
+                loanData={loanData}
+                personalData={personalData}
+                signature={signature || `${userData.prenom} ${userData.nom}`}
+                amountInWords={amountInWords}
+                repaymentNumber={repaymentNumber}
+                applicationDate={new Date().toISOString()}
+            />
+        );
+    }, [isClient, canSubmit, userData, loanData, personalData, signature, amountInWords, repaymentNumber]);
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -160,7 +182,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
                         <p>
                             Je reconnais que cette somme constitue une de dette certaine, liquide et exigible et je m’engage à la rembourser en totalité, sans intérêt supplémentaire, au plus tard le :
-                            <strong className="text-slate-900 ml-2 italic">{loanData.dueDate}</strong>
+                            <strong className="text-slate-900 ml-2 italic">{loanData.dueDate}</strong> <span className="text-blue-600 font-bold italic ml-1">(soit dans {diffDays} jours)</span>.
                         </p>
 
                         <div className="space-y-3">
@@ -192,7 +214,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                             <div>
                                 <p className="font-black text-slate-400 uppercase tracking-widest mb-4 italic">Signé par le débiteur</p>
                                 <p className="text-xs font-black text-slate-900 italic">{userData.prenom} {userData.nom}</p>
-                                <p className="text-slate-400 mt-1 italic">Le {today}</p>
+                                <p className="text-slate-400 mt-1 italic">Le {todayFormatted}</p>
                             </div>
                             <div>
                                 <p className="font-black text-slate-400 uppercase tracking-widest mb-4 italic">Signé pour Creditly</p>
@@ -254,20 +276,10 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         <Printer size={20} />
                         Imprimer
                     </button>
-                    {isClient && (
+                    {isClient && canSubmit && pdfDoc && (
                         <div className="flex flex-col gap-1">
                             <PDFDownloadLink
-                                document={
-                                    <LoanPDFDocument
-                                        userData={userData}
-                                        loanData={loanData}
-                                        personalData={personalData}
-                                        signature={signature || `${userData.prenom} ${userData.nom}`}
-                                        amountInWords={amountInWords}
-                                        repaymentNumber={repaymentNumber}
-                                        applicationDate={new Date().toISOString()} // Pass ISO for parsing
-                                    />
-                                }
+                                document={pdfDoc}
                                 fileName={`Contrat_Creditly_${userData.nom}_${new Date().getTime()}.pdf`}
                                 className="w-full py-3 px-6 bg-emerald-600 text-white font-black text-[10px] uppercase italic tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all text-center flex items-center justify-center gap-2"
                             >
@@ -279,6 +291,11 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                                 )}
                             </PDFDownloadLink>
                             <p className="text-[8px] text-slate-500 text-center italic">Document officiel certifié</p>
+                        </div>
+                    )}
+                    {isClient && !canSubmit && (
+                        <div className="p-3 bg-slate-900/50 border border-white/5 rounded-xl text-center">
+                            <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest italic">Remplissez le formulaire <br /> pour débloquer le PDF</p>
                         </div>
                     )}
                 </div>
@@ -329,7 +346,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                     </div>
                     <div className="text-right space-y-1">
                         <p className="text-[10px] font-bold uppercase">Contrat N° {Math.random().toString(36).substring(7).toUpperCase()}</p>
-                        <p className="text-[10px] text-gray-500 italic">Émis le {today}</p>
+                        <p className="text-[10px] text-gray-500 italic">Émis le {todayFormatted}</p>
                         <div className="inline-block px-3 py-1 bg-gray-100 border border-gray-200 rounded mt-2">
                             <p className="text-[8px] font-black uppercase tracking-widest text-gray-600">Document Certifié</p>
                         </div>
@@ -368,7 +385,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
                         <p className="text-justify">
                             Je m'engage formellement et irrévocablement à rembourser l'intégralité de cette somme au profit de <strong>Creditly</strong>, par transfert via le réseau <strong>{loanData.payoutNetwork}</strong> au numéro référencé <strong>{repaymentNumber}</strong>, au plus tard le :
-                            <strong className="underline ml-1">{loanData.dueDate}</strong>.
+                            <strong className="underline ml-1">{loanData.dueDate}</strong> <span className="italic">(soit dans {diffDays} jours)</span>.
                         </p>
 
                         <div className="grid grid-cols-1 gap-6 pt-8">

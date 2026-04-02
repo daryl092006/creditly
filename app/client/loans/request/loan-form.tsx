@@ -19,7 +19,7 @@ interface Subscription {
 }
 
 
-export default function LoanRequestForm({ subscription, userData, repaymentPhones }: {
+export default function LoanRequestForm({ subscription, userData, repaymentPhones, dueDateRaw }: {
     subscription: Subscription,
     userData: {
         nom: string,
@@ -33,7 +33,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
         MTN: string;
         Moov: string;
         Celtiis: string;
-    }
+    };
+    dueDateRaw: Date;
 }) {
     const router = useRouter()
     const [step, setStep] = useState(1)
@@ -44,11 +45,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
-    // Calculate due date based on subscription end date (most accurate)
-    const dueDate = subscription.end_date ? new Date(subscription.end_date) : new Date();
-    if (!subscription.end_date) {
-        dueDate.setDate(dueDate.getDate() + (subscription.plan.repayment_delay_days || 30));
-    }
+    // Use due date from props (most accurate)
+    const dueDate = dueDateRaw;
     const formattedDueDate = dueDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const validateFirstStep = () => {
@@ -111,6 +109,7 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                         payoutPhone,
                         payoutNetwork,
                         dueDate: formattedDueDate,
+                        dueDateRaw: dueDate,
                         serviceFee: subscription.plan.service_fee ?? 500
                     }}
                     onConfirm={handleFinalSubmit}

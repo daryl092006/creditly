@@ -133,6 +133,9 @@ export default async function LoanRequestPage() {
         Celtiis: settingsMap['repayment_phone_celtiis'] || '+229 01 44 14 00 67'
     }
 
+    const dueDateRaw = sub.end_date ? new Date(sub.end_date) : new Date(new Date().getTime() + (planData.repayment_delay_days || 30) * 24 * 60 * 60 * 1000)
+
+
     return (
         <div className="p-8 max-w-4xl mx-auto space-y-8">
             <h1 className="text-center text-3xl font-bold premium-gradient-text uppercase italic tracking-tighter">Demander un prêt</h1>
@@ -173,6 +176,7 @@ export default async function LoanRequestPage() {
                 subscription={{ ...sub, plan: planData }}
                 userData={userData || { nom: '', prenom: '' }}
                 repaymentPhones={repaymentPhones}
+                dueDateRaw={dueDateRaw}
             />
         </div>
     )

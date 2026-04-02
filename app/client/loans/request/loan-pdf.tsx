@@ -250,6 +250,11 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
     const hasFee = loanDate >= FEE_START_DATE
     const totalToRepay = hasFee ? (loanData.amount + 500) : loanData.amount
 
+    // NEW: Duration calculation for PDF
+    const today = new Date()
+    const diffTime = Math.abs(loanData.dueDateRaw.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
     return (
         <Document>
             <Page size="A4" style={styles.page}>
@@ -301,7 +306,7 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                     </Text>
                 </View>
 
-                <Text style={styles.dueDate}>{loanData.dueDate}</Text>
+                <Text style={styles.dueDate}>{loanData.dueDate} (soit dans {diffDays} jours)</Text>
 
                 <View style={styles.clauseBox}>
                     <Text style={styles.clauseTitle}>Clauses et Engagements</Text>

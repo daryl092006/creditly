@@ -180,9 +180,22 @@ export default async function ClientDashboard() {
                             Mon Espace <br />
                             <span className="premium-gradient-text uppercase">Financier.</span>
                         </h1>
-                        <p className="text-slate-500 font-bold text-xl italic lg:max-w-2xl">
+                        <p className="text-slate-500 font-bold text-xl italic lg:max-w-2xl mb-8">
                             Bienvenue <span className="text-white not-italic">{profile?.prenom}</span>. Voici la situation de votre portefeuille <span className="text-blue-500">Creditly</span> à cet instant.
                         </p>
+                        <div className="flex flex-wrap gap-4">
+                            <Link href="/client/loans/request">
+                                <button className="premium-button px-8 py-4 shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2 group/btn">
+                                    <Add size={20} className="group-hover/btn:rotate-90 transition-transform" />
+                                    <span>Faire un Prêt</span>
+                                </button>
+                            </Link>
+                            <Link href="/client/loans/repayment">
+                                <button className="glass-panel bg-slate-900 border-slate-800 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:border-emerald-500/30 hover:text-emerald-400 transition-all active:scale-95">
+                                    Payer un Prêt
+                                </button>
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full xl:w-auto">
@@ -370,9 +383,12 @@ export default async function ClientDashboard() {
                                         <Rocket size={32} />
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Montant possible</p>
-                                        <p className={`text-xs font-black uppercase mt-1 ${activeSub ? 'text-emerald-400' : expiredSub ? 'text-red-500' : 'text-amber-500'}`}>
-                                            {activeSub ? 'Tout est bon' : expiredSub ? 'C&apos;est fini' : 'Pas actif'}
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic mb-1">Montant possible</p>
+                                        <p className={`text-xl font-black italic tracking-tighter ${activeSub && ((activeSub.plan?.max_loan_amount || 0) - totalOutstanding > 1000) ? 'text-emerald-400' : 'text-red-500'}`}>
+                                            {activeSub ? (Math.max(0, (activeSub.plan?.max_loan_amount || 0) - totalOutstanding)).toLocaleString('fr-FR') : '0'} <span className="text-[10px] not-italic text-slate-700">F</span>
+                                        </p>
+                                        <p className="text-[8px] font-bold uppercase mt-1 italic text-slate-600">
+                                            {activeSub && (activeSub.plan?.max_loan_amount || 0) - totalOutstanding <= 1000 ? '⚠️ Limite atteinte' : activeSub ? 'Capacité disponible' : 'Forfait Requis'}
                                         </p>
                                     </div>
                                 </div>
