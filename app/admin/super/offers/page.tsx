@@ -80,8 +80,12 @@ export default async function OffersPage() {
                                         <input name="max_loan_amount" type="number" placeholder="50000" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-bold text-white focus:border-emerald-500 transition-colors" />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Délai (Jours)</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Rembourset (Jours)</label>
                                         <input name="repayment_delay_days" type="number" placeholder="7" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-bold text-white focus:border-emerald-500 transition-colors" />
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Validité Forfait (Jours)</label>
+                                        <input name="duration_days" type="number" placeholder="30" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-bold text-white focus:border-emerald-500 transition-colors" />
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Frais Dossier (FCFA)</label>

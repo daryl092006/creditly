@@ -512,11 +512,8 @@ export async function activateSubscription(subId: string) {
     const { data: { user } } = await supabaseUser.auth.getUser()
     const adminId = user?.id
 
-    const startDate = new Date()
-    const endDate = new Date()
-    endDate.setDate(startDate.getDate() + 30)
+    const { data: currentSub } = await supabase.from('user_subscriptions').select('user_id, snapshot_duration_days').eq('id', subId).single()
 
-    const { data: currentSub } = await supabase.from('user_subscriptions').select('user_id').eq('id', subId).single()
     if (currentSub) {
         // Expire all other active subscriptions for this user
         await supabase
@@ -526,6 +523,11 @@ export async function activateSubscription(subId: string) {
             .eq('status', 'active')
             .neq('id', subId)
     }
+
+    const duration = currentSub?.snapshot_duration_days || 30
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(startDate.getDate() + duration)
 
     const { error } = await supabase
         .from('user_subscriptions')

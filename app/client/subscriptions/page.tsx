@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import SubscribeButton from './SubscribeButton'
 import Link from 'next/link'
-import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt } from '@carbon/icons-react'
+import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt, Calendar } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 
 export default async function SubscriptionsPage() {
@@ -25,6 +25,7 @@ export default async function SubscriptionsPage() {
             max_loan_amount: sub.snapshot_max_loan_amount ?? sub.plan?.max_loan_amount,
             max_loans_per_month: sub.snapshot_max_loans_per_month ?? sub.plan?.max_loans_per_month,
             repayment_delay_days: sub.snapshot_repayment_delay_days ?? sub.plan?.repayment_delay_days,
+            duration_days: sub.snapshot_duration_days ?? sub.plan?.duration_days ?? 30,
             service_fee: sub.snapshot_service_fee ?? sub.plan?.service_fee
         }
     }))
@@ -153,13 +154,14 @@ export default async function SubscriptionsPage() {
 
                             <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
                                 {[
-                                    { text: `${plan.max_loans_per_month} prêts mensuels`, icon: <Star size={16} /> },
-                                    { text: `Limite de ${(plan.max_loan_amount || 0).toLocaleString('fr-FR')} FCFA`, icon: <Rocket size={16} /> },
-                                    { text: `${plan.repayment_delay_days} jours de délai`, icon: <Flash size={16} /> }
+                                    { text: `Crédit ${plan.max_loans_per_month} fois / mois`, icon: <Star size={16} /> },
+                                    { text: `Limite ${(plan.max_loan_amount || 0).toLocaleString('fr-FR')} FCFA`, icon: <Rocket size={16} /> },
+                                    { text: `Délai ${plan.repayment_delay_days} jours après prêt`, icon: <Flash size={16} /> },
+                                    { text: `Accès valide ${plan.duration_days || 30} jours`, icon: <Calendar size={16} /> }
                                 ].map((feature, i) => (
                                     <div key={i} className="flex items-center justify-center gap-4 group/feat">
-                                        <div className="text-slate-600 group-hover/feat:text-blue-500 transition-colors">{feature.icon}</div>
-                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-tight group-hover/feat:text-slate-200 transition-colors italic">{feature.text}</span>
+                                        <div className="text-slate-600 group-hover/feat:text-blue-500 transition-colors shrink-0">{feature.icon}</div>
+                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-tight group-hover/feat:text-slate-200 transition-colors italic text-left">{feature.text}</span>
                                     </div>
                                 ))}
 

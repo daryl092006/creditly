@@ -90,6 +90,7 @@ export async function subscribeToPlan(formData: FormData) {
                 snapshot_max_loans_per_month: planToSnapshot?.max_loans_per_month,
                 snapshot_max_loan_amount: planToSnapshot?.max_loan_amount,
                 snapshot_repayment_delay_days: planToSnapshot?.repayment_delay_days,
+                snapshot_duration_days: planToSnapshot?.duration_days ?? 30,
                 snapshot_service_fee: planToSnapshot?.service_fee
             })
 
