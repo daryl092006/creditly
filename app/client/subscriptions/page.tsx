@@ -14,6 +14,9 @@ export default async function SubscriptionsPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     const { data: allSubs } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }) : { data: [] }
+    const { data: activeLoans } = user ? await supabase.from('prets').select('id').eq('user_id', user.id).in('status', ['active', 'overdue']) : { data: null }
+    
+    const hasUnpaidLoans = activeLoans ? activeLoans.length > 0 : false;
 
     const now = new Date().toISOString()
     const activeSub = allSubs?.find((s: any) => s.status === 'active' && s.end_date && s.end_date > now)
@@ -161,9 +164,10 @@ export default async function SubscriptionsPage() {
                             <div className="relative z-10 w-full">
                                 <SubscribeButton
                                     planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.id]?.reached}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans}
                                     isModification={!!activeSub && activeSub.plan_id !== plan.id}
                                     isQuotaFull={!!quotasStatus[plan.id]?.reached}
+                                    hasUnpaidLoans={hasUnpaidLoans}
                                 />
                             </div>
                         </div>

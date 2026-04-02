@@ -21,6 +21,19 @@ export default async function PaymentPage({
 
     if (!plan) redirect('/client/subscriptions')
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/client/dashboard')
+
+    const { data: activeLoans } = await supabase
+        .from('prets')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'overdue'])
+
+    if (activeLoans && activeLoans.length > 0) {
+        redirect('/client/subscriptions')
+    }
+
     // Fetch Payment Number from Settings
     const { data: settings } = await supabase
         .from('system_settings')

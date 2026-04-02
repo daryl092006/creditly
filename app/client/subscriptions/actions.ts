@@ -37,6 +37,17 @@ export async function subscribeToPlan(formData: FormData) {
         return { error: "Désolé, la capacité maximale d'abonnements pour cette offre ce mois-ci a été atteinte." }
     }
 
+    // Verify User has no active/overdue loans
+    const { data: activeLoans } = await supabase
+        .from('prets')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'overdue'])
+
+    if (activeLoans && activeLoans.length > 0) {
+        return { error: "Vous devez solder votre prêt en cours avant de changer ou renouveler votre abonnement." }
+    }
+
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/sub_${planId}_${Date.now()}.${fileExt}`
 

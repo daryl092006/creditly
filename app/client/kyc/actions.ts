@@ -25,12 +25,12 @@ export async function submitKyc(formData: FormData) {
     
     // Check whatsapp uniqueness if provided
     if (updates.whatsapp) {
-        const { data: existingPhone } = await supabase
+        const { data: existingPhone, error: phoneError } = await supabase
             .from('users')
             .select('id')
             .eq('whatsapp', updates.whatsapp)
             .neq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (existingPhone) {
             return { error: "Ce numéro WhatsApp est déjà utilisé par un autre compte." }
@@ -38,7 +38,10 @@ export async function submitKyc(formData: FormData) {
     }
 
     if (Object.keys(updates).length > 0) {
-        await supabase.from('users').update(updates).eq('id', user.id)
+        const { error: updateError } = await supabase.from('users').update(updates).eq('id', user.id)
+        if (updateError) {
+            return { error: "Erreur lors de la mise à jour de vos informations. Vérifiez le format des données." }
+        }
     }
 
     // Verify after potential updates
