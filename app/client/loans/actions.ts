@@ -85,20 +85,25 @@ export async function requestLoan(
             await supabase.from('prets').update({ service_fee: plannedFee }).eq('id', result.loan_id);
         }
 
-        // 2. Notify Admin & User (Async)
-        sendAdminNotification('LOAN_REQUEST', {
-            userEmail: user.email!,
-            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: amount,
-            payoutNetwork: payoutNetwork,
-            payoutPhone: payoutPhone
-        }).catch(e => console.error('Admin Notif Error:', e));
-
-        sendUserEmail('LOAN_REQUEST_RECEIVED', {
-            email: user.email!,
-            name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: amount
-        }).catch(e => console.error('User Notif Error:', e));
+        // 2. Notify Admin & User (Awaited but safe)
+        try {
+            await Promise.allSettled([
+                sendAdminNotification('LOAN_REQUEST', {
+                    userEmail: user.email!,
+                    userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                    amount: amount,
+                    payoutNetwork: payoutNetwork,
+                    payoutPhone: payoutPhone
+                }),
+                sendUserEmail('LOAN_REQUEST_RECEIVED', {
+                    email: user.email!,
+                    name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+                    amount: amount
+                })
+            ]);
+        } catch (e) {
+            console.error('Notification System Error (ignored):', e);
+        }
 
         try {
             revalidatePath('/client/dashboard')
