@@ -127,7 +127,7 @@ export default async function SuperAdminPage({
         const totalRealizedGains = totalCommissions?.filter((c: any) => c.admin_id === admin.id && (c.loan?.status === 'paid' || c.type === 'repayment_reward')).reduce((acc, c) => acc + Number(c.amount), 0) || 0
         const repaymentCount = repaymentData?.filter(a => a.admin_id === admin.id).length || 0
 
-        return {
+        return { 
             ...admin,
             totalActions: kycCount + loanCountTotal + repaymentCount,
             totalEarnings: totalRealizedGains,
