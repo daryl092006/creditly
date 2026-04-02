@@ -58,7 +58,6 @@ export async function requestLoan(
         p_payout_network: payoutNetwork,
         p_birth_date: personalData.birthDate,
         p_address: personalData.address,
-        p_city: personalData.city,
         p_id_details: personalData.idDetails,
         p_profession: personalData.profession
     });
@@ -81,31 +80,20 @@ export async function requestLoan(
         await supabase.from('prets').update({ service_fee: plannedFee }).eq('id', result.loan_id);
     }
 
-    // 2. Notify Admin (Async)
-    // We fetch user details again or use what we have. 
-    // The RPC insert worked, so we proceed.
-    try {
-        await sendAdminNotification('LOAN_REQUEST', {
-            userEmail: user.email!,
-            userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: amount,
-            payoutNetwork: payoutNetwork,
-            payoutPhone: payoutPhone
-        })
-    } catch (err) {
-        console.error('Notification Error:', err)
-    }
+    // 2. Notify Admin & User (Async / Fire and Forget for speed)
+    sendAdminNotification('LOAN_REQUEST', {
+        userEmail: user.email!,
+        userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+        amount: amount,
+        payoutNetwork: payoutNetwork,
+        payoutPhone: payoutPhone
+    }).catch(e => console.error('Admin Notif Error:', e));
 
-    // 3. Notify User (Accusé de réception)
-    try {
-        await sendUserEmail('LOAN_REQUEST_RECEIVED', {
-            email: user.email!,
-            name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
-            amount: amount
-        })
-    } catch (err) {
-        console.error('User Notification Error:', err)
-    }
+    sendUserEmail('LOAN_REQUEST_RECEIVED', {
+        email: user.email!,
+        name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+        amount: amount
+    }).catch(e => console.error('User Notif Error:', e));
 
     revalidatePath('/client/dashboard')
     return { success: 'PretEngage' }

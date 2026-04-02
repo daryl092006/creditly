@@ -89,13 +89,20 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
         setLoading(true)
         setError(null)
 
-        const res = await requestLoan(amount, payoutPhone, payoutName, payoutNetwork, personalData)
-        if (res?.error) {
-            setError(res.error)
+        try {
+            const res = await requestLoan(amount, payoutPhone, payoutName, payoutNetwork, personalData)
+            if (res?.error) {
+                setError(res.error)
+                setLoading(false)
+                setStep(1) // Return to first step to fix errors if any
+            } else {
+                router.push(`/client/dashboard?success=PretEngage`)
+            }
+        } catch (err: any) {
+            console.error('Final Submission Crash:', err)
+            setError("Une erreur inattendue est survenue. Veuillez réessayer.")
             setLoading(false)
-            setStep(1) // Return to first step to fix errors if any
-        } else {
-            router.push(`/client/dashboard?success=PretEngage`)
+            setStep(1)
         }
     }
 
