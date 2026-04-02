@@ -365,13 +365,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                 })
                 .eq('id', repayment.loan_id)
 
-            // Mettre à jour la pénalité sur le remboursement lui-même pour l'historique
-            if (surplusGenerated > 0) {
-                await supabase
-                    .from('remboursements')
-                    .update({ surplus_amount: surplusGenerated })
-                    .eq('id', repaymentId)
-            }
+            // L'intégralité du montant vérifié est créditée au solde payé du prêt.
+            // (Les pénalités éventuelles sont déduites dynamiquement lors du calcul de la dette totale).
 
             // --- REPAYMENT COMMISSION (Only if fee was charged) ---
             const commissionAmount = 100
@@ -445,7 +440,7 @@ export async function deleteRepayment(repaymentId: string) {
             .single()
 
         if (loan) {
-            const amountApplied = repayment.amount_declared - (repayment.surplus_amount || 0)
+            const amountApplied = repayment.amount_declared
             const reversedPaid = Math.max(0, Number(loan.amount_paid) - amountApplied)
             const totalLoanAmount = Number(loan.amount) + (Number(loan.service_fee) || 0)
 

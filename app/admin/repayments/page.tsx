@@ -41,7 +41,6 @@ export default async function AdminRepaymentPage({
             loan_amount: totalDebt,
             loan_amount_paid: r.loan?.amount_paid || 0,
             amount_declared: r.amount_declared,
-            surplus_amount: r.surplus_amount || 0,
             proof_url: r.proof_url,
             date: r.created_at,
             status: r.status,

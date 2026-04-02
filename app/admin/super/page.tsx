@@ -61,7 +61,7 @@ export default async function SuperAdminPage({
         supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').in('status', ['active', 'overdue']),
-        supabase.from('prets').select('admin_id, created_at, status, service_fee').eq('status', 'paid'),
+        supabase.from('prets').select('amount, amount_paid, admin_id, created_at, status, service_fee').eq('status', 'paid'),
         supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -77,7 +77,11 @@ export default async function SuperAdminPage({
     ]);
 
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-    const totalPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+    const totalPenaltiesCollected = allPaidLoans?.reduce((acc, l) => {
+        const { fee } = calculateLoanDebt(l as any)
+        const penalty = Math.max(0, Number(l.amount_paid) - (Number(l.amount) + fee))
+        return acc + penalty
+    }, 0) || 0
     const activeStats = (allActiveLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).totalDebt, 0)
     const totalRemainingToRecover = activeStats
 

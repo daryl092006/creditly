@@ -17,7 +17,6 @@ export default function AdminRepaymentTable({
         loan_amount: number;
         loan_amount_paid: number;
         amount_declared: number;
-        surplus_amount: number;
         proof_url: string;
         date: string;
         status: string;
@@ -110,11 +109,6 @@ export default function AdminRepaymentTable({
                                 <td className="px-8 py-6">
                                     <div className="space-y-1">
                                         <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                        {row.surplus_amount > 0 && (
-                                            <span className="inline-flex px-2 py-0.5 rounded-md bg-amber-600/10 text-amber-500 text-[8px] font-black uppercase tracking-tighter border border-amber-500/20">
-                                                Trop-payé : +{row.surplus_amount.toLocaleString('fr-FR')} F
-                                            </span>
-                                        )}
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
@@ -248,9 +242,6 @@ export default function AdminRepaymentTable({
                             <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant à valider</p>
                             <div className="flex items-center gap-4">
                                 <p className="font-black text-emerald-400 text-2xl tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                {row.surplus_amount > 0 && (
-                                    <span className="px-2 py-1 bg-amber-600/10 text-amber-500 border border-amber-500/20 rounded-lg text-[8px] font-black uppercase tracking-tighter italic">Trop-payé : +{row.surplus_amount.toLocaleString('fr-FR')} F</span>
-                                )}
                             </div>
                         </div>
 
