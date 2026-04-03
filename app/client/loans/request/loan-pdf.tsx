@@ -288,7 +288,15 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
 
                 <View style={styles.section}>
                     <Text>
-                        Reconnais par la présente, avoir contracté auprès de la plateforme <Text style={styles.bold}>Creditly</Text> un prêt de type "Avance sur Revenu" d'un montant de <Text style={styles.bold}>{loanData.amount.toLocaleString('fr-FR')} FCFA</Text>{serviceFee > 0 ? ' majoré de frais de dossier de ' : ''}{serviceFee > 0 ? <Text style={styles.bold}>{serviceFee.toLocaleString('fr-FR')} FCFA</Text> : ''}, soit un montant total de :
+                        Reconnais par la présente, avoir contracté auprès de la plateforme{' '}
+                        <Text style={styles.bold}>Creditly</Text>{' '}
+                        un prêt de type "Avance sur Revenu" d'un montant de{' '}
+                        <Text style={styles.bold}>{loanData.amount.toLocaleString('fr-FR')} FCFA</Text>
+                        {serviceFee > 0
+                            ? ` majoré de frais de dossier de ${serviceFee.toLocaleString('fr-FR')} FCFA`
+                            : ''
+                        }
+                        , soit un montant total de :
                     </Text>
                 </View>
 
