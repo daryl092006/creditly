@@ -3,13 +3,19 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
+// react-pdf ne supporte pas l'espace insécable (U+00A0) du format fr-FR
+// On utilise un espace normal comme séparateur de milliers
+const fNum = (n: number) => {
+    return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+}
+
 const styles = StyleSheet.create({
     page: {
-        padding: 60,
-        fontSize: 10,
+        padding: 36,
+        fontSize: 9,
         fontFamily: 'Helvetica',
         color: '#1a1a1a',
-        lineHeight: 1.6,
+        lineHeight: 1.4,
     },
     watermark: {
         position: 'absolute',
@@ -31,8 +37,8 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomStyle: 'solid',
         borderBottomColor: '#000',
-        paddingBottom: 20,
-        marginBottom: 30,
+        paddingBottom: 10,
+        marginBottom: 12,
     },
     logoContainer: {
         flexDirection: 'row',
@@ -52,7 +58,7 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     title: {
-        fontSize: 20,
+        fontSize: 14,
         fontWeight: 'bold',
         textTransform: 'uppercase',
     },
@@ -76,15 +82,15 @@ const styles = StyleSheet.create({
     },
     mainTitle: {
         textAlign: 'center',
-        fontSize: 16,
+        fontSize: 11,
         fontWeight: 'bold',
         textTransform: 'uppercase',
         textDecoration: 'underline',
-        marginBottom: 10,
-        marginTop: 20,
+        marginBottom: 6,
+        marginTop: 8,
     },
     section: {
-        marginBottom: 20,
+        marginBottom: 8,
     },
     bold: {
         fontWeight: 'bold',
@@ -94,12 +100,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderStyle: 'solid',
         borderColor: '#000',
-        padding: 15,
+        padding: 8,
         textAlign: 'center',
-        marginVertical: 20,
+        marginVertical: 8,
     },
     amountText: {
-        fontSize: 22,
+        fontSize: 16,
         fontWeight: 'bold',
     },
     amountInWords: {
@@ -114,10 +120,10 @@ const styles = StyleSheet.create({
     },
     dueDate: {
         textAlign: 'center',
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: 'bold',
         textDecoration: 'underline',
-        marginVertical: 10,
+        marginVertical: 6,
     },
     clauseBox: {
         backgroundColor: '#f5f5f5',
@@ -143,7 +149,7 @@ const styles = StyleSheet.create({
     signatureContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 50,
+        marginTop: 20,
     },
     signatureBlock: {
         width: '40%',
@@ -297,9 +303,9 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                         Reconnais par la présente, avoir contracté auprès de la plateforme{' '}
                         <Text style={styles.bold}>Creditly</Text>{' '}
                         un prêt de type "Avance sur Revenu" d'un montant de{' '}
-                        <Text style={styles.bold}>{loanData.amount.toLocaleString('fr-FR')} FCFA</Text>
+                        <Text style={styles.bold}>{fNum(loanData.amount)} FCFA</Text>
                         {serviceFee > 0
-                            ? ` majoré de frais de dossier de ${serviceFee.toLocaleString('fr-FR')} FCFA`
+                            ? ` majoré de frais de dossier de ${fNum(serviceFee)} FCFA`
                             : ''
                         }
                         , soit un montant total de :
@@ -307,7 +313,7 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                 </View>
 
                 <View style={styles.amountCard}>
-                    <Text style={styles.amountText}>{totalToRepay.toLocaleString('fr-FR')} FCFA</Text>
+                    <Text style={styles.amountText}>{fNum(totalToRepay)} FCFA</Text>
                     <Text style={styles.amountInWords}>{(amountInWords + ' francs CFA').toUpperCase()}</Text>
                 </View>
 
