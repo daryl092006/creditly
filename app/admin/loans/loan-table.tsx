@@ -117,8 +117,10 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                     }}
                     loanData={{
                         amount: amount,
+                        serviceFee: fee,
                         payoutNetwork: row.payout_network || 'MTN',
                         dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('fr-FR') : (row.status === 'pending' ? 'Délai à définir' : 'Archives'),
+                        dueDateRaw: row.due_date ? new Date(row.due_date) : new Date(),
                     }}
                     personalData={{
                         address: row.borrower_address || row.profile.address || '',

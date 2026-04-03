@@ -240,11 +240,17 @@ interface LoanPDFProps {
     signature: string;
     amountInWords: string;
     repaymentNumber: string;
+    applicationDate: string;
 }
 
-export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber }: LoanPDFProps) => {
-    // Calcul du total basé sur le serviceFee dynamique (défini par plan d'abonnement)
-    const serviceFee = loanData.serviceFee ?? 0
+export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber, applicationDate }: LoanPDFProps) => {
+    // Logique des frais :
+    // - Nouveau prêt : service_fee est défini en base → on l'utilise directement
+    // - Ancien prêt : service_fee null/undefined → fallback sur la date de coupure (09/03/2026 = 500 F)
+    const FEE_START_DATE = new Date('2026-03-09T00:00:00')
+    const loanDate = new Date(applicationDate)
+    const legacyFee = loanDate >= FEE_START_DATE ? 500 : 0
+    const serviceFee = loanData.serviceFee != null ? loanData.serviceFee : legacyFee
     const totalToRepay = loanData.amount + serviceFee
 
     // Duration calculation for PDF

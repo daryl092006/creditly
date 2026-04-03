@@ -93,6 +93,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                 signature={signature || `${userData.prenom} ${userData.nom}`}
                 amountInWords={amountInWords}
                 repaymentNumber={repaymentNumber}
+                applicationDate={new Date().toISOString()}
             />
         );
     }, [isClient, canSubmit, userData, loanData, personalData, signature, amountInWords, repaymentNumber]);
