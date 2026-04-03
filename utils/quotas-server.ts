@@ -38,23 +38,50 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
 
         const limits = (quotaLimits || []) as unknown as QuotaLimit[];
 
-        // 2. Get Subscriptions for period
-        const { data: subs, error: subError } = await supabase
+        // 2. Get active subscriptions
+        const { data: activeSubs, error: subError } = await supabase
             .from('user_subscriptions')
-            .select('plan_id')
-            .neq('status', 'rejected')
-            .gte('created_at', startOfPeriod.toISOString())
-            .lte('created_at', endOfPeriod.toISOString());
+            .select('id, plan_id, user_id, plan:abonnements(max_loans_per_month)')
+            .eq('status', 'active')
+            .gte('end_date', new Date().toISOString());
 
         if (subError) {
-            console.error('Error fetching subscriptions for quotas:', subError);
+            console.error('Error fetching active subscriptions for quotas:', subError);
             return {};
         }
 
+        // 3. Get all active loans (to verify standing)
+        // An active loan means the user IS using the quota
+        const { data: activeLoans } = await supabase
+            .from('prets')
+            .select('user_id, status, amount, amount_paid')
+            .in('status', ['pending', 'approved', 'active', 'overdue']);
+
+        // Count loans per user per plan context
+        const userActivity: Record<string, { debt: number, loanCount: number }> = {};
+        activeLoans?.forEach(loan => {
+            if (!userActivity[loan.user_id]) userActivity[loan.user_id] = { debt: 0, loanCount: 0 };
+
+            // Still owes money? (Including pending/approved)
+            const owes = Number(loan.amount) - Number(loan.amount_paid);
+            if (owes > 0 || loan.status !== 'pending') {
+                userActivity[loan.user_id].debt += 1; // Simplify: has at least one active debt/process
+            }
+            userActivity[loan.user_id].loanCount += 1;
+        });
+
         const counts: Record<string, number> = {};
-        (subs as unknown as SubPreview[] || []).forEach((sub) => {
-            const pid = sub.plan_id;
-            if (pid) {
+
+        (activeSubs as any[] || []).forEach((sub) => {
+            const activity = userActivity[sub.user_id] || { debt: 0, loanCount: 0 };
+            const maxAllowed = sub.plan?.max_loans_per_month || 0;
+
+            const isUsingQuota =
+                activity.debt > 0 ||           // A encore une dette ou un dossier en cours
+                activity.loanCount < maxAllowed; // N'a pas encore atteint sa limite de prêts
+
+            if (isUsingQuota) {
+                const pid = sub.plan_id;
                 counts[pid] = (counts[pid] || 0) + 1;
             }
         });
@@ -66,27 +93,16 @@ export async function checkGlobalQuotasStatus(month?: number, year?: number) {
 
         plans.forEach((p) => {
             const pid = p.id;
-            
-            // Try to find quota by plan_id first, then by amount (handling migration)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const q = limits.find((ql: any) => 
-                (ql.plan_id && ql.plan_id === pid) || 
+            const q = limits.find((ql: any) =>
+                (ql.plan_id && ql.plan_id === pid) ||
                 (!ql.plan_id && Number(ql.amount) === Number(p.max_loan_amount))
             );
 
-            // DEFAULT TO -1 (UNLIMITED) if not in the quotas table
             const limit = q ? parseInt(q.monthly_limit.toString()) : -1;
             const count = counts[pid] || 0;
             const reached = limit >= 0 ? count >= limit : false;
 
-            const quotaObj = {
-                count,
-                limit,
-                reached
-            };
-
-            // Index ONLY by plan_id to avoid duplicates in dashboards
-            status[pid] = quotaObj;
+            status[pid] = { count, limit, reached };
         });
 
         return status;
