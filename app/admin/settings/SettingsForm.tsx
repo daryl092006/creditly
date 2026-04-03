@@ -46,27 +46,44 @@ export default function SettingsForm({ initialSettings }: { initialSettings: any
                             </div>
                         </div>
 
-                        <div className="flex gap-4">
-                            <input
-                                type="text"
-                                defaultValue={setting.value}
-                                onBlur={(e) => {
-                                    if (e.target.value !== setting.value) {
-                                        handleUpdate(setting.key, e.target.value)
-                                    }
-                                }}
-                                className="flex-1 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white font-black italic focus:border-blue-500/50 outline-none transition-all"
-                            />
-                            <button
-                                disabled={savingKey === setting.key}
-                                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${savingKey === setting.key ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-95'}`}
-                            >
-                                {savingKey === setting.key ? (
-                                    <div className="w-4 h-4 border-2 border-slate-600 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                    <Save size={20} />
-                                )}
-                            </button>
+                        <div className="flex gap-4 items-center">
+                            {setting.key === 'maintenance_mode' ? (
+                                <button
+                                    onClick={() => handleUpdate(setting.key, setting.value === 'true' ? 'false' : 'true')}
+                                    disabled={savingKey === setting.key}
+                                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-500/10 ${setting.value === 'true' ? 'bg-amber-500' : 'bg-slate-800'}`}
+                                >
+                                    <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-all duration-300 shadow-lg ${setting.value === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
+                                    {savingKey === setting.key && (
+                                        <div className="absolute inset-0 bg-white/20 rounded-full flex items-center justify-center">
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        </div>
+                                    )}
+                                </button>
+                            ) : (
+                                <>
+                                    <input
+                                        type="text"
+                                        defaultValue={setting.value}
+                                        onBlur={(e) => {
+                                            if (e.target.value !== setting.value) {
+                                                handleUpdate(setting.key, e.target.value)
+                                            }
+                                        }}
+                                        className="flex-1 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white font-black italic focus:border-blue-500/50 outline-none transition-all"
+                                    />
+                                    <button
+                                        disabled={savingKey === setting.key}
+                                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${savingKey === setting.key ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-95'}`}
+                                    >
+                                        {savingKey === setting.key ? (
+                                            <div className="w-4 h-4 border-2 border-slate-600 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Save size={20} />
+                                        )}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 ))}

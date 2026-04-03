@@ -29,5 +29,8 @@ export async function getSystemSettings() {
     const supabase = await createAdminClient()
     const { data, error } = await supabase.from('system_settings').select('*')
     if (error) return []
-    return data
+
+    // Clés obsolètes depuis que les frais sont définis par plan d'abonnement
+    const OBSOLETE_KEYS = ['platform_fee', 'operator_fee_reserve']
+    return data.filter((s: any) => !OBSOLETE_KEYS.includes(s.key))
 }

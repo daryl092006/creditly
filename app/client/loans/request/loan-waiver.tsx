@@ -371,7 +371,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         </p>
 
                         <p className="text-justify">
-                            Reconnais par la présente, avoir contracté auprès de la plateforme <strong>Creditly</strong> un prêt de type "Avance sur Revenu" d'un montant de <strong>{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> avec des frais de dossier fixes de <strong>500 FCFA</strong>, soit un montant total de :
+                            Reconnais par la présente, avoir contracté auprès de la plateforme <strong>Creditly</strong> un prêt de type "Avance sur Revenu" d'un montant de <strong>{loanData.amount.toLocaleString('fr-FR')} FCFA</strong> avec des frais de dossier de <strong>{loanData.serviceFee.toLocaleString('fr-FR')} FCFA</strong>, soit un montant total de :
                         </p>
 
                         <div className="flex justify-center my-8">
