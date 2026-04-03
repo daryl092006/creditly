@@ -240,17 +240,14 @@ interface LoanPDFProps {
     signature: string;
     amountInWords: string;
     repaymentNumber: string;
-    applicationDate: string;
 }
 
-export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber, applicationDate }: LoanPDFProps) => {
-    // FEE_START_DATE logic synchronized with admin and request side
-    const loanDate = new Date(applicationDate)
-    const FEE_START_DATE = new Date('2026-03-09T00:00:00')
-    const hasFee = loanDate >= FEE_START_DATE
-    const totalToRepay = hasFee ? (loanData.amount + 500) : loanData.amount
+export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber }: LoanPDFProps) => {
+    // Calcul du total basé sur le serviceFee dynamique (défini par plan d'abonnement)
+    const serviceFee = loanData.serviceFee ?? 0
+    const totalToRepay = loanData.amount + serviceFee
 
-    // NEW: Duration calculation for PDF
+    // Duration calculation for PDF
     const today = new Date()
     const diffTime = Math.abs(loanData.dueDateRaw.getTime() - today.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -291,7 +288,7 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
 
                 <View style={styles.section}>
                     <Text>
-                        Reconnais par la présente, avoir contracté auprès de la plateforme <Text style={styles.bold}>Creditly</Text> un prêt de type "Avance sur Revenu" d'un montant de <Text style={styles.bold}>{loanData.amount.toLocaleString('fr-FR')} FCFA</Text>{hasFee ? ' majoré de frais de dossier fixes de ' : ''}{hasFee ? <Text style={styles.bold}>500 FCFA</Text> : ''}, soit un montant total de :
+                        Reconnais par la présente, avoir contracté auprès de la plateforme <Text style={styles.bold}>Creditly</Text> un prêt de type "Avance sur Revenu" d'un montant de <Text style={styles.bold}>{loanData.amount.toLocaleString('fr-FR')} FCFA</Text>{serviceFee > 0 ? ' majoré de frais de dossier de ' : ''}{serviceFee > 0 ? <Text style={styles.bold}>{serviceFee.toLocaleString('fr-FR')} FCFA</Text> : ''}, soit un montant total de :
                     </Text>
                 </View>
 
@@ -314,7 +311,7 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                     <Text style={styles.clauseText}>2. Tout retard excédant 48h après l'échéance pourra entraîner l'application de pénalités forfaitaires.</Text>
                     <Text style={styles.clauseText}>3. Le présent document constitue un titre de créance permettant d'engager toute procédure de recouvrement.</Text>
                     <Text style={styles.clauseText}>4. La signature numérique apposée ci-dessous a la même valeur juridique qu'une signature manuscrite.</Text>
-                    {hasFee && <Text style={styles.clauseText}>5. Tout versement égal au montant total dû solde votre créance.</Text>}
+                    {serviceFee > 0 && <Text style={styles.clauseText}>5. Tout versement égal au montant total dû solde votre créance.</Text>}
                 </View>
 
                 {/* Signatures */}
