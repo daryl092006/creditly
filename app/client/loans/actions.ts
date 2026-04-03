@@ -49,7 +49,7 @@ export async function requestLoan(
 
         // Fetch the active sub specifically
         const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
-        const plannedFee = currentSub?.plan?.service_fee ?? 500;
+        const plannedFee = currentSub?.plan?.service_fee ?? 0;
 
         // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
         if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {

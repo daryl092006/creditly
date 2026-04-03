@@ -234,16 +234,20 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
             const kycAdminId = kyc?.admin_id
             const loanAdminId = adminId
 
-            if (fee >= 500 && (kycAdminId || loanAdminId)) {
+            if (fee > 0 && (kycAdminId || loanAdminId)) {
+                // Commission = 20% du service_fee par action admin
+                // KYC admin = 20%, Loan admin = 20%, Repayment admin = 20%
+                // La plateforme conserve les 40% restants
+                const kycShare = Math.round(fee * 0.2)   // 20% du frais
+                const loanShare = Math.round(fee * 0.2)  // 20% du frais
                 const commissions = []
-                const feeShare = 100 // 100 for KYC, 100 for Loan, 100 for Repayment (later)
 
                 if (kycAdminId && loanAdminId && kycAdminId === loanAdminId) {
-                    // One person did both, they get 200 (KYC + Loan parts)
+                    // Une seule personne a fait KYC + Prêt → elle touche 40%
                     commissions.push({
                         loan_id: loanId,
                         admin_id: kycAdminId,
-                        amount: 200,
+                        amount: kycShare + loanShare,
                         type: 'kyc_and_loan_reward'
                     })
                 } else {
@@ -251,7 +255,7 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                         commissions.push({
                             loan_id: loanId,
                             admin_id: kycAdminId,
-                            amount: feeShare,
+                            amount: kycShare,
                             type: 'kyc_reward'
                         })
                     }
@@ -259,7 +263,7 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                         commissions.push({
                             loan_id: loanId,
                             admin_id: loanAdminId,
-                            amount: feeShare,
+                            amount: loanShare,
                             type: 'loan_reward'
                         })
                     }
@@ -375,7 +379,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             // (Les pénalités éventuelles sont déduites dynamiquement lors du calcul de la dette totale).
 
             // --- REPAYMENT COMMISSION (Only if fee was charged) ---
-            const commissionAmount = 100
+            // L'admin remboursement touche 20% du service_fee du prêt
+            const repaymentShare = Math.round(fee * 0.2)
 
             if (fee > 0) { // Only if there's a service fee on this loan
                 const { count } = await supabase
@@ -388,7 +393,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     await supabase.from('admin_commissions').insert({
                         loan_id: loan.id,
                         admin_id: adminId,
-                        amount: commissionAmount,
+                        amount: repaymentShare,
                         type: 'repayment_reward',
                         created_at: new Date().toISOString()
                     })
@@ -793,6 +798,8 @@ export async function createDirectRepayment(formData: FormData) {
     // Note: On ne crédite plus le solde surplus de l'utilisateur ici non plus (considéré comme pénalité).
 
     // --- REPAYMENT COMMISSION (Direct) (Only if fee was charged) ---
+    // L'admin remboursement touche 20% du service_fee du prêt
+    const directRepaymentShare = Math.round(fee * 0.2)
     if (fee > 0) {
         const { count } = await supabase
             .from('admin_commissions')
@@ -804,7 +811,7 @@ export async function createDirectRepayment(formData: FormData) {
             await supabase.from('admin_commissions').insert({
                 loan_id: loanId,
                 admin_id: uId,
-                amount: 100,
+                amount: directRepaymentShare,
                 type: 'repayment_reward',
                 created_at: new Date().toISOString()
             })

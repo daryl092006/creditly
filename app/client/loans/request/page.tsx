@@ -60,8 +60,22 @@ export default async function LoanRequestPage() {
         max_loan_amount: sub?.snapshot_max_loan_amount ?? sub?.plan?.max_loan_amount ?? 0,
         max_loans_per_month: sub?.snapshot_max_loans_per_month ?? sub?.plan?.max_loans_per_month ?? 0,
         repayment_delay_days: sub?.snapshot_repayment_delay_days ?? sub?.plan?.repayment_delay_days ?? 0,
-        service_fee: sub?.snapshot_service_fee ?? sub?.plan?.service_fee ?? 500
+        service_fee: sub?.snapshot_service_fee ?? sub?.plan?.service_fee ?? 0
     }
+
+    // Vérifier si le frais de dossier a déjà été facturé sur cette période d'abonnement
+    // Le frais est payable UNE SEULE FOIS par abonnement (1er prêt uniquement)
+    const { count: feeAlreadyChargedCount } = await supabase
+        .from('prets')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('subscription_snapshot_id', sub.plan_id)
+        .gt('service_fee', 0)
+        .gte('created_at', sub.start_date || new Date(0).toISOString())
+
+    const isFirstLoanOfSubscription = (feeAlreadyChargedCount ?? 0) === 0
+    const applicableServiceFee = isFirstLoanOfSubscription ? planData.service_fee : 0
+
     const remainingAmount = Math.max(0, planData.max_loan_amount - currentCumulativeDebt)
     const remainingLoans = Math.max(0, planData.max_loans_per_month - currentActiveCount)
 
@@ -177,7 +191,9 @@ export default async function LoanRequestPage() {
                 userData={userData || { nom: '', prenom: '' }}
                 repaymentPhones={repaymentPhones}
                 dueDateRaw={dueDateRaw}
+                applicableServiceFee={applicableServiceFee}
             />
+
         </div>
     )
 }

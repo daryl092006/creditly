@@ -19,7 +19,7 @@ interface Subscription {
 }
 
 
-export default function LoanRequestForm({ subscription, userData, repaymentPhones, dueDateRaw }: {
+export default function LoanRequestForm({ subscription, userData, repaymentPhones, dueDateRaw, applicableServiceFee }: {
     subscription: Subscription,
     userData: {
         nom: string,
@@ -35,6 +35,7 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
         Celtiis: string;
     };
     dueDateRaw: Date;
+    applicableServiceFee: number;
 }) {
     const router = useRouter()
     const [step, setStep] = useState(1)
@@ -117,7 +118,7 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                         payoutNetwork,
                         dueDate: formattedDueDate,
                         dueDateRaw: dueDate,
-                        serviceFee: subscription.plan.service_fee ?? 500
+                        serviceFee: applicableServiceFee
                     }}
                     onConfirm={handleFinalSubmit}
                     onBack={() => setStep(1)}
@@ -186,10 +187,18 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                         <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Min: 1,000</p>
                         <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Max: {subscription.plan.max_loan_amount.toLocaleString('fr-FR')}</p>
                     </div>
-                    <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl flex justify-between items-center">
-                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic">Frais de dossier (Fixe)</p>
-                        <p className="text-sm font-black text-white italic">+ {subscription.plan.service_fee ?? 500} F</p>
-                    </div>
+                    {applicableServiceFee > 0 && (
+                        <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl flex justify-between items-center">
+                            <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic">Frais de dossier (1× par abonnement)</p>
+                            <p className="text-sm font-black text-white italic">+ {applicableServiceFee} F</p>
+                        </div>
+                    )}
+                    {applicableServiceFee === 0 && (
+                        <div className="mt-2 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex justify-between items-center">
+                            <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest italic">Frais de dossier déjà réglés</p>
+                            <p className="text-sm font-black text-emerald-400 italic">✓ Gratuit</p>
+                        </div>
+                    )}
 
                 </div>
 
