@@ -19,17 +19,15 @@ const styles = StyleSheet.create({
     },
     watermark: {
         position: 'absolute',
-        top: '35%',
-        left: '10%',
-        fontSize: 120,
-        color: '#9ca3af',
+        top: '40%',
+        left: '5%',
+        fontSize: 100,
+        color: '#e5e7eb',
         transform: 'rotate(-45deg)',
         fontWeight: 'bold',
-        opacity: 0.35,
+        opacity: 0.15,
         zIndex: -1,
-        borderWidth: 10,
-        borderColor: '#9ca3af',
-        padding: 20,
+        textAlign: 'center',
     },
     header: {
         flexDirection: 'row',
@@ -278,7 +276,7 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-                <Text style={styles.watermark}>OFFICIEL</Text>
+                <Text style={styles.watermark}>CERTIFIÉ</Text>
 
                 {/* Header */}
                 <View style={styles.header}>

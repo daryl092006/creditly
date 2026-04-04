@@ -316,8 +316,8 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
             <div className="hidden print-only print:block text-[#1a1a1a] bg-white p-16 font-serif text-xs leading-relaxed max-w-[800px] mx-auto relative" id="printable-waiver">
 
                 {/* Background Watermark */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
-                    <p className="text-[120px] font-black transform -rotate-45 border-[20px] border-black px-10">OFFICIEL</p>
+                <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] pointer-events-none select-none">
+                    <p className="text-[150px] font-black transform -rotate-45 uppercase tracking-tighter">CERTIFIÉ</p>
                 </div>
 
                 {/* Header Section */}

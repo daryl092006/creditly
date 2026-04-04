@@ -144,24 +144,38 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                                 </div>
                             )}
 
-                            {loan.due_date && (
-                                <div className="relative pl-12">
-                                    <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-slate-950 border border-white/10 flex items-center justify-center z-10">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            {(() => {
+                                const dueDate = loan.due_date ? new Date(loan.due_date) :
+                                    (loan.status === 'pending' ? new Date(new Date(loan.created_at).getTime() + (loan.plan?.repayment_delay_days || 7) * 24 * 60 * 60 * 1000) : null);
+
+                                if (!dueDate) return null;
+
+                                return (
+                                    <div className="relative pl-12">
+                                        <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-slate-950 border border-white/10 flex items-center justify-center z-10">
+                                            <div className={`w-2 h-2 rounded-full ${loan.status === 'pending' ? 'bg-amber-500 italic' : 'bg-blue-500 animate-pulse'}`}></div>
+                                        </div>
+                                        <div>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 italic ${loan.status === 'pending' ? 'text-amber-500/70' : 'text-blue-500'}`}>
+                                                {loan.status === 'pending' ? 'Date de remboursement prévue' : 'Date limite pour payer'}
+                                            </p>
+                                            <p className="text-2xl font-black text-white italic tracking-tighter">
+                                                {dueDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                            </p>
+                                            {loan.status === 'pending' && (
+                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1 opacity-50">Basé sur un délai de {loan.plan?.repayment_delay_days || 7} jours</p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 italic">Date limite pour payer</p>
-                                        <p className="text-2xl font-black text-white italic tracking-tighter">{new Date(loan.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
 
                     {/* Right Column: Conditions or Contract */}
                     <div className="space-y-8">
                         {/* Contract Section - Only if signed */}
-                        {loan.waiver_signed_at && !['pending', 'rejected'].includes(loan.status) && (
+                        {loan.waiver_signed_at && (
                             <div className="glass-panel p-10 space-y-6 bg-blue-600/5 border-blue-500/20 text-left relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
                                 <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2 italic relative z-10">

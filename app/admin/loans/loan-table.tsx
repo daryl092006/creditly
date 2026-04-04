@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { updateLoanStatus } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { useRouter } from 'next/navigation'
-import { Printer, Download } from '@carbon/icons-react'
+import { Printer, Download, Warning } from '@carbon/icons-react'
 import { LoanPDFDocument } from '@/app/client/loans/request/loan-pdf'
 import { pdf } from '@react-pdf/renderer'
 import { numberToFrench } from '@/utils/formatters'
@@ -120,7 +120,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                         amount: amount,
                         serviceFee: fee,
                         payoutNetwork: row.payout_network || 'MTN',
-                        dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('fr-FR') : (row.status === 'pending' ? `${row.repayment_delay_days || 7} jours après deblocage` : 'À définir'),
+                        dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('fr-FR') : (row.status === 'pending' ? new Date(new Date(row.date).getTime() + (row.repayment_delay_days || 7) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR') : 'À définir'),
                         dueDateRaw: row.due_date ? new Date(row.due_date) : new Date(Date.now() + (row.repayment_delay_days || 7) * 24 * 60 * 60 * 1000),
                     }}
                     personalData={{
@@ -199,7 +199,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                         >
                                                             👁️ Voir
                                                         </button>
-                                                        {isClient && row.profile && (
+                                                        {isClient && row.profile && !['pending', 'rejected'].includes(row.status) && (
                                                             <button
                                                                 onClick={() => handleDownloadPDF(row)}
                                                                 disabled={downloadingId === row.id}
@@ -342,7 +342,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             >
                                                 👁️ Voir
                                             </button>
-                                            {isClient && row.profile && (
+                                            {isClient && row.profile && !['pending', 'rejected'].includes(row.status) && (
                                                 <button
                                                     onClick={() => handleDownloadPDF(row)}
                                                     disabled={downloadingId === row.id}
@@ -417,7 +417,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                 Approuver
                                             </button>
                                             <button onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
                                         </>
                                     ) : (
@@ -435,6 +435,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                     </div>
                 ))}
             </div>
+
             {/* Confirmation Modal */}
             <ConfirmModal
                 isOpen={!!confirmAction}
@@ -556,25 +557,37 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 no-print">
-                            <button
-                                onClick={handlePrintWaiver}
-                                className="w-full py-4 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
-                            >
-                                <Printer size={18} />
-                                Imprimer papier
-                            </button>
-                            {isClient && viewWaiver && viewWaiver.profile && (
-                                <button
-                                    onClick={() => handleDownloadPDF(viewWaiver)}
-                                    disabled={downloadingId === viewWaiver.id}
-                                    className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${downloadingId === viewWaiver.id
-                                        ? 'bg-emerald-500 text-white animate-pulse'
-                                        : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
-                                        }`}
-                                >
-                                    <Download size={18} />
-                                    {downloadingId === viewWaiver.id ? 'Génération du document...' : 'Télécharger le PDF Pro'}
-                                </button>
+                            {!['pending', 'rejected'].includes(viewWaiver.status) && (
+                                <>
+                                    <button
+                                        onClick={handlePrintWaiver}
+                                        className="w-full py-4 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
+                                    >
+                                        <Printer size={18} />
+                                        Imprimer papier
+                                    </button>
+                                    <button
+                                        onClick={() => handleDownloadPDF(viewWaiver)}
+                                        disabled={downloadingId === viewWaiver.id}
+                                        className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${downloadingId === viewWaiver.id
+                                            ? 'bg-emerald-500 text-white animate-pulse'
+                                            : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
+                                            }`}
+                                    >
+                                        <Download size={18} />
+                                        {downloadingId === viewWaiver.id ? 'Génération du document...' : 'Télécharger le PDF Pro'}
+                                    </button>
+                                </>
+                            )}
+                            {['pending', 'rejected'].includes(viewWaiver.status) && (
+                                <div className="col-span-1 sm:col-span-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 no-print">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
+                                        <Warning size={20} />
+                                    </div>
+                                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest italic leading-tight">
+                                        Impression et PDF disponibles après approbation du dossier
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -584,9 +597,8 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
             {/* Hidden Printable Version for Admin */}
             {viewWaiver && (
                 <div className="print-only-container text-black bg-white p-12 font-serif relative" id="admin-printable-waiver">
-                    {/* Watermark */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-[0.03] select-none text-[150px] font-black tracking-[0.2em] border-[20px] border-black p-10 z-0">
-                        OFFICIEL
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-[0.1] select-none text-[150px] font-black tracking-tighter z-0">
+                        CERTIFIÉ
                     </div>
 
                     <div className="max-w-[800px] mx-auto relative z-10">
@@ -638,7 +650,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             <div className="text-center py-4 bg-gray-100 border-x-4 border-black font-black text-2xl underline decoration-double">
                                 {viewWaiver.due_date
                                     ? new Date(viewWaiver.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-                                    : viewWaiver.status === 'pending' ? `${viewWaiver.repayment_delay_days || 7} jours après déblocage` : '________________'}
+                                    : viewWaiver.status === 'pending' ? new Date(new Date(viewWaiver.date).getTime() + (viewWaiver.repayment_delay_days || 7) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '________________'}
                             </div>
 
                             <div className="space-y-3 bg-gray-50 p-6 border-2 border-black">

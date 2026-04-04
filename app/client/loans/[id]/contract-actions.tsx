@@ -44,7 +44,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                         amount: loan.amount,
                         payoutPhone: loan.payout_phone || '',
                         payoutNetwork: loan.payout_network || 'MTN',
-                        dueDate: loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? `${loan.plan?.repayment_delay_days || 7} jours après déblocage` : 'Date à définir')
+                        dueDate: loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? new Date(new Date(loan.created_at).getTime() + (loan.plan?.repayment_delay_days || 7) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR') : 'Date à définir')
                     }}
                     personalData={{
                         birthDate: loan.borrower_birth_date || '',
@@ -100,17 +100,19 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                     <Document size={18} />
                     Aperçu Contrat
                 </button>
-                <button
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className={`flex-1 py-4 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${downloading
-                        ? 'bg-emerald-500 text-white animate-pulse'
-                        : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
-                        }`}
-                >
-                    <Download size={18} />
-                    {downloading ? 'Génération...' : 'Télécharger PDF'}
-                </button>
+                {!['pending', 'rejected'].includes(loan.status) && (
+                    <button
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className={`flex-1 py-4 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${downloading
+                            ? 'bg-emerald-500 text-white animate-pulse'
+                            : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
+                            }`}
+                    >
+                        <Download size={18} />
+                        {downloading ? 'Génération...' : 'Télécharger PDF'}
+                    </button>
+                )}
             </div>
 
             {/* Preview Modal matching Admin UX but simplified for client */}
@@ -125,7 +127,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                 <div className="space-y-6">
                     <div className="max-h-[60vh] overflow-y-auto p-8 bg-white text-black font-serif rounded-2xl shadow-inner text-xs leading-relaxed relative">
                         {/* Watermark */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-[0.03] select-none text-[80px] font-black border-[10px] border-black p-4 z-0">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-[0.1] select-none text-[80px] font-black z-0 uppercase tracking-tighter">
                             CERTIFIÉ
                         </div>
 
@@ -133,7 +135,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                             <div className="flex justify-between items-start border-b border-black pb-4">
                                 <Logo size="sm" className="grayscale contrast-200 brightness-0" />
                                 <div className="text-right">
-                                    <p className="font-black">CONTRAT OFFICIEL</p>
+                                    <p className="font-black">CONTRAT CERTIFIÉ</p>
                                     <p className="text-[10px] italic">Signé le {loan.waiver_signed_at ? new Date(loan.waiver_signed_at).toLocaleDateString('fr-FR') : 'En attente de signature'}</p>
                                 </div>
                             </div>
@@ -148,9 +150,16 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                                 <p className="text-[8px] font-black uppercase text-gray-500 mt-1">{amountInWords} FRANCS CFA</p>
                             </div>
 
-                            <p className="text-justify font-bold">
-                                Je m'engage à rembourser cette somme au plus tard le : {loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? `${loan.plan?.repayment_delay_days || 7} jours après déblocage` : 'Échéance à définir')}.
-                            </p>
+                            {(() => {
+                                const projectedDate = loan.due_date ? new Date(loan.due_date) :
+                                    (loan.status === 'pending' ? new Date(new Date(loan.created_at).getTime() + (loan.plan?.repayment_delay_days || 7) * 24 * 60 * 60 * 1000) : null);
+
+                                return (
+                                    <p className="text-justify font-bold">
+                                        Je m'engage à rembourser cette somme au plus tard le : {projectedDate ? projectedDate.toLocaleDateString('fr-FR') : 'Échéance à définir'}.
+                                    </p>
+                                );
+                            })()}
 
                             <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black">
                                 <div>
@@ -168,20 +177,34 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <button
-                            onClick={() => window.print()}
-                            className="py-4 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2"
-                        >
-                            <Printer size={18} />
-                            Version Papier
-                        </button>
-                        <button
-                            onClick={() => { setShowPreview(false); handleDownload(); }}
-                            className="py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-                        >
-                            <Download size={18} />
-                            Télécharger PDF
-                        </button>
+                        {!['pending', 'rejected'].includes(loan.status) && (
+                            <>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="py-4 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Printer size={18} />
+                                    Version Papier
+                                </button>
+                                <button
+                                    onClick={() => { setShowPreview(false); handleDownload(); }}
+                                    className="py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                                >
+                                    <Download size={18} />
+                                    Télécharger PDF
+                                </button>
+                            </>
+                        )}
+                        {['pending', 'rejected'].includes(loan.status) && (
+                            <div className="col-span-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
+                                    <Warning size={20} />
+                                </div>
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest italic leading-tight">
+                                    Téléchargement disponible dès activation du prêt
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </ConfirmModal >
