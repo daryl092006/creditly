@@ -118,7 +118,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                         payoutNetwork,
                         dueDate: formattedDueDate,
                         dueDateRaw: dueDate,
-                        serviceFee: applicableServiceFee
+                        serviceFee: applicableServiceFee,
+                        repaymentDelayDays: subscription.plan.repayment_delay_days
                     }}
                     onConfirm={handleFinalSubmit}
                     onBack={() => setStep(1)}

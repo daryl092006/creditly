@@ -24,6 +24,7 @@ interface WaiverProps {
         dueDate: string;
         dueDateRaw: Date;
         serviceFee: number;
+        repaymentDelayDays: number;
     };
     onConfirm: (personalData: PersonalData) => void;
     onBack: () => void;
@@ -94,6 +95,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                 amountInWords={amountInWords}
                 repaymentNumber={repaymentNumber}
                 applicationDate={new Date().toISOString()}
+                repaymentDelayDays={loanData.repaymentDelayDays}
             />
         );
     }, [isClient, canSubmit, userData, loanData, personalData, signature, amountInWords, repaymentNumber]);

@@ -147,7 +147,10 @@ export default async function LoanRequestPage() {
         Celtiis: settingsMap['repayment_phone_celtiis'] || '+229 01 44 14 00 67'
     }
 
-    const dueDateRaw = sub.end_date ? new Date(sub.end_date) : new Date(new Date().getTime() + (planData.repayment_delay_days || 30) * 24 * 60 * 60 * 1000)
+    // EXPERT: La date d'échéance doit être calculée selon le délai du plan (ex: 7 jours)
+    // et ne plus être calée sur la fin de l'abonnement (qui peut être dans 30 jours ou 1 jour).
+    // "ça ne compte plus par mois" -> le cycle d'abonnement est juste un accès.
+    const dueDateRaw = new Date(Date.now() + (planData.repayment_delay_days || 7) * 24 * 60 * 60 * 1000)
 
 
     return (

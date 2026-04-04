@@ -26,7 +26,7 @@ export default async function AdminLoanPage({
         .select(`
             *,
             user:users!prets_user_id_fkey(email, nom, prenom, whatsapp, telephone, birth_date, address, city, profession),
-            plan:subscription_snapshot_id(name),
+            plan:subscription_snapshot_id(name, repayment_delay_days),
             admin:users!prets_admin_id_fkey(email, nom, prenom, roles, whatsapp),
             repayments:remboursements(status)
         `)
@@ -50,7 +50,7 @@ export default async function AdminLoanPage({
 
     const rows = loans?.map(loan => {
         const { principle, fee, totalDebt, latePenalties, daysLate } = calculateLoanDebt(loan as any)
-        
+
         return {
             id: loan.id,
             user: `${loan.user?.prenom} ${loan.user?.nom} (${loan.user?.email})`,
@@ -63,6 +63,7 @@ export default async function AdminLoanPage({
             days_late: daysLate,
             amount_paid: Number(loan.amount_paid) || 0,
             plan: loan.plan?.name || 'N/A',
+            repayment_delay_days: loan.plan?.repayment_delay_days || 7, // Fallback to 7
             date: loan.request_date,
             due_date: loan.due_date,
             status: (loan.status === 'active' || loan.status === 'overdue') && (loan as any).repayments?.some((r: any) => r.status === 'pending')

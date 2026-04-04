@@ -247,9 +247,10 @@ interface LoanPDFProps {
     amountInWords: string;
     repaymentNumber: string;
     applicationDate: string;
+    repaymentDelayDays?: number;
 }
 
-export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber, applicationDate }: LoanPDFProps) => {
+export const LoanPDFDocument = ({ userData, loanData, personalData, signature, amountInWords, repaymentNumber, applicationDate, repaymentDelayDays }: LoanPDFProps) => {
     // Logique des frais :
     // - Nouveau prêt : service_fee est défini en base → on l'utilise directement
     // - Ancien prêt : service_fee null/undefined → fallback sur la date de coupure (09/03/2026 = 500 F)
@@ -259,10 +260,20 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
     const serviceFee = loanData.serviceFee != null ? loanData.serviceFee : legacyFee
     const totalToRepay = loanData.amount + serviceFee
 
-    // Duration calculation for PDF
+    // Format robust for Date or ISO string
+    const dRaw = loanData.dueDateRaw ? new Date(loanData.dueDateRaw) : new Date()
     const today = new Date()
-    const diffTime = Math.abs(loanData.dueDateRaw.getTime() - today.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Duration calculation for PDF
+    // If it's a pending loan (today == dRaw), use the plan delay if provided
+    let diffDays = 0
+    const diffTime = dRaw.getTime() - today.getTime();
+
+    if (diffTime > 0) {
+        diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } else if (repaymentDelayDays) {
+        diffDays = repaymentDelayDays
+    }
 
     return (
         <Document>

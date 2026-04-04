@@ -41,6 +41,7 @@ interface LoanRow {
     waiver_signed_at?: string;
     whatsapp?: string;
     admin: { name: string; role: string; whatsapp?: string } | null;
+    repayment_delay_days: number;
 }
 
 interface AdminLoanTableProps {
@@ -133,6 +134,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                     amountInWords={numberToFrench(amount + fee)}
                     repaymentNumber={repaymentPhones[row.payout_network as keyof typeof repaymentPhones] || repaymentPhones.MTN}
                     applicationDate={dateStr}
+                    repaymentDelayDays={row.repayment_delay_days}
                 />
             )
 
