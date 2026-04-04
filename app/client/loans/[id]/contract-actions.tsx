@@ -44,7 +44,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                         amount: loan.amount,
                         payoutPhone: loan.payout_phone || '',
                         payoutNetwork: loan.payout_network || 'MTN',
-                        dueDate: loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : 'Date à définir'
+                        dueDate: loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? `${loan.plan?.repayment_delay_days || 7} jours après déblocage` : 'Date à définir')
                     }}
                     personalData={{
                         birthDate: loan.borrower_birth_date || '',
@@ -149,7 +149,7 @@ export default function LoanContractActions({ loan, profile }: LoanContractActio
                             </div>
 
                             <p className="text-justify font-bold">
-                                Je m'engage à rembourser cette somme au plus tard le : {loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : 'Échéance à définir'}.
+                                Je m'engage à rembourser cette somme au plus tard le : {loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? `${loan.plan?.repayment_delay_days || 7} jours après déblocage` : 'Échéance à définir')}.
                             </p>
 
                             <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black">

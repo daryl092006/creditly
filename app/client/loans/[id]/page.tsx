@@ -18,7 +18,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
         .from('prets')
         .select(`
             *,
-            plan:subscription_snapshot_id(name),
+            plan:subscription_snapshot_id(name, repayment_delay_days),
             user:users!prets_user_id_fkey(email, nom, prenom)
         `)
         .eq('id', id)

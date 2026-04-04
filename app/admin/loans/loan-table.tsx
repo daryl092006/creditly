@@ -120,8 +120,8 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                         amount: amount,
                         serviceFee: fee,
                         payoutNetwork: row.payout_network || 'MTN',
-                        dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('fr-FR') : (row.status === 'pending' ? 'Délai à définir' : 'Archives'),
-                        dueDateRaw: row.due_date ? new Date(row.due_date) : new Date(),
+                        dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('fr-FR') : (row.status === 'pending' ? `${row.repayment_delay_days || 7} jours après deblocage` : 'À définir'),
+                        dueDateRaw: row.due_date ? new Date(row.due_date) : new Date(Date.now() + (row.repayment_delay_days || 7) * 24 * 60 * 60 * 1000),
                     }}
                     personalData={{
                         address: row.borrower_address || row.profile.address || '',
@@ -638,7 +638,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             <div className="text-center py-4 bg-gray-100 border-x-4 border-black font-black text-2xl underline decoration-double">
                                 {viewWaiver.due_date
                                     ? new Date(viewWaiver.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-                                    : viewWaiver.status === 'pending' ? 'À définir après approbation' : '________________'}
+                                    : viewWaiver.status === 'pending' ? `${viewWaiver.repayment_delay_days || 7} jours après déblocage` : '________________'}
                             </div>
 
                             <div className="space-y-3 bg-gray-50 p-6 border-2 border-black">
