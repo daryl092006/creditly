@@ -316,7 +316,7 @@ export default async function ClientDashboard() {
                                     </span>
                                 </div>
                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest truncate">
-                                    {latestLoan?.status === 'paid' ? 'Régularité exemplaire' : latestLoan?.status === 'active' && latestLoan.due_date
+                                    {latestLoan?.status === 'paid' ? 'Régularité exemplaire' : (latestLoan?.status === 'active' || latestLoan?.status === 'overdue') && latestLoan.due_date
                                         ? `Date limite : ${new Date(latestLoan.due_date).toLocaleDateString('fr-FR')}`
                                         : latestLoan ? `Emprunté le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Prêt à vous aider'}
                                 </p>
@@ -536,6 +536,8 @@ export default async function ClientDashboard() {
                                 defaultGuarantorNom={profile?.guarantor_nom}
                                 defaultGuarantorPrenom={profile?.guarantor_prenom}
                                 defaultGuarantorWhatsapp={profile?.guarantor_whatsapp}
+                                defaultAddress={profile?.address}
+                                defaultCity={profile?.city}
                             />
                         </div>
 

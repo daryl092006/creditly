@@ -199,20 +199,24 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 return { error: `Impossible d'approuver : Cela dépasserait le plafond (${maxAmount} F). Disponible : ${available} F.` }
             }
 
-            // Sync maturity with subscription expiry
+            // 2. Decouple due_date from subscription (New Rule: Approved Date + Repayment Delay)
             const { data: activeSub } = await supabase
                 .from('user_subscriptions')
-                .select('end_date')
+                .select('id')
                 .eq('user_id', loan.user_id)
                 .eq('status', 'active')
                 .gt('end_date', new Date().toISOString())
-                .single()
+                .maybeSingle()
 
-            if (!activeSub || !activeSub.end_date) {
-                return { error: "L'utilisateur n'a pas d'abonnement actif pour porter cette échéance." }
+            if (!activeSub) {
+                return { error: "L'utilisateur n'a pas d'abonnement actif pour valider ce prêt." }
             }
 
-            updates.due_date = activeSub.end_date
+            const delayDays = loan.snapshot?.repayment_delay_days || 7;
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + delayDays);
+
+            updates.due_date = dueDate.toISOString();
             updates.status = 'active'
 
             // CORRECTIF : Écrire service_fee dans la DB à l'approbation

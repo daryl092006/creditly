@@ -27,22 +27,17 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
     let daysLate = 0;
 
     if (loan.status === 'overdue' && loan.due_date) {
-        const createDate = new Date(loan.created_at);
-        const penaltyStartDate = new Date('2026-04-02');
+        // Late penalties apply based on the loan's due date
+        const dueDate = new Date(loan.due_date);
+        const today = new Date();
 
-        // Business Rule: Late penalties apply only to loans created starting from April 2nd, 2026
-        if (createDate >= penaltyStartDate) {
-            const dueDate = new Date(loan.due_date);
-            const today = new Date();
+        if (today > dueDate) {
+            const diffTime = today.getTime() - dueDate.getTime();
+            daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            if (today > dueDate) {
-                const diffTime = today.getTime() - dueDate.getTime();
-                daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-                if (daysLate > 0) {
-                    // Calculation: 1% of the remaining base debt per day
-                    latePenalties = Math.max(0, baseDebt * penaltyRatePerDay * daysLate);
-                }
+            if (daysLate > 0) {
+                // Calculation: 1% of the remaining base debt per day
+                latePenalties = Math.max(0, baseDebt * penaltyRatePerDay * daysLate);
             }
         }
     }
