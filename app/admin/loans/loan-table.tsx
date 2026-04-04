@@ -656,7 +656,11 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                             <div className="space-y-3 bg-gray-50 p-6 border-2 border-black">
                                 <p className="text-[10px] font-black uppercase border-b border-black pb-1 mb-2">Clauses et Engagements</p>
                                 <p className="text-[11px] italic leading-tight">1. Le débiteur reconnaît que cette dette est certaine, liquide et exigible à l'échéance indiquée.</p>
-                                <p className="text-[11px] italic leading-tight">2. Tout retard excédant 48h après l'échéance pourra entraîner l'application de pénalités forfaitaires.</p>
+                                {new Date(viewWaiver.date) >= new Date('2026-04-02') ? (
+                                    <p className="text-[11px] italic leading-tight">2. Tout retard excédant 48h après l'échéance pourra entraîner l'application de pénalités forfaitaires.</p>
+                                ) : (
+                                    <p className="text-[11px] italic leading-tight">2. Le respect de la date d'échéance est impératif pour l'éligibilité aux prochains micro-crédits.</p>
+                                )}
                                 <p className="text-[11px] italic leading-tight">3. Le présent document constitue un titre de créance permettant d'engager toute procédure de recouvrement.</p>
                                 {viewWaiver.service_fee! >= 500 && (
                                     <p className="text-[11px] italic leading-tight">4. Tout versement supérieur au montant total dû est considéré comme une pénalité de traitement non-remboursable.</p>

@@ -184,7 +184,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
                         <p>
                             Je reconnais que cette somme constitue une de dette certaine, liquide et exigible et je m’engage à la rembourser en totalité, sans intérêt supplémentaire, au plus tard le :
-                            <strong className="text-slate-900 ml-2 italic">{loanData.dueDate}</strong> <span className="text-blue-600 font-bold italic ml-1">(soit dans {diffDays} jours)</span>.
+                            <strong className="text-slate-900 ml-2 italic">{loanData.dueDate}</strong>.
                         </p>
 
                         <div className="space-y-3">
@@ -195,9 +195,9 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                                 Numéro de réception : <strong className="text-blue-600 italic font-black">{repaymentNumber}</strong>
                             </p>
                             <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
-                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest leading-none mb-1 italic">Règle de retard (Nouveau)</p>
+                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest leading-none mb-1 italic">Règle de retard</p>
                                 <p className="text-[10px] text-slate-500 font-bold italic">
-                                    Tout retard au-delà de l'échéance entraîne des pénalités de 1% par jour de retard (dès le 02/04/2026).
+                                    Tout retard au-delà de l'échéance entraîne des pénalités de 1% par jour de retard.
                                 </p>
                             </div>
                         </div>
@@ -371,7 +371,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
 
                         <p className="text-justify">
                             Je m'engage formellement et irrévocablement à rembourser l'intégralité de cette somme au profit de <strong>Creditly</strong>, par transfert via le réseau <strong>{loanData.payoutNetwork}</strong> au numéro référencé <strong>{repaymentNumber}</strong>, au plus tard le :
-                            <strong className="underline ml-1">{loanData.dueDate}</strong> <span className="italic">(soit dans {diffDays} jours)</span>.
+                            <strong className="underline ml-1">{loanData.dueDate}</strong>.
                         </p>
 
                         <div className="grid grid-cols-1 gap-6 pt-8">
@@ -379,7 +379,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                                 <h3 className="text-[10px] font-black uppercase tracking-widest border-b border-gray-300 pb-1">Clauses et Engagements</h3>
                                 <div className="grid grid-cols-1 gap-3 text-[9px] text-gray-600 italic leading-snug">
                                     <p>1. Le débiteur reconnaît que cette dette est certaine, liquide et exigible à l'échéance indiquée.</p>
-                                    <p>2. Tout retard au-delà de l'échéance entraîne des pénalités de 1% par jour de retard (règle applicable aux contrats du 02/04/2026).</p>
+                                    <p>2. Tout retard au-delà de l'échéance entraîne des pénalités de 1% par jour de retard.</p>
                                     <p>3. Le présent document constitue un titre de créance permettant d'engager toute procédure de recouvrement légale nécessaire.</p>
                                     <p>4. La signature numérique apposée ci-dessous a la même valeur juridique qu'une signature manuscrite.</p>
                                     <p>5. Tout versement égal au montant total dû solde officiellement votre créance.</p>

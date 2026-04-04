@@ -162,9 +162,6 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                                             <p className="text-2xl font-black text-white italic tracking-tighter">
                                                 {dueDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
                                             </p>
-                                            {loan.status === 'pending' && (
-                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1 opacity-50">Basé sur un délai de {loan.plan?.repayment_delay_days || 7} jours</p>
-                                            )}
                                         </div>
                                     </div>
                                 );

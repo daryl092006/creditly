@@ -332,12 +332,12 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                     </Text>
                 </View>
 
-                <Text style={styles.dueDate}>{loanData.dueDate} (soit dans {diffDays} jours)</Text>
+                <Text style={styles.dueDate}>{loanData.dueDate}</Text>
 
                 <View style={styles.clauseBox}>
                     <Text style={styles.clauseTitle}>Clauses et Engagements</Text>
                     <Text style={styles.clauseText}>1. Le débiteur reconnaît que cette dette est certaine, liquide et exigible à l'échéance indiquée.</Text>
-                    <Text style={styles.clauseText}>2. Tout retard excédant 48h après l'échéance pourra entraîner l'application de pénalités forfaitaires.</Text>
+                    <Text style={styles.clauseText}>2. Tout retard au-delà de l'échéance entraîne des pénalités de 1% par jour de retard.</Text>
                     <Text style={styles.clauseText}>3. Le présent document constitue un titre de créance permettant d'engager toute procédure de recouvrement.</Text>
                     <Text style={styles.clauseText}>4. La signature numérique apposée ci-dessous a la même valeur juridique qu'une signature manuscrite.</Text>
                     {serviceFee > 0 && <Text style={styles.clauseText}>5. Tout versement égal au montant total dû solde votre créance.</Text>}
@@ -374,6 +374,6 @@ export const LoanPDFDocument = ({ userData, loanData, personalData, signature, a
                     </Text>
                 </View>
             </Page>
-        </Document>
+        </Document >
     );
 };
