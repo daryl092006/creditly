@@ -278,23 +278,7 @@ export default function LoanWaiver({ userData, loanData, onConfirm, onBack, load
                         <Printer size={20} />
                         Imprimer
                     </button>
-                    {isClient && canSubmit && pdfDoc && (
-                        <div className="flex flex-col gap-1">
-                            <PDFDownloadLink
-                                document={pdfDoc}
-                                fileName={`Contrat_Creditly_${userData.nom}_${new Date().getTime()}.pdf`}
-                                className="w-full py-3 px-6 bg-emerald-600 text-white font-black text-[10px] uppercase italic tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all text-center flex items-center justify-center gap-2"
-                            >
-                                {({ loading: pdfLoading, error: pdfError }) => (
-                                    <>
-                                        <Download size={16} />
-                                        {pdfLoading ? 'Préparation...' : pdfError ? 'Erreur PDF' : 'Télécharger PDF Pro'}
-                                    </>
-                                )}
-                            </PDFDownloadLink>
-                            <p className="text-[8px] text-slate-500 text-center italic">Document officiel certifié</p>
-                        </div>
-                    )}
+                    {/* PDF Download removed - only available after approval from dashboard */}
                     {isClient && !canSubmit && (
                         <div className="p-3 bg-slate-900/50 border border-white/5 rounded-xl text-center">
                             <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest italic">Remplissez le formulaire <br /> pour débloquer le PDF</p>

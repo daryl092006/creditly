@@ -161,7 +161,7 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                     {/* Right Column: Conditions or Contract */}
                     <div className="space-y-8">
                         {/* Contract Section - Only if signed */}
-                        {loan.waiver_signed_at && (
+                        {loan.waiver_signed_at && !['pending', 'rejected'].includes(loan.status) && (
                             <div className="glass-panel p-10 space-y-6 bg-blue-600/5 border-blue-500/20 text-left relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
                                 <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2 italic relative z-10">
