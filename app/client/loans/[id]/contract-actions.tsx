@@ -1,0 +1,213 @@
+'use client'
+
+import { useState } from 'react'
+import { Download, Printer, Document, Warning } from '@carbon/icons-react'
+import { pdf } from '@react-pdf/renderer'
+import { LoanPDFDocument } from '../request/loan-pdf'
+import { numberToFrench } from '@/utils/formatters'
+import ConfirmModal from '@/app/components/ui/ConfirmModal'
+import { Logo } from '@/app/components/ui/Logo'
+
+interface LoanContractActionsProps {
+    loan: any;
+    profile: any;
+}
+
+export default function LoanContractActions({ loan, profile }: LoanContractActionsProps) {
+    const [downloading, setDownloading] = useState(false)
+    const [showPreview, setShowPreview] = useState(false)
+
+    // CUTOFF_DATE: Loans before March 8th, 2026 don't have waivers
+    const CUTOFF_DATE = new Date('2026-03-08T00:00:00')
+    const loanDate = new Date(loan.created_at)
+    const hasWaiver = loanDate >= CUTOFF_DATE
+
+    // FEE_START_DATE logic synchronized with admin and request side
+    const FEE_START_DATE = new Date('2026-03-09T00:00:00')
+    const hasFee = loanDate >= FEE_START_DATE
+    const totalAmount = hasFee ? (loan.amount + 500) : loan.amount
+    const amountInWords = numberToFrench(totalAmount)
+
+    const handleDownload = async () => {
+        try {
+            setDownloading(true)
+
+            const doc = (
+                <LoanPDFDocument
+                    applicationDate={loan.created_at}
+                    userData={{
+                        nom: profile.nom,
+                        prenom: profile.prenom,
+                        email: profile.email
+                    }}
+                    loanData={{
+                        amount: loan.amount,
+                        payoutPhone: loan.payout_phone || '',
+                        payoutNetwork: loan.payout_network || 'MTN',
+                        dueDate: loan.due_date ? new Date(loan.due_date).toLocaleDateString('fr-FR') : (loan.status === 'pending' ? new Date(new Date(loan.created_at).getTime() + (loan.plan?.repayment_delay_days || 7) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR') : 'Date à définir')
+                    }}
+                    personalData={{
+                        birthDate: loan.borrower_birth_date || '',
+                        address: loan.borrower_address || '',
+                        idDetails: loan.borrower_id_details || '',
+                        city: loan.borrower_city || '',
+                        profession: loan.borrower_profession || ''
+                    }}
+                    signature={loan.waiver_signed_at ? `${profile.prenom} ${profile.nom}` : 'SIGNATURE DIGITALE'}
+                    amountInWords={amountInWords}
+                    repaymentNumber={loan.repayment_phone || '+229 01 53 32 44 90'}
+                />
+            )
+
+            const blob = await pdf(doc).toBlob()
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `Contrat_Creditly_${profile.nom}_${loan.id.substring(0, 8)}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('PDF Generation Error:', err)
+            alert('Erreur lors de la génération du PDF. Veuillez réessayer.')
+        } finally {
+            setDownloading(false)
+        }
+    }
+
+    if (!hasWaiver) {
+        return (
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500/50">
+                    <Warning size={20} />
+                </div>
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 italic">Contrat indisponible</p>
+                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.2em]">Archives antérieures au 08/03/2026</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <>
+            <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                    onClick={() => setShowPreview(true)}
+                    className="flex-1 py-4 px-6 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+                >
+                    <Document size={18} />
+                    Aperçu Contrat
+                </button>
+                {!['pending', 'rejected'].includes(loan.status) && (
+                    <button
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className={`flex-1 py-4 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${downloading
+                            ? 'bg-emerald-500 text-white animate-pulse'
+                            : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
+                            }`}
+                    >
+                        <Download size={18} />
+                        {downloading ? 'Génération...' : 'Télécharger PDF'}
+                    </button>
+                )}
+            </div>
+
+            {/* Preview Modal matching Admin UX but simplified for client */}
+            <ConfirmModal
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                title="MON CONTRAT CERTIFIÉ"
+                description={`Visualisation du contrat N° ${loan.id.substring(0, 8).toUpperCase()}`}
+                hideButtons={true}
+                maxWidth="lg"
+            >
+                <div className="space-y-6">
+                    <div className="max-h-[60vh] overflow-y-auto p-8 bg-white text-black font-serif rounded-2xl shadow-inner text-xs leading-relaxed relative">
+                        {/* Watermark */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-[0.1] select-none text-[80px] font-black z-0 uppercase tracking-tighter">
+                            CERTIFIÉ
+                        </div>
+
+                        <div className="relative z-10 space-y-6">
+                            <div className="flex justify-between items-start border-b border-black pb-4">
+                                <Logo size="sm" className="grayscale contrast-200 brightness-0" />
+                                <div className="text-right">
+                                    <p className="font-black">CONTRAT CERTIFIÉ</p>
+                                    <p className="text-[10px] italic">Signé le {loan.waiver_signed_at ? new Date(loan.waiver_signed_at).toLocaleDateString('fr-FR') : 'En attente de signature'}</p>
+                                </div>
+                            </div>
+
+                            <p className="text-justify italic">
+                                Je soussigné(e), Monsieur/Madame <strong>{profile.prenom} {profile.nom}</strong>, reconnais avoir contracté d'un prêt de <strong>{loan.amount.toLocaleString('fr-FR')} FCFA</strong>
+                                {hasFee ? <> (majoré de 500 F de frais)</> : ''}.
+                            </p>
+
+                            <div className="p-4 bg-gray-50 border-2 border-double border-black text-center">
+                                <p className="text-2xl font-black italic">{totalAmount.toLocaleString('fr-FR')} FCFA</p>
+                                <p className="text-[8px] font-black uppercase text-gray-500 mt-1">{amountInWords} FRANCS CFA</p>
+                            </div>
+
+                            {(() => {
+                                const projectedDate = loan.due_date ? new Date(loan.due_date) :
+                                    (loan.status === 'pending' ? new Date(new Date(loan.created_at).getTime() + (loan.plan?.repayment_delay_days || 7) * 24 * 60 * 60 * 1000) : null);
+
+                                return (
+                                    <p className="text-justify font-bold">
+                                        Je m'engage à rembourser cette somme au plus tard le : {projectedDate ? projectedDate.toLocaleDateString('fr-FR') : 'Échéance à définir'}.
+                                    </p>
+                                );
+                            })()}
+
+                            <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black">
+                                <div>
+                                    <p className="font-black text-[10px] uppercase underline">Débiteur</p>
+                                    <p className="mt-2 font-black italic text-blue-800">{profile.prenom} {profile.nom}</p>
+                                    <p className="text-[8px] opacity-50">ID: {loan.id.substring(0, 16)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-black text-[10px] uppercase underline">Créancier</p>
+                                    <p className="mt-2 font-black">CREDITLY GROUP</p>
+                                    <p className="text-[8px] text-emerald-600 font-bold uppercase">Approuvé & Certifié</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {!['pending', 'rejected'].includes(loan.status) && (
+                            <>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="py-4 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Printer size={18} />
+                                    Version Papier
+                                </button>
+                                <button
+                                    onClick={() => { setShowPreview(false); handleDownload(); }}
+                                    className="py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                                >
+                                    <Download size={18} />
+                                    Télécharger PDF
+                                </button>
+                            </>
+                        )}
+                        {['pending', 'rejected'].includes(loan.status) && (
+                            <div className="col-span-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
+                                    <Warning size={20} />
+                                </div>
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest italic leading-tight">
+                                    Téléchargement disponible dès activation du prêt
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </ConfirmModal >
+        </>
+    )
+}

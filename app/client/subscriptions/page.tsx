@@ -1,0 +1,232 @@
+import { createClient } from '@/utils/supabase/server'
+import SubscribeButton from './SubscribeButton'
+import Link from 'next/link'
+import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt, Calendar } from '@carbon/icons-react'
+import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
+
+export default async function SubscriptionsPage() {
+    const supabase = await createClient()
+    // Lazy update of system statuses
+    await supabase.rpc('auto_update_system_statuses')
+
+    const { data: plans } = await supabase.from('abonnements').select('*').order('price')
+    const quotasStatus = await checkGlobalQuotasStatus()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: allSubsRaw } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }) : { data: [] }
+
+    // Expert Check: Override plan data with original snapshots if they exist so the user sees exactly what they paid for
+    const allSubs = (allSubsRaw || []).map((sub: any) => ({
+        ...sub,
+        plan: {
+            ...sub.plan,
+            name: sub.snapshot_name ?? sub.plan?.name,
+            price: sub.snapshot_price ?? sub.plan?.price,
+            max_loan_amount: sub.snapshot_max_loan_amount ?? sub.plan?.max_loan_amount,
+            max_loans_per_month: sub.snapshot_max_loans_per_month ?? sub.plan?.max_loans_per_month,
+            repayment_delay_days: sub.snapshot_repayment_delay_days ?? sub.plan?.repayment_delay_days,
+            duration_days: sub.snapshot_duration_days ?? sub.plan?.duration_days ?? 30,
+            service_fee: sub.snapshot_service_fee ?? sub.plan?.service_fee
+        }
+    }))
+
+    const { data: activeLoans } = user ? await supabase.from('prets').select('id').eq('user_id', user.id).in('status', ['active', 'overdue']) : { data: null }
+
+    const hasUnpaidLoans = activeLoans ? activeLoans.length > 0 : false;
+
+    const now = new Date().toISOString()
+    const activeSub = allSubs?.find((s: any) => s.status === 'active' && s.end_date && s.end_date > now)
+
+    // Check if the current active subscription is exhausted (benefits used up)
+    let isExhausted = false;
+    if (activeSub && user) {
+        const { data: loansTakenData } = await supabase
+            .from('prets')
+            .select('amount, created_at')
+            .eq('user_id', user.id)
+            .gte('created_at', activeSub.start_date)
+            .in('status', ['approved', 'active', 'paid', 'overdue']);
+
+        const loansCount = loansTakenData?.length || 0;
+        const totalAmountTaken = loansTakenData?.reduce((acc, l) => acc + Number(l.amount), 0) || 0;
+
+        const maxLoans = activeSub.snapshot_max_loans_per_month || activeSub.plan?.max_loans_per_month || 1;
+        const maxAmount = activeSub.snapshot_max_loan_amount || activeSub.plan?.max_loan_amount || 0;
+
+        if (loansCount >= maxLoans || (maxAmount > 0 && totalAmountTaken >= maxAmount)) {
+            isExhausted = true;
+        }
+    }
+
+    const expiredSub = !activeSub ? allSubs?.find((s: any) => (s.status === 'expired' || s.status === 'active') && s.end_date && s.end_date <= now) : null
+    const pendingSub = allSubs?.find((s: any) => s.status === 'pending')
+    const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
+
+    // Days remaining on active subscription (for urgency display)
+    const activeSubExpiresInDays = activeSub?.end_date
+        ? Math.ceil((new Date(activeSub.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        : null
+    const activeSubIsExpiring = activeSubExpiresInDays !== null && activeSubExpiresInDays <= 3 && activeSubExpiresInDays > 0
+
+    const getPlanIcon = (name: string) => {
+        if (name === 'Platinum') return <Rocket size={32} />
+        if (name === 'Haut de gamme') return <Flash size={32} />
+        return <Star size={32} />
+    }
+
+    return (
+        <div className="py-12 md:py-24 page-transition">
+            <div className="main-container">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 mb-20">
+                    <div className="space-y-6">
+                        <Link href="/client/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-blue-400 transition-colors group">
+                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                            Retour à l&apos;accueil
+                        </Link>
+                        <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
+                            Mes <br /><span className="premium-gradient-text uppercase">Avantages.</span>
+                        </h1>
+                        <p className="text-slate-500 font-bold text-lg italic max-w-xl leading-relaxed">
+                            Choisissez un forfait pour pouvoir demander plus d&apos;argent plus vite.
+                        </p>
+                        {!activeSub && (
+                            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 animate-fade-in shadow-lg shadow-amber-500/5">
+                                <Star size={20} className="animate-pulse" />
+                                <span className="text-xs font-black uppercase tracking-widest">
+                                    Les demandes sont limitées chaque mois pour que tout le monde soit servi.
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-4 items-end">
+                        {pendingSub && (
+                            <div className="glass-panel p-6 bg-blue-500/5 border-blue-500/20 flex items-center gap-6 animate-pulse">
+                                <div className="w-12 h-12 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center border border-blue-500/30">
+                                    <Flash size={24} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">On vérifie</p>
+                                    <p className="text-lg font-black text-white uppercase italic">Plan {pendingSub.plan?.name || '...'}</p>
+                                    <p className="text-[10px] font-bold text-slate-300 uppercase italic">
+                                        Somme envoyée : {Number(pendingSub.amount_paid || 0).toLocaleString('fr-FR')} FCFA
+                                    </p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Vérification de la preuve en cours...</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {rejectedSub && (
+                            <div className="glass-panel p-6 bg-red-600/10 border-red-500/30 flex items-center gap-6 animate-shake shadow-xl shadow-red-500/10">
+                                <div className="w-14 h-14 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center">
+                                    <Misuse size={32} className="animate-pulse" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1 italic">Paiement non validé</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter">Plan {rejectedSub.plan?.name || '...'}</p>
+                                    <p className="text-[10px] font-bold text-red-400 uppercase italic">
+                                        Raison : {rejectedSub.rejection_reason || 'Preuve de paiement non conforme'}
+                                    </p>
+                                    <p className="text-[8px] font-black text-slate-500 uppercase italic mt-1 font-mono tracking-widest leading-none">Choisissez un forfait pour reessayer</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSub && (
+                            <div className="glass-panel p-6 bg-emerald-500/5 border-emerald-500/20 flex items-center gap-6 animate-fade-in shadow-xl shadow-emerald-500/5">
+                                <div className="w-14 h-14 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center">
+                                    <CheckmarkOutline size={32} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Actif</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {activeSub.plan?.name || '...'}</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {activeSub.end_date ? new Date(activeSub.end_date).toLocaleDateString('fr-FR') : '...'}</p>
+                                    {activeSubIsExpiring && (
+                                        <p className={`text-[10px] font-black uppercase tracking-widest mt-1 animate-pulse ${activeSubExpiresInDays === 1 ? 'text-red-500' : 'text-amber-400'}`}>
+                                            {activeSubExpiresInDays === 1
+                                                ? '🚨 Expire demain — Renouvelez maintenant !'
+                                                : `⏳ J-${activeSubExpiresInDays} — Pensez à renouveler`}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {expiredSub && (
+                            <div className="glass-panel p-6 bg-red-500/5 border-red-500/20 flex items-center gap-6 animate-fade-in shadow-xl shadow-red-500/5">
+                                <div className="w-14 h-14 bg-red-600/20 text-red-400 border border-red-500/30 rounded-2xl flex items-center justify-center">
+                                    <Star size={32} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-red-400 uppercase tracking-widest italic">Statut : Expiré</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {expiredSub.plan?.name || '...'}</p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Veuillez renouveler votre accès</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-10">
+                    {plans?.map((plan: any) => (
+                        <div key={plan.id} className={`glass-panel p-10 flex flex-col items-center text-center relative overflow-hidden group transition-all duration-700 hover:-translate-y-4 bg-slate-900/50 border-slate-800 w-full max-w-[320px] ${plan.name === 'Platinum' ? 'border-blue-500/30 bg-blue-600/5' : ''}`}>
+                            {plan.name === 'Platinum' && (
+                                <div className="absolute -right-12 top-10 rotate-45 bg-blue-600 text-white text-[8px] font-black px-12 py-1.5 uppercase tracking-[0.4em] z-20 shadow-lg shadow-blue-600/20">PREMIUM</div>
+                            )}
+
+                            <div className="mb-12 space-y-6 relative z-10 flex flex-col items-center">
+                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${plan.id === activeSub?.plan_id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-white border border-white/5 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:scale-110 shadow-xl'}`}>
+                                    {getPlanIcon(plan.name)}
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-1 leading-none">{plan.name}</h3>
+                                    <div className="flex items-baseline justify-center gap-1">
+                                        <span className="text-3xl font-black premium-gradient-text italic tracking-tighter">{(plan.price || 0).toLocaleString('fr-FR')}</span>
+                                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">FCFA / mois</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
+                                {[
+                                    { text: `Crédit ${plan.max_loans_per_month} fois / mois`, icon: <Star size={16} /> },
+                                    { text: `Limite ${(plan.max_loan_amount || 0).toLocaleString('fr-FR')} FCFA`, icon: <Rocket size={16} /> },
+                                    { text: `Délai ${plan.repayment_delay_days} jours après prêt`, icon: <Flash size={16} /> },
+                                    { text: `Accès valide ${plan.duration_days || 30} jours`, icon: <Calendar size={16} /> }
+                                ].map((feature, i) => (
+                                    <div key={i} className="flex items-center justify-center gap-4 group/feat">
+                                        <div className="text-slate-600 group-hover/feat:text-blue-500 transition-colors shrink-0">{feature.icon}</div>
+                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-tight group-hover/feat:text-slate-200 transition-colors italic text-left">{feature.text}</span>
+                                    </div>
+                                ))}
+
+                                {quotasStatus[plan.id]?.reached && (
+                                    <div className="mt-8 px-4 py-5 rounded-2xl bg-red-500/5 border border-red-500/20 text-center animate-fade-in shadow-lg shadow-red-500/5">
+                                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-relaxed italic mb-1">
+                                            ⚠️ OFFRE SATURÉE CE MOIS-CI
+                                        </p>
+                                        <p className="text-[8px] text-slate-400 italic font-bold leading-tight">
+                                            Le quota maximum de clients a été atteint. <br />
+                                            Revenez le <span className="text-white">1er du mois prochain</span> pour souscrire.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="relative z-10 w-full">
+                                <SubscribeButton
+                                    planId={plan.id}
+                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id && !isExhausted) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans}
+                                    isModification={!!activeSub && activeSub.plan_id !== plan.id}
+                                    isQuotaFull={!!quotasStatus[plan.id]?.reached}
+                                    hasUnpaidLoans={hasUnpaidLoans}
+                                    isExhausted={isExhausted && activeSub?.plan_id === plan.id}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}

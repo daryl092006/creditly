@@ -1,0 +1,162 @@
+'use server'
+
+import { createClient, createAdminClient } from '@/utils/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
+import { sendAdminNotification, sendUserEmail } from '@/utils/email-service'
+
+export async function submitKyc(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: "Vous devez être connecté pour soumettre votre dossier KYC." }
+    }
+
+    // Process any missing profile updates from formData
+    const updates: Record<string, any> = {}
+    const fields = ['nom', 'prenom', 'birth_date', 'whatsapp', 'profession', 'guarantor_nom', 'guarantor_prenom', 'guarantor_whatsapp']
+    for (const field of fields) {
+        if (formData.has(field) && formData.get(field)) {
+            updates[field] = formData.get(field)
+        }
+    }
+
+    // Check whatsapp uniqueness if provided
+    if (updates.whatsapp) {
+        const { data: existingPhone, error: phoneError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('whatsapp', updates.whatsapp)
+            .neq('id', user.id)
+            .maybeSingle()
+
+        if (existingPhone) {
+            return { error: "Ce numéro WhatsApp est déjà utilisé par un autre compte." }
+        }
+    }
+
+    if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase.from('users').update(updates).eq('id', user.id)
+        if (updateError) {
+            return { error: "Erreur lors de la mise à jour de vos informations. Vérifiez le format des données." }
+        }
+    }
+
+    // Verify after potential updates
+    const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+    if (!profile.nom || !profile.prenom || !profile.birth_date || !profile.whatsapp || !profile.profession || !profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
+        return { error: "Veuillez remplir toutes les informations d'identité demandées." }
+    }
+
+    const idCard = formData.get('id_card') as File
+    const selfie = formData.get('selfie') as File
+    const proofOfResidence = formData.get('proof_of_residence') as File
+
+    if (!idCard || !selfie || !proofOfResidence || idCard.size === 0 || selfie.size === 0 || proofOfResidence.size === 0) {
+        return { error: "Veuillez fournir les trois documents requis (ID, Selfie, Preuve de résidence)." }
+    }
+
+    const userId = user.id
+
+    // Utilisation d'un client admin pour l'upload car les permissions RLS sur Storage sont souvent restrictives
+    const adminSupabase = await createAdminClient()
+
+    const uploadDoc = async (file: File, type: string) => {
+        // Robustesse Safari/Navigateurs Mobiles : détection d'extension améliorée
+        let fileExt = 'jpg' // Valeur par défaut si rien n'est trouvé
+        const originalName = file.name || ''
+
+        if (originalName.includes('.')) {
+            fileExt = originalName.split('.').pop()?.toLowerCase() || 'jpg'
+        } else if (file.type) {
+            // Utilisation du type MIME si le nom de fichier est générique
+            fileExt = file.type.split('/').pop()?.toLowerCase() || 'jpg'
+        }
+
+        // Cas particuliers et normalisations
+        if (fileExt === 'jpeg') fileExt = 'jpg'
+        if (fileExt === 'heic' || fileExt === 'heif') fileExt = 'jpg'
+        if (fileExt === 'octet-stream') fileExt = 'bin' // Fichiers binaires génériques
+
+        const fileName = `${userId}/${type}_${Date.now()}.${fileExt}`
+
+        if (file.size === 0) {
+            throw new Error(`Le fichier téléchargé est vide.`)
+        }
+
+        // Limite fixée à 10Mo par fichier
+        if (file.size > 10 * 1024 * 1024) {
+            throw new Error(`Le fichier ${originalName || type} dépasse la limite autorisée de 10Mo.`)
+        }
+
+        const { data, error } = await adminSupabase.storage
+            .from('kyc-documents')
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: file.type
+            })
+
+        if (error) {
+            throw new Error(getUserFriendlyErrorMessage(error))
+        }
+        return data.path
+    }
+
+    try {
+        console.log(`[KYC] Starting parallel submission for user ${userId}`);
+
+        // Parallel uploads for maximum speed
+        const [idCardPath, selfiePath, proofPath] = await Promise.all([
+            uploadDoc(idCard, 'id_card'),
+            uploadDoc(selfie, 'selfie'),
+            uploadDoc(proofOfResidence, 'proof_of_residence')
+        ]);
+
+        console.log(`[KYC] All documents uploaded. Updating database...`);
+
+        // Insertion ou Mise à jour du dossier (Upsert sur user_id)
+        const { error: dbError } = await adminSupabase.from('kyc_submissions').upsert(
+            {
+                user_id: userId,
+                id_card_url: idCardPath,
+                selfie_url: selfiePath,
+                proof_of_residence_url: proofPath,
+                status: 'pending',
+                admin_notes: null,
+                reviewed_at: null,
+                admin_id: null
+            },
+            { onConflict: 'user_id' }
+        )
+
+        if (dbError) {
+            return { error: getUserFriendlyErrorMessage(dbError) }
+        }
+
+        // 3. Notify Admin & User (Async)
+        const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
+
+        Promise.all([
+            sendAdminNotification('KYC_SUBMISSION', {
+                userEmail: user.email!,
+                userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
+            }),
+            sendUserEmail('KYC_SUBMISSION_RECEIVED', {
+                email: user.email!,
+                name: profile ? `${profile.prenom} ${profile.nom}` : user.email!
+            })
+        ]).catch((err: any) => console.error('Notification Error:', err))
+
+        revalidatePath('/client/dashboard')
+        revalidatePath('/admin/kyc')
+
+        console.log(`[KYC] Submission completed successfully for user ${userId}`);
+        return { success: true }
+    } catch (e: any) {
+        console.error(`[KYC] Error during submission for user ${userId}:`, e);
+        return { error: e.message || "Une erreur est survenue lors du téléversement." }
+    }
+}
