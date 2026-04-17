@@ -164,6 +164,15 @@ export default async function ClientDashboard() {
         (new Date(l.due_date).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000)
     ) || []
 
+    // Subscription expiry alert (≤ 3 days)
+    const subExpiresInMs = activeSub?.end_date
+        ? new Date(activeSub.end_date).getTime() - new Date().getTime()
+        : null
+    const subExpiresInDays = subExpiresInMs !== null
+        ? Math.ceil(subExpiresInMs / (1000 * 60 * 60 * 24))
+        : null
+    const showSubExpiryAlert = subExpiresInDays !== null && subExpiresInDays <= 3 && subExpiresInDays > 0
+
 
     return (
         <div className="py-12 md:py-24 page-transition">
@@ -227,6 +236,43 @@ export default async function ClientDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Subscription Expiry Alert */}
+                {showSubExpiryAlert && (
+                    <div className="mb-6 animate-fade-in">
+                        <Link
+                            href="/client/subscriptions"
+                            className={`flex items-center gap-4 p-6 rounded-3xl group transition-all ${
+                                subExpiresInDays === 1
+                                    ? 'bg-red-500/10 border border-red-500/20 hover:bg-red-500/20'
+                                    : 'bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20'
+                            }`}
+                        >
+                            <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-lg shrink-0 ${
+                                subExpiresInDays === 1 ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'
+                            }`}>
+                                <Flash size={24} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 ${
+                                    subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
+                                }`}>
+                                    {subExpiresInDays === 1
+                                        ? '🚨 Dernier jour — Abonnement expire demain'
+                                        : `⏳ J-${subExpiresInDays} — Votre abonnement expire bientôt`}
+                                </p>
+                                <p className="text-sm font-bold text-white italic truncate">
+                                    Plan {activeSub?.plan?.name} — Échéance le {new Date(activeSub!.end_date).toLocaleDateString('fr-FR')}. Renouvelez maintenant pour éviter l'interruption.
+                                </p>
+                            </div>
+                            <div className={`font-black italic uppercase text-[10px] tracking-widest group-hover:translate-x-2 transition-transform shrink-0 ${
+                                subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
+                            }`}>
+                                Renouveler →
+                            </div>
+                        </Link>
+                    </div>
+                )}
 
                 {/* Imminent Deadlines Alert */}
                 {imminentDeadlines.length > 0 && (

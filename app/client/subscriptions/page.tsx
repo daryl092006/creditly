@@ -62,6 +62,12 @@ export default async function SubscriptionsPage() {
     const pendingSub = allSubs?.find((s: any) => s.status === 'pending')
     const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
 
+    // Days remaining on active subscription (for urgency display)
+    const activeSubExpiresInDays = activeSub?.end_date
+        ? Math.ceil((new Date(activeSub.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        : null
+    const activeSubIsExpiring = activeSubExpiresInDays !== null && activeSubExpiresInDays <= 3 && activeSubExpiresInDays > 0
+
     const getPlanIcon = (name: string) => {
         if (name === 'Platinum') return <Rocket size={32} />
         if (name === 'Haut de gamme') return <Flash size={32} />
@@ -135,6 +141,13 @@ export default async function SubscriptionsPage() {
                                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Statut : Actif</p>
                                     <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {activeSub.plan?.name || '...'}</p>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {activeSub.end_date ? new Date(activeSub.end_date).toLocaleDateString('fr-FR') : '...'}</p>
+                                    {activeSubIsExpiring && (
+                                        <p className={`text-[10px] font-black uppercase tracking-widest mt-1 animate-pulse ${activeSubExpiresInDays === 1 ? 'text-red-500' : 'text-amber-400'}`}>
+                                            {activeSubExpiresInDays === 1
+                                                ? '🚨 Expire demain — Renouvelez maintenant !'
+                                                : `⏳ J-${activeSubExpiresInDays} — Pensez à renouveler`}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         )}

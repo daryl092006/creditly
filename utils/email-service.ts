@@ -1,11 +1,74 @@
+import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const resendDaryl = new Resend(process.env.RESEND_API_KEY_DARYL || process.env.RESEND_API_KEY);
+// ─────────────────────────────────────────────────────────────────
+// ARCHITECTURE EMAIL CREDITLY
+// ─────────────────────────────────────────────────────────────────
+// 🔴 ADMIN  → Resend (onboarding@resend.dev → creditly001@gmail.com)
+//    Utilisé pour : Notifs d'action client (prêt, remboursement, KYC)
+//    Fonctionne SANS domaine car Resend envoie AU compte owner (creditly001@gmail.com)
+//
+// 🔵 CLIENT → Gmail SMTP (creditly001@gmail.com → n'importe quel client)
+//    Utilisé pour : Approbations, rejets, rappels, abonnements
+//    Fonctionne SANS domaine via l'App Password Gmail
+// ─────────────────────────────────────────────────────────────────
 
-const adminEmail = process.env.ADMIN_EMAIL || 'creditly001@gmail.com';
-const OWNER_EMAIL = 'creditly001@gmail.com';
-const ADMIN_EMAILS_LIST = ['creditly001@gmail.com', 'darylggt23@gmail.com'];
+const GMAIL_USER = process.env.GMAIL_USER || 'creditly001@gmail.com';
+const ADMIN_EMAILS_LIST = [GMAIL_USER, 'darylggt23@gmail.com'];
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+function createGmailTransport() {
+    if (!process.env.GMAIL_APP_PASSWORD) return null;
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+    });
+}
+
+/**
+ * 🔴 NOTIF ADMIN — via Resend
+ * Envoie une alerte aux admins quand un client fait une action.
+ * Resend envoie depuis onboarding@resend.dev → fonctionne uniquement vers creditly001@gmail.com
+ */
+async function sendAdminAlert(opts: { subject: string; html: string }) {
+    if (!process.env.RESEND_API_KEY) {
+        console.warn('[EmailService] RESEND_API_KEY manquant — notif admin ignorée.');
+        return;
+    }
+    try {
+        await resend.emails.send({
+            from: 'Creditly Notifications <onboarding@resend.dev>',
+            to: [GMAIL_USER], // Resend sandbox → uniquement vers le compte owner
+            subject: opts.subject,
+            html: opts.html,
+        });
+    } catch (error) {
+        console.error('[EmailService] Erreur Resend admin:', error);
+    }
+}
+
+/**
+ * 🔵 EMAIL CLIENT — via Gmail SMTP
+ * Envoie un email à n'importe quel client (approbation, rejet, rappel...).
+ * Gmail App Password → fonctionne vers tout email, aucun domaine requis.
+ */
+async function sendEmail(opts: { from: string; to: string | string[]; subject: string; html: string }) {
+    const gmailTransport = createGmailTransport();
+
+    if (gmailTransport) {
+        await gmailTransport.sendMail({
+            from: `"${opts.from}" <${GMAIL_USER}>`,
+            to: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
+            subject: opts.subject,
+            html: opts.html,
+        });
+    } else {
+        console.warn('[EmailService] ⚠️ GMAIL_APP_PASSWORD manquant — email client ignoré.');
+        console.warn('[EmailService] → Ajoutez GMAIL_APP_PASSWORD dans vos variables Vercel/locales.');
+    }
+}
+
 
 type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION';
 
@@ -22,10 +85,6 @@ interface NotificationData {
  * Envoie une notification aux administrateurs via Resend.
  */
 export async function sendAdminNotification(type: NotificationType, data: NotificationData) {
-    if (!process.env.RESEND_API_KEY) {
-        console.warn('RESEND_API_KEY non configurée. Notification email ignorée.');
-        return;
-    }
 
     let subject = '';
     let html = '';
@@ -102,18 +161,13 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     }
 
     try {
-        await resend.emails.send({
-            from: 'Creditly Notifications <onboarding@resend.dev>',
-            to: ADMIN_EMAILS_LIST,
-            subject: subject,
-            html: html,
-        });
+        await sendAdminAlert({ subject, html });
     } catch (error) {
-        console.error('Erreur notifications admin (Resend):', error);
+        console.error('Erreur notifications admin:', error);
     }
 }
 
-type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER';
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT';
 
 interface UserEmailData {
     email: string;
@@ -121,13 +175,16 @@ interface UserEmailData {
     details?: string;
     amount?: number;
     planName?: string;
+    expiresIn?: number;
+    endDate?: string;
+    renewUrl?: string;
 }
 
 /**
  * Envoie un email à l'utilisateur via Resend.
  */
 export async function sendUserEmail(type: UserNotificationType, data: UserEmailData) {
-    if (!process.env.RESEND_API_KEY) return;
+    // Utilise Gmail SMTP — pas besoin de RESEND_API_KEY
 
     let subject = `Creditly - Notification`;
     let html = '';
@@ -276,6 +333,41 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
                 </div>
             `;
             break;
+        case 'SUBSCRIPTION_EXPIRING':
+            subject = `⏳ J-3 : Votre abonnement ${data.planName || 'Creditly'} expire bientôt`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #2563eb;">Bonjour ${data.name},</h2>
+                    <p>Votre abonnement <strong>${data.planName || 'Creditly'}</strong> expire dans <strong>3 jours</strong> (le ${data.endDate || ''}).</p>
+                    <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+                        <p style="margin:0;"><strong>⚠️ Sans renouvellement :</strong> Vous ne pourrez plus faire de nouvelles demandes de prêt jusqu'à la prochaine souscription.</p>
+                    </div>
+                    <p>Renouvelez dès maintenant pour garder un accès ininterrompu à vos avantages.</p>
+                    <a href="${data.renewUrl || process.env.NEXT_PUBLIC_SITE_URL + '/client/subscriptions'}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Renouveler mon abonnement</a>
+                    <p style="font-size: 12px; color: #666; margin-top: 20px;">L'équipe Creditly</p>
+                </div>
+            `;
+            break;
+
+        case 'SUBSCRIPTION_EXPIRING_URGENT':
+            subject = `🚨 DERNIER JOUR — Votre abonnement ${data.planName || 'Creditly'} expire demain !`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 2px solid #dc2626; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">⚠️ Action requise, ${data.name} !</h2>
+                    <p>Votre abonnement <strong>${data.planName || 'Creditly'}</strong> expire <strong>demain</strong> (le ${data.endDate || ''}).</p>
+                    <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+                        <p style="margin:0; font-weight:bold;">Dès demain, si vous ne renouvelez pas :</p>
+                        <ul style="margin-top: 10px;">
+                            <li>❌ Plus de nouvelles demandes de prêt</li>
+                            <li>❌ Accès à vos avantages suspendu</li>
+                        </ul>
+                    </div>
+                    <a href="${data.renewUrl || process.env.NEXT_PUBLIC_SITE_URL + '/client/subscriptions'}" style="display: inline-block; background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; font-size: 16px;">🔄 Renouveler maintenant</a>
+                    <p style="font-size: 12px; color: #666; margin-top: 20px;">Cordialement,<br/>L'équipe Creditly</p>
+                </div>
+            `;
+            break;
+
         case 'SUBSCRIPTION_REJECTED':
             subject = `❌ Mise à jour de votre souscription Creditly`;
             html = `
@@ -291,14 +383,14 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
     }
 
     try {
-        await resend.emails.send({
-            from: 'Creditly <onboarding@resend.dev>',
+        await sendEmail({
+            from: 'Creditly',
             to: data.email,
-            subject: subject,
-            html: html,
+            subject,
+            html,
         });
     } catch (error) {
-        console.error('[EmailService] Erreur sendUserEmail (Resend):', error);
+        console.error('[EmailService] Erreur sendUserEmail:', error);
     }
 }
 
@@ -321,23 +413,21 @@ export async function sendWeeklyReport(data: WeeklyReportData) {
         const subject = `[REPORT] Rapport Hebdomadaire - ${data.startDate}`;
         const html = `<h2>Rapport Financier</h2><p>Revenus: ${formattedTotal}</p>`;
 
-        await resend.emails.send({
-            from: 'Creditly Reports <onboarding@resend.dev>',
+        await sendEmail({
+            from: 'Creditly Reports',
             to: ADMIN_EMAILS_LIST,
-            subject: subject,
-            html: html,
+            subject,
+            html,
         });
     } catch (error) {
-        console.error('[EmailService] Erreur sendWeeklyReport (Resend):', error);
+        console.error('[EmailService] Erreur sendWeeklyReport:', error);
     }
 }
 
 export async function sendPreNotification(email: string, name: string, message: string) {
-    if (!process.env.RESEND_API_KEY_DARYL) return;
-
     try {
-        await resendDaryl.emails.send({
-            from: 'Creditly Alert <creditly001@gmail.com>',
+        await sendEmail({
+            from: 'Creditly Alert',
             to: email,
             subject: '🔔 Rappel imminent - Creditly',
             html: `
@@ -349,18 +439,16 @@ export async function sendPreNotification(email: string, name: string, message: 
             `,
         });
     } catch (error) {
-        console.error('[EmailService] Erreur sendPreNotification (Daryl):', error);
+        console.error('[EmailService] Erreur sendPreNotification:', error);
     }
 }
 
 export async function sendDirectClientEmail(email: string, name: string, subject: string, message: string) {
-    if (!process.env.RESEND_API_KEY) return { error: "Service email non configuré." };
-
     try {
-        await resend.emails.send({
-            from: 'Creditly <creditly001@gmail.com>',
+        await sendEmail({
+            from: 'Creditly',
             to: email,
-            subject: subject,
+            subject,
             html: `
                 <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
                     <h2 style="color: #2563eb;">Bonjour ${name},</h2>
