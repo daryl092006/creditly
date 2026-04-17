@@ -219,3 +219,99 @@ export async function submitRepayment(formData: FormData) {
         return { error: e.message || "Erreur lors de l'envoi de la preuve." }
     }
 }
+
+export async function extendLoan(loanId: string) {
+    try {
+        const { createClient, createAdminClient } = await import('@/utils/supabase/server')
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) return { error: 'Non authentifié' }
+
+        // 1. Fetch profile and loan
+        const [
+            { data: profile },
+            { data: loan },
+            { data: overdueLoans }
+        ] = await Promise.all([
+            supabase.from('users').select('*').eq('id', user.id).single(),
+            supabase.from('prets').select('*').eq('id', loanId).single(),
+            supabase.from('prets').select('id').eq('user_id', user.id).eq('status', 'overdue')
+        ]);
+
+        if (!profile || !loan) return { error: 'Dossier introuvable' }
+
+        // 2. Strict Eligibility Checks
+        if (!profile.is_account_active) {
+            return { error: "Votre compte n'est pas encore actif. Vous ne pouvez pas demander de prolongation." }
+        }
+
+        if (overdueLoans && overdueLoans.length > 0) {
+            return { error: "Vous avez des dossiers en retard. Votre compte n'est pas en règle." }
+        }
+
+        if (loan.is_extended) {
+            return { error: "Un prêt ne peut être prolongé qu'une seule fois." }
+        }
+
+        if (loan.status !== 'active' && loan.status !== 'approved') {
+            return { error: "Seuls les prêts actifs peuvent être prolongés." }
+        }
+
+        if (!loan.due_date) {
+            return { error: "Ce prêt n'a pas de date d'échéance définie." }
+        }
+
+        // 3. Calculate New Due Date (+5 days)
+        const currentDueDate = new Date(loan.due_date)
+        const newDueDate = new Date(currentDueDate)
+        newDueDate.setDate(newDueDate.getDate() + 5)
+
+        // 4. Update the Loan (using admin client to bypass user RLS if needed, although user can normally update their own pending/active status if schema allows, but better safe for financial updates)
+        const adminSupabase = await createAdminClient()
+        const { error: updateError } = await adminSupabase
+            .from('prets')
+            .update({
+                due_date: newDueDate.toISOString(),
+                is_extended: true,
+                extension_fee: 500,
+                extension_date: new Date().toISOString()
+            })
+            .eq('id', loanId)
+
+        if (updateError) {
+            console.error('Extension Update Error:', updateError)
+            return { error: "Erreur lors de la mise à jour du prêt." }
+        }
+
+        // 5. Notifications
+        try {
+            await Promise.allSettled([
+                sendAdminNotification('LOAN_EXTENSION', {
+                    userEmail: user.email!,
+                    userName: `${profile.prenom} ${profile.nom}`,
+                    loanId: loanId,
+                    newDueDate: newDueDate.toLocaleDateString('fr-FR')
+                }),
+                sendUserEmail('LOAN_EXTENSION_CONFIRMED', {
+                    email: user.email!,
+                    name: `${profile.prenom} ${profile.nom}`,
+                    newDueDate: newDueDate.toLocaleDateString('fr-FR'),
+                    fee: 500
+                })
+            ]);
+        } catch (e) {
+            console.error('Notification Error (ignored):', e)
+        }
+
+        revalidatePath('/client/dashboard')
+        revalidatePath('/client/loans')
+        revalidatePath(`/client/loans/${loanId}`)
+
+        return { success: true }
+    } catch (e: any) {
+        console.error('Extension Action Crash:', e)
+        return { error: e.message || "Erreur interne" }
+    }
+}
+

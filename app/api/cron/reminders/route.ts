@@ -32,24 +32,35 @@ export async function GET(request: Request) {
             if (!loan.due_date || !loan.user?.email) continue;
 
             const dueDate = new Date(loan.due_date)
+            dueDate.setHours(0, 0, 0, 0)
+            const todayMidnight = new Date(today)
+            todayMidnight.setHours(0, 0, 0, 0)
 
             // Calculer la différence en jours
-            const diffTime = dueDate.getTime() - today.getTime()
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            const diffTime = dueDate.getTime() - todayMidnight.getTime()
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
 
-            // Si l'échéance est exactement dans 3 jours
+            // Utiliser la fonction métier pour avoir la dette exacte
+            const { totalDebt } = calculateLoanDebt(loan as any)
+            if (totalDebt <= 0) continue;
+
+            const name = `${loan.user.prenom} ${loan.user.nom}`
+            const email = loan.user.email
+
+            // Dispatch par intervalle
             if (diffDays === 3) {
-                // Utiliser la fonction métier pour avoir la dette exacte (incluant frais de service, déduisant amount_paid)
-                const { totalDebt } = calculateLoanDebt(loan as any)
-
-                if (totalDebt > 0) {
-                    await sendUserEmail('REPAYMENT_REMINDER', {
-                        email: loan.user.email,
-                        name: `${loan.user.prenom} ${loan.user.nom}`,
-                        amount: totalDebt
-                    })
-                    emailsSent++
-                }
+                await sendUserEmail('REPAYMENT_REMINDER', { email, name, amount: totalDebt })
+                emailsSent++
+            } else if (diffDays === 1) {
+                await sendUserEmail('REPAYMENT_REMINDER_URGENT', { email, name, amount: totalDebt })
+                emailsSent++
+            } else if (diffDays === 0) {
+                await sendUserEmail('REPAYMENT_DUE_TODAY', { email, name, amount: totalDebt })
+                emailsSent++
+            } else if (diffDays === -1) {
+                // Hier était la date limite -> status overdue (normalement géré par le RPC mais on prévient)
+                await sendUserEmail('REPAYMENT_OVERDUE', { email, name, amount: totalDebt })
+                emailsSent++
             }
         }
 

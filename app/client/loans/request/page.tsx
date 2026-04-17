@@ -131,10 +131,8 @@ export default async function LoanRequestPage() {
 
 
 
-    // Fetch user profile for the waiver
-    const { data: userData } = await supabase.from('users').select('nom, prenom, birth_date, address, city, profession').eq('id', user.id).single()
-
-    // Fetch repayment numbers from settings
+    // Fetch data for scoring and display
+    const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single()
     const { data: rawSettings } = await supabase
         .from('system_settings')
         .select('key, value')
@@ -147,15 +145,20 @@ export default async function LoanRequestPage() {
         Celtiis: settingsMap['repayment_phone_celtiis'] || '+229 01 44 14 00 67'
     }
 
-    // EXPERT: La date d'échéance doit être calculée selon le délai du plan (ex: 7 jours)
-    // et ne plus être calée sur la fin de l'abonnement (qui peut être dans 30 jours ou 1 jour).
-    // "ça ne compte plus par mois" -> le cycle d'abonnement est juste un accès.
+    // 6. Automated Analysis & Scoring (Admin Insight Only)
+    const { calculateUserScore } = await import('@/utils/scoring-utils')
+    const { data: allUserLoans } = await supabase.from('prets').select('*').eq('user_id', user.id)
+    const analysis = calculateUserScore(allUserLoans || [], userData?.created_at || now, !!sub)
+
     const dueDateRaw = new Date(Date.now() + (planData.repayment_delay_days || 7) * 24 * 60 * 60 * 1000)
+
+    // Vérifier si le frais de dossier a déjà été facturé sur cette période d'abonnement
 
 
     return (
         <div className="p-8 max-w-4xl mx-auto space-y-8">
             <h1 className="text-center text-3xl font-bold premium-gradient-text uppercase italic tracking-tighter">Demander un prêt</h1>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex items-center justify-between group hover:border-blue-500/20 transition-all">
