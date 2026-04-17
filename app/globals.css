@@ -63,7 +63,7 @@
     transition: background-color 0.5s ease, color 0.5s ease;
   }
 
-  /* Animated Mesh Background for extra wow factor */
+  /* Animated Mesh Background - Enhanced Luxury */
   body::before {
     content: "";
     position: fixed;
@@ -73,35 +73,36 @@
     height: 100%;
     z-index: -1;
     background: 
-      radial-gradient(at 0% 0%, rgba(96, 165, 250, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.05) 0px, transparent 50%),
       radial-gradient(at 50% 50%, rgba(2, 6, 23, 1) 0px, transparent 100%),
       #020617;
     background-size: 200% 200%;
-    animation: mesh 15s ease infinite;
+    animation: mesh 12s ease-in-out infinite alternate;
   }
 }
 
 @layer components {
   .main-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12;
+    @apply max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-16 xl:px-24;
   }
 
   .admin-container {
-    @apply max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12;
+    @apply max-w-[1800px] mx-auto px-6 sm:px-10 lg:px-16;
   }
 
-  /* Premium Glass Panel */
+  /* Premium Glass Panel - Sharper & Deeper */
   .glass-panel {
-    @apply backdrop-blur-3xl border border-white/5 transition-all duration-500;
+    @apply backdrop-blur-3xl border border-white/[0.06] transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1);
     background-color: var(--glass-bg);
-    border-radius: 24px;
-    box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.5);
+    border-radius: 32px;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
 
     &:hover {
-      @apply shadow-2xl;
-      transform: translateY(-2px);
-      border-color: rgba(16, 185, 129, 0.2);
+      @apply shadow-3xl border-white/10;
+      transform: translateY(-4px) scale(1.005);
     }
   }
 

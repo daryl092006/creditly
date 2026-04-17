@@ -3,9 +3,12 @@
  */
 
 export interface LoanData {
+    id?: string;
     amount: number;
     amount_paid: number;
     service_fee?: number | null;
+    is_extended?: boolean;
+    extension_fee?: number;
     created_at: string;
     due_date?: string | null;
     status: string;
@@ -20,9 +23,12 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
         ? Number(loan.service_fee)
         : (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0);
 
-    const baseDebt = principle + fee - paid;
+    // 2. Extension Fee
+    const extensionFee = Number(loan.extension_fee) || 0;
 
-    // 2. Late Penalties Calculation
+    const baseDebt = principle + fee + extensionFee - paid;
+
+    // 3. Late Penalties Calculation
     let latePenalties = 0;
     let daysLate = 0;
 
@@ -44,6 +50,7 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
     return {
         principle,
         fee,
+        extensionFee,
         paid,
         baseDebt,
         latePenalties: Math.round(latePenalties),
@@ -51,3 +58,4 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
         daysLate
     };
 }
+

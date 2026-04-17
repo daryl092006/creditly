@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
 import DashboardSuccessToast from './DashboardSuccessToast'
+import ExtensionButton from '../loans/extension-button'
 
 interface SubscriptionPlan {
     name: string
@@ -64,8 +65,8 @@ export default async function ClientDashboard() {
     ] = await Promise.all([
         supabase.from('users').select('*').eq('id', user.id).single(),
         supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').eq('user_id', user.id).in('status', ['active', 'overdue']),
-        supabase.from('prets').select('id, amount, amount_paid, service_fee, status, created_at, admin_decision_date, due_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('prets').select('amount, amount_paid, service_fee, is_extended, extension_fee, created_at, status, due_date').eq('user_id', user.id).in('status', ['active', 'overdue']),
+        supabase.from('prets').select('id, amount, amount_paid, service_fee, is_extended, extension_fee, status, created_at, admin_decision_date, due_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.from('remboursements').select('id, loan_id, amount_declared, status, created_at, validated_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.from('kyc_submissions').select('status').eq('user_id', user.id).maybeSingle()
     ]);
@@ -114,6 +115,11 @@ export default async function ClientDashboard() {
     const latestRepayment = recentRepayments?.[0]
     const latestSubscription = allSubs[0]
 
+    // 6. Automated Analysis & Scoring
+    const { calculateUserScore } = await import('@/utils/scoring-utils')
+    const { data: allUserLoans } = await supabase.from('prets').select('*').eq('user_id', user.id)
+    const analysis = calculateUserScore(allUserLoans || [], profile?.created_at || now, !!activeSub)
+
     // Combine and format notifications
     const notifications = [
         ...allSubs.map((s: UserSubscription) => ({
@@ -137,6 +143,15 @@ export default async function ClientDashboard() {
             type: l.status === 'pending' ? 'pending' : 'status',
             status: l.status
         })) || []),
+        ...(kycDocs ? [{
+            id: `kyc-${user.id}`,
+            text: kycDocs.status === 'pending' ? 'Votre document KYC est en cours de vérification' :
+                kycDocs.status === 'approved' ? 'Votre identité a été validée avec succès' :
+                    `Action requise : Votre KYC a été refusé`,
+            date: now, // Status changes are usually reflected quickly
+            type: kycDocs.status === 'pending' ? 'pending' : 'status',
+            status: kycDocs.status
+        }] : []),
         ...(recentRepayments?.map(r => ({
             id: `rep-${r.id}`,
             text: r.status === 'pending' ? `On vérifie votre reçu de ${(r.amount_declared || 0).toLocaleString('fr-FR')} F` :
@@ -173,66 +188,76 @@ export default async function ClientDashboard() {
         : null
     const showSubExpiryAlert = subExpiresInDays !== null && subExpiresInDays <= 3 && subExpiresInDays > 0
 
+    const hasOverdue = activeLoans?.some(l => l.status === 'overdue') || false
 
     return (
-        <div className="py-12 md:py-24 page-transition">
+        <div className="py-16 md:py-32 page-transition">
             <DashboardSuccessToast />
-            <div className="main-container">
-                {/* Hero Dashboard Header */}
-                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-12 mb-16">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 animate-fade-in">
-                            <span className="h-4 w-1 bg-blue-600 rounded-full animate-pulse"></span>
-                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-blue-500">Accès Elite Privilégié</span>
+            <div className="main-container space-y-24">
+                {/* Hero Dashboard Header - Elevated & Wide */}
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-16 group">
+                    <div className="space-y-8 max-w-4xl">
+                        <div className="flex items-center gap-4 animate-fade-in group-hover:translate-x-2 transition-transform duration-500">
+                            <span className="h-6 w-1.5 bg-blue-600 rounded-full animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.6)]"></span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.8em] text-blue-500 italic">Plateforme Élite</span>
                         </div>
-                        <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-[0.8]">
-                            Mon Espace <br />
+                        <h1 className="text-6xl md:text-9xl font-black text-white tracking-tighter uppercase italic leading-[0.8] animate-slide-up">
+                            Mon Univers <br />
                             <span className="premium-gradient-text uppercase">Financier.</span>
                         </h1>
-                        <p className="text-slate-500 font-bold text-xl italic lg:max-w-2xl mb-8">
-                            Bienvenue <span className="text-white not-italic">{profile?.prenom}</span>. Voici la situation de votre portefeuille <span className="text-blue-500">Creditly</span> à cet instant.
+                        <p className="text-slate-500 font-bold text-xl md:text-2xl italic lg:max-w-3xl mb-12 leading-relaxed animate-fade-in delay-100">
+                            Bonjour <span className="text-white not-italic font-black decoration-blue-500 decoration-4 underline-offset-8 underline">{profile?.prenom || 'Client'}</span>. Vous avez le plein contrôle sur votre portefeuille <span className="text-blue-500">Creditly</span>.
                         </p>
-                        <div className="flex flex-wrap gap-4">
-                            <Link href="/client/loans/request">
-                                <button className="premium-button px-8 py-4 shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2 group/btn">
-                                    <Add size={20} className="group-hover/btn:rotate-90 transition-transform" />
-                                    <span>Faire un Prêt</span>
+                        <div className="flex flex-wrap gap-6 animate-fade-in delay-200">
+                            <Link href="/client/loans/request" className="w-full sm:w-auto">
+                                <button className="premium-button px-12 py-5 shadow-2xl shadow-emerald-500/20 active:scale-95 flex items-center gap-3 group/btn text-sm">
+                                    <Add size={24} className="group-hover/btn:rotate-90 transition-transform duration-500" />
+                                    <span>Nouveau Prêt</span>
                                 </button>
                             </Link>
-                            <Link href="/client/loans/repayment">
-                                <button className="glass-panel bg-slate-900 border-slate-800 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:border-emerald-500/30 hover:text-emerald-400 transition-all active:scale-95">
-                                    Payer un Prêt
+                            <Link href="/client/loans" className="w-full sm:w-auto">
+                                <button className="glass-panel bg-white/5 border-white/10 px-12 py-5 text-[11px] font-black uppercase tracking-widest hover:border-blue-500/40 hover:text-blue-400 transition-all active:scale-95 text-slate-400 italic">
+                                    Historique Dossiers
                                 </button>
                             </Link>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full xl:w-auto">
-                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-blue-600/10 transition-colors"></div>
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dette Totale</p>
-                            <p className={`text-2xl font-black italic tracking-tighter ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
-                                {totalOutstanding.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-700">F</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full xl:w-auto animate-fade-in delay-300">
+                        <div className="flex flex-col p-10 bg-slate-900 shadow-3xl rounded-[40px] border border-white/[0.03] relative overflow-hidden group hover:border-red-500/20 transition-all duration-700">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-600/10 transition-colors"></div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3">Dette Actuelle</p>
+                            <p className={`text-4xl font-black italic tracking-tighter ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
+                                {totalOutstanding.toLocaleString('fr-FR')} <span className="text-[12px] not-italic text-slate-700">FCFA</span>
                             </p>
-                            <p className="text-[8px] font-bold text-slate-700 uppercase mt-2 italic">{totalOutstanding > 0 ? 'À régulariser' : 'Libéré de dette'}</p>
+                            <div className="mt-6 flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${totalOutstanding > 0 ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                                <p className="text-[9px] font-black text-slate-600 uppercase italic">{totalOutstanding > 0 ? 'Urgence : Payer' : 'Libre de dette'}</p>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-emerald-600/10 transition-colors"></div>
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Score Confiance</p>
-                            <p className="text-2xl font-black text-white italic tracking-tighter">
-                                {totalOutstanding > 0 ? '92%' : '100%'}
+                        <div className="flex flex-col p-10 bg-slate-900 shadow-3xl rounded-[40px] border border-white/[0.03] relative overflow-hidden group hover:border-blue-500/20 transition-all duration-700">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3">Score Confiance</p>
+                            <p className="text-4xl font-black text-white italic tracking-tighter">
+                                {analysis.score} <span className="text-[12px] not-italic text-slate-700">%</span>
                             </p>
-                            <p className="text-[8px] font-bold text-emerald-500 uppercase mt-2 italic">Status : Excellent</p>
+                            <div className="mt-6 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: analysis.color }}></span>
+                                <p className="text-[9px] font-black uppercase italic" style={{ color: analysis.color }}>Rang : {analysis.label}</p>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col p-6 bg-slate-900 shadow-2xl rounded-3xl border border-white/5 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-600/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-amber-600/10 transition-colors"></div>
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Plafond Possible</p>
-                            <p className="text-2xl font-black text-blue-500 italic tracking-tighter">
-                                {(activeSub?.plan?.max_loan_amount || latestSubscription?.plan?.max_loan_amount || 0).toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-700">F</span>
+                        <div className="flex flex-col p-10 bg-slate-900 shadow-3xl rounded-[40px] border border-white/[0.03] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-700">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3">Capacité</p>
+                            <p className="text-4xl font-black text-emerald-400 italic tracking-tighter">
+                                {(activeSub?.plan?.max_loan_amount || latestSubscription?.plan?.max_loan_amount || 0).toLocaleString('fr-FR')} <span className="text-[12px] not-italic text-slate-700">FCFA</span>
                             </p>
-                            <p className="text-[8px] font-bold text-slate-700 uppercase mt-2 italic">Capacité d&apos;emprunt</p>
+                            <div className="mt-6 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <p className="text-[9px] font-black text-slate-600 uppercase italic">Prêt Garanti</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -366,6 +391,16 @@ export default async function ClientDashboard() {
                                         ? `Date limite : ${new Date(latestLoan.due_date).toLocaleDateString('fr-FR')}`
                                         : latestLoan ? `Emprunté le ${new Date(latestLoan.created_at).toLocaleDateString('fr-FR')}` : 'Prêt à vous aider'}
                                 </p>
+                                {latestLoan && (latestLoan.status === 'active' || latestLoan.status === 'approved') && !latestLoan.is_extended && (
+                                    <div className="pt-2 animate-fade-in">
+                                        <ExtensionButton
+                                            loanId={latestLoan.id}
+                                            isExtended={latestLoan.is_extended}
+                                            status={latestLoan.status}
+                                            hasOverdue={hasOverdue}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 

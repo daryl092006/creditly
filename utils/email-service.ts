@@ -70,7 +70,7 @@ async function sendEmail(opts: { from: string; to: string | string[]; subject: s
 }
 
 
-type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION';
+type NotificationType = 'LOAN_REQUEST' | 'REPAYMENT' | 'KYC_SUBMISSION' | 'SUBSCRIPTION' | 'LOAN_EXTENSION';
 
 interface NotificationData {
     userEmail: string;
@@ -79,6 +79,8 @@ interface NotificationData {
     planName?: string;
     payoutNetwork?: string;
     payoutPhone?: string;
+    loanId?: string;
+    newDueDate?: string;
 }
 
 /**
@@ -158,6 +160,21 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
                 </div>
             `;
             break;
+        case 'LOAN_EXTENSION':
+            subject = `⏳ Prolongation de Prêt - ${data.userName}`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #6d28d9; text-transform: uppercase; font-size: 18px;">Prolongation de Dossier</h2>
+                    <p>Un client a prolongé son prêt de 5 jours (frais de 500F appliqués).</p>
+                    <div style="background-color: #f5f3ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Candidat :</strong> ${data.userName} (${data.userEmail})</p>
+                        <p><strong>Dossier ID :</strong> ${data.loanId}</p>
+                        <p><strong>Nouvelle Échéance :</strong> <span style="font-size: 18px; color: #6d28d9; font-weight: bold;">${data.newDueDate}</span></p>
+                    </div>
+                    <p>Le solde du client a été automatiquement mis à jour.</p>
+                </div>
+            `;
+            break;
     }
 
     try {
@@ -167,7 +184,7 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     }
 }
 
-type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT';
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'REPAYMENT_REMINDER_URGENT' | 'REPAYMENT_DUE_TODAY' | 'REPAYMENT_OVERDUE' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT' | 'LOAN_EXTENSION_CONFIRMED';
 
 interface UserEmailData {
     email: string;
@@ -178,6 +195,8 @@ interface UserEmailData {
     expiresIn?: number;
     endDate?: string;
     renewUrl?: string;
+    newDueDate?: string;
+    fee?: number;
 }
 
 /**
@@ -291,10 +310,49 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
             html = `
                 <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
                     <h2 style="color: #ea580c;">Bonjour ${data.name},</h2>
-                    <p>Ceci est un rappel amical vous informant que la date limite pour solder votre prêt arrive à échéance dans <strong>3 jours</strong>.</p>
-                    ${data.amount ? `<div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ea580c;"><p><strong>Preste à solder :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p></div>` : ''}
-                    <p>Nous vous invitons à initier votre remboursement depuis votre tableau de bord afin d'éviter l'application automatique de frais de pénalité.</p>
+                    <p>Ceci est un rappel vous informant que la date limite pour solder votre prêt arrive à échéance dans <strong>3 jours</strong>.</p>
+                    ${data.amount ? `<div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ea580c;"><p><strong>Solde restant :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p></div>` : ''}
+                    <p>Nous vous invitons à régulariser votre situation depuis votre dashboard.</p>
                     <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/repayment" style="display: inline-block; background-color: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Procéder au paiement</a>
+                </div>
+            `;
+            break;
+
+        case 'REPAYMENT_REMINDER_URGENT':
+            subject = `🚨 URGENT : Votre prêt Creditly expire DEMAIN`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 2px solid #dc2626; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">Dernier rappel, ${data.name} !</h2>
+                    <p>Le délai de remboursement de votre prêt se termine <strong>demain</strong>.</p>
+                    ${data.amount ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;"><p><strong>Dette à solder :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p></div>` : ''}
+                    <p>Évitez les frais de pénalité de retard en effectuant votre remboursement dès aujourd'hui.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/repayment" style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Payer maintenant</a>
+                </div>
+            `;
+            break;
+
+        case 'REPAYMENT_DUE_TODAY':
+            subject = `⚠️ AUJOURD'HUI : Date limite de votre prêt Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 2px solid #ea580c; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #ea580c;">C'est aujourd'hui, ${data.name} !</h2>
+                    <p>Aujourd'hui est la <strong>date limite officielle</strong> pour le remboursement de votre prêt.</p>
+                    ${data.amount ? `<div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ea580c;"><p><strong>Montant final :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p></div>` : ''}
+                    <p>Veuillez soumettre votre preuve de paiement avant minuit pour conserver un score de confiance de 100%.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/repayment" style="display: inline-block; background-color: #1e293b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Régulariser immédiatement</a>
+                </div>
+            `;
+            break;
+
+        case 'REPAYMENT_OVERDUE':
+            subject = `❌ EN RETARD : Votre prêt Creditly est désormais en souffrance`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 2px solid #991b1b; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #991b1b;">Alerte Retard - ${data.name}</h2>
+                    <p>La date limite de votre prêt est <strong>dépassée</strong>. Votre dossier est passé en statut <strong>"En retard"</strong>.</p>
+                    ${data.amount ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #991b1b;"><p><strong>Total dû (incluant pénalités) :</strong> ${new Intl.NumberFormat('fr-FR').format(data.amount)} FCFA</p></div>` : ''}
+                    <p>Des frais de pénalité sont désormais appliqués quotidiennement. Veuillez solder votre dette au plus vite pour limiter les frais supplémentaires.</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/repayment" style="display: inline-block; background-color: #991b1b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Solder ma dette</a>
                 </div>
             `;
             break;
@@ -377,6 +435,21 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
                     ${data.details ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;"><p><strong>Motif :</strong> ${data.details}</p></div>` : ''}
                     <p>Veuillez vérifier vos informations ou contacter le support si vous pensez qu'il s'agit d'une erreur.</p>
                     <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/subscriptions" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Réessayer la souscription</a>
+                </div>
+            `;
+            break;
+        case 'LOAN_EXTENSION_CONFIRMED':
+            subject = `⏳ Confirmation de prolongation (+5 jours) - Creditly`;
+            html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #6d28d9;">Bonjour ${data.name},</h2>
+                    <p>Votre demande de prolongation a été traitée avec succès.</p>
+                    <div style="background-color: #f5f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6d28d9;">
+                        <p><strong>Nouvelle date limite :</strong> ${data.newDueDate}</p>
+                        <p><strong>Frais de prolongation :</strong> ${data.fee ? new Intl.NumberFormat('fr-FR').format(data.fee) : '500'} FCFA (ajoutés à votre solde)</p>
+                    </div>
+                    <p>Merci de continuer avec Creditly !</p>
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard" style="display: inline-block; background-color: #6d28d9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Voir mon tableau de bord</a>
                 </div>
             `;
             break;

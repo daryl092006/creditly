@@ -69,25 +69,54 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
 
     const activeSub = subs.find(s => s.status === 'active');
 
+    // 6. Automated Analysis & Scoring
+    const { calculateUserScore } = await import('@/utils/scoring-utils')
+    const analysis = calculateUserScore(loans, user.created_at, !!activeSub)
+
     return (
         <div className="py-10 md:py-16 animate-fade-in">
             <div className="main-container space-y-12">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                    <div>
-                        <Link href="/admin/super/users" className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white hover:border-white/10 transition-all mb-8 group">
-                            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            Retour à la liste
-                        </Link>
-                        <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">{user.prenom} {user.nom}</h1>
-                        <p className="text-slate-500 font-bold mt-2 italic leading-relaxed max-w-xl">
-                            Dossier complet et historique des activités de l&apos;utilisateur.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                        <EmailClientModal userId={user.id} userEmail={user.email} userName={`${user.prenom} ${user.nom}`} />
-                        <div className={`px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4`}>
-                            <div className={`w-3 h-3 rounded-full ${user.is_account_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></div>
-                            <span className="text-white font-black text-xs uppercase tracking-widest italic">{user.is_account_active ? 'Compte Actif' : 'En attente'}</span>
+                {/* Visual Trust Header */}
+                <div className="glass-panel p-10 bg-slate-900 border-white/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-12">
+                        <div className="flex items-center gap-8">
+                             <div className="relative">
+                                <svg className="w-32 h-32 transform -rotate-90">
+                                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={364.4} strokeDashoffset={364.4 - (364.4 * analysis.score) / 100} className="transition-all duration-1000 ease-out" style={{ color: analysis.color }} />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-black text-white italic tracking-tighter tabular-nums">{analysis.score}</span>
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Score</span>
+                                </div>
+                             </div>
+                             <div className="space-y-2">
+                                <span className="text-[10px] font-black px-3 py-1 rounded-full border border-white/10 italic tracking-widest uppercase" style={{ color: analysis.color, backgroundColor: `${analysis.color}10`, borderColor: `${analysis.color}20` }}>
+                                    {analysis.label}
+                                </span>
+                                <h2 className="text-2xl font-black text-white italic tracking-tighter">{user.prenom} {user.nom}</h2>
+                                <p className="text-sm text-slate-500 font-medium italic max-w-md">{analysis.description}</p>
+                             </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 w-full md:w-auto">
+                            <div className="text-center md:text-left">
+                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Remboursements</p>
+                                <p className="text-lg font-black text-white italic">{analysis.metrics.repaymentRate.toFixed(0)}%</p>
+                            </div>
+                            <div className="text-center md:text-left">
+                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Volume Total</p>
+                                <p className="text-lg font-black text-white italic">{analysis.metrics.totalVolume.toLocaleString()} F</p>
+                            </div>
+                            <div className="text-center md:text-left">
+                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Prêts Clôturés</p>
+                                <p className="text-lg font-black text-emerald-500 italic">{loans.filter(l => l.status === 'paid').length}</p>
+                            </div>
+                            <div className="text-center md:text-left">
+                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">SLA Prolongations</p>
+                                <p className="text-lg font-black text-amber-500 italic">{analysis.metrics.extensionCount}</p>
+                            </div>
                         </div>
                     </div>
                 </div>

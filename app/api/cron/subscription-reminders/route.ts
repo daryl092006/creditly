@@ -46,31 +46,38 @@ export async function GET(request: Request) {
             if (!sub.end_date || !user?.email) continue
 
             const endDate = new Date(sub.end_date)
-            const diffTime = endDate.getTime() - today.getTime()
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            endDate.setHours(0, 0, 0, 0)
+            const todayMidnight = new Date(today)
+            todayMidnight.setHours(0, 0, 0, 0)
 
-            // Rappel à J-3 (3 jours avant expiration)
+            // Calculer la différence en jours
+            const diffTime = endDate.getTime() - todayMidnight.getTime()
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+
+            const name = `${user.prenom} ${user.nom}`
+            const email = user.email
+            const planName = plan?.name || 'votre abonnement'
+            const endDateStr = endDate.toLocaleDateString('fr-FR')
+            const renewUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/client/subscriptions`
+
+            // Rappel à J-3
             if (diffDays === 3) {
                 await sendUserEmail('SUBSCRIPTION_EXPIRING', {
-                    email: user.email,
-                    name: `${user.prenom} ${user.nom}`,
-                    planName: plan?.name || 'votre abonnement',
-                    expiresIn: 3,
-                    endDate: endDate.toLocaleDateString('fr-FR'),
-                    renewUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/client/subscriptions`
+                    email, name, planName, expiresIn: 3, endDate: endDateStr, renewUrl
                 })
                 emailsSent++
             }
-
-            // Rappel urgent à J-1 (dernier jour)
-            if (diffDays === 1) {
+            // Rappel urgent à J-1
+            else if (diffDays === 1) {
                 await sendUserEmail('SUBSCRIPTION_EXPIRING_URGENT', {
-                    email: user.email,
-                    name: `${user.prenom} ${user.nom}`,
-                    planName: plan?.name || 'votre abonnement',
-                    expiresIn: 1,
-                    endDate: endDate.toLocaleDateString('fr-FR'),
-                    renewUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/client/subscriptions`
+                    email, name, planName, expiresIn: 1, endDate: endDateStr, renewUrl
+                })
+                emailsSent++
+            }
+            // Jour de l'expiration (J-0)
+            else if (diffDays === 0) {
+                await sendUserEmail('SUBSCRIPTION_EXPIRING_URGENT', {
+                    email, name, planName, expiresIn: 0, endDate: endDateStr, renewUrl
                 })
                 emailsSent++
             }
