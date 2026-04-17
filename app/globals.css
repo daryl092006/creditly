@@ -95,13 +95,14 @@
 
   /* Premium Glass Panel - Sharper & Deeper */
   .glass-panel {
-    @apply backdrop-blur-3xl border border-white/[0.06] transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1);
+    @apply backdrop-blur-3xl border border-white/[0.06] transition-all duration-700;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     background-color: var(--glass-bg);
     border-radius: 32px;
     box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
 
     &:hover {
-      @apply shadow-3xl border-white/10;
+      @apply shadow-2xl border-white/10;
       transform: translateY(-4px) scale(1.005);
     }
   }
@@ -189,7 +190,8 @@
 }
 
 .page-transition {
-  animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUpFade 0.8s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideUpFade {
@@ -217,7 +219,8 @@
 }
 
 .animate-slide-up {
-  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slide-up 0.5s forwards;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animate-fade-in {
