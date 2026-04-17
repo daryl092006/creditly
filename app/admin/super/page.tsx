@@ -6,6 +6,7 @@ import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, I
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
+import AdminEmailControl from '@/app/components/admin/AdminEmailControl'
 
 export default async function SuperAdminPage({
     searchParams
@@ -56,7 +57,8 @@ export default async function SuperAdminPage({
         { data: loanData },
         { data: repaymentData },
         { data: totalCommissions, error: errComm },
-        { data: pendingWithdrawals, error: errWith }
+        { data: pendingWithdrawals, error: errWith },
+        { data: notificationData }
     ] = await Promise.all([
         supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
@@ -73,7 +75,8 @@ export default async function SuperAdminPage({
         supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null),
         supabase.from('remboursements').select('admin_id, status').gte('validated_at', startDate).lte('validated_at', endDate).not('admin_id', 'is', null),
         supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
-        supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false })
+        supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
+        supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5)
     ]);
 
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
@@ -211,6 +214,10 @@ export default async function SuperAdminPage({
 
                         <section>
                             <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
+                        </section>
+
+                        <section>
+                            <AdminEmailControl stats={{ lastReminders: notificationData || [] }} />
                         </section>
 
                         <section>
