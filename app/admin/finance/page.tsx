@@ -348,7 +348,3 @@ export default async function FinanceAuditPage({
         </div>
     )
 }
-            </div>
-        </div>
-    )
-}
