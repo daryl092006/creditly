@@ -13,6 +13,10 @@ export default async function LoanRequestPage() {
 
     if (!user) return redirect('/auth/login')
 
+    const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single()
+    const userRoles = (userData?.roles || []) as string[]
+    const isAdmin = userRoles.some(r => r.startsWith('admin_') || r === 'superadmin' || r === 'owner')
+
     const { data: userSubs } = await supabase
         .from('user_subscriptions')
         .select('*, plan:abonnements(*)')
@@ -23,9 +27,27 @@ export default async function LoanRequestPage() {
     const allSubs = userSubs || []
 
     // Consistency check with dashboard logic
-    const sub = allSubs.find((sub: any) =>
+    let sub = allSubs.find((sub: any) =>
         sub.status === 'active' && sub.end_date && sub.end_date > now
     )
+
+    // STAFF EXCEPTION: Admins don't need subscriptions
+    if (!sub && isAdmin) {
+        const { data: staffSettings } = await supabase.from('staff_loan_settings').select('*').maybeSingle()
+        
+        sub = {
+            id: 'staff-virtual',
+            user_id: user.id,
+            status: 'active',
+            plan: {
+                name: 'STAFF (Privilège)',
+                max_loan_amount: staffSettings?.max_loan_amount || 800000,
+                max_loans_per_month: staffSettings?.max_active_loans || 5,
+                repayment_delay_days: staffSettings?.default_repayment_days || 30,
+                service_fee: 0
+            }
+        }
+    }
 
     if (!sub) {
         return (
@@ -121,7 +143,7 @@ export default async function LoanRequestPage() {
                     <Link href="/client/dashboard">
                         <button className="premium-button bg-slate-800 border-white/5 active:scale-95 px-10">
                             <ArrowLeft size={16} />
-                            Centre d&apos;Opérations
+                            Centre d&apos;Opérations 
                         </button>
                     </Link>
                 </div>
@@ -131,8 +153,7 @@ export default async function LoanRequestPage() {
 
 
 
-    // Fetch data for scoring and display
-    const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single()
+    // Fetch data for scoring and display (userData already fetched at line 16)
     const { data: rawSettings } = await supabase
         .from('system_settings')
         .select('key, value')

@@ -22,6 +22,7 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
         { name: 'Abonnements', href: '/admin/super/subscriptions', roles: ['superadmin', 'admin_comptable'] },
         { name: 'Utilisateurs', href: '/admin/super/users', roles: ['superadmin', 'owner', 'admin_comptable'] },
         { name: 'Dépôts (Config)', href: '/admin/settings', roles: ['owner'] },
+        { name: 'Mes Prêts (Staff)', href: '/admin/my-loans', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] },
         { name: 'Mon Profil', href: '/admin/profile', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] }
     ]
 
