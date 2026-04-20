@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { updateUserRoles, deleteUserAccount, blacklistUserAccount } from './actions'
-import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown } from '@carbon/icons-react'
+import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown, Rocket } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import Link from 'next/link'
 
@@ -146,12 +146,6 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                                 </td>
                                 <td className="px-8 py-6">
                                     <div className="relative group/roles">
-                                        <button className="flex items-center gap-2 bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 transition-all">
-                                            {getRoles(row).length} Rôle(s) <ChevronDown size={14} />
-                                        </button>
-
-                                <td className="px-8 py-6">
-                                    <div className="relative group/roles">
                                         {isOwner ? (
                                             <>
                                                 <button className="flex items-center gap-2 bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 transition-all">
@@ -261,6 +255,13 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                                 </Link>
                                 {isOwner && (
                                     <>
+                                        <Link
+                                            href={`/admin/super/staff-loans/create?userId=${row.id}`}
+                                            className="w-10 h-10 bg-slate-800 text-emerald-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                            title="Prêt Staff"
+                                        >
+                                            <Rocket size={18} />
+                                        </Link>
                                         <button
                                             onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
                                             className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
