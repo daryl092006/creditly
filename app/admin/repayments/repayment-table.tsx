@@ -14,7 +14,8 @@ export default function AdminRepaymentTable({
         user: string;
         loan_id: string;
         user_id: string;
-        loan_amount: number;
+        loan_initial_total: number;
+        loan_total_due: number;
         loan_amount_paid: number;
         amount_declared: number;
         proof_url: string;
@@ -113,16 +114,16 @@ export default function AdminRepaymentTable({
                                 </td>
                                 <td className="px-8 py-6">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-2">Total : {row.loan_amount.toLocaleString('fr-FR')} F</p>
+                                        <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-2">Total : {row.loan_initial_total.toLocaleString('fr-FR')} F</p>
                                         <div className="flex items-center gap-2">
                                             <div className="h-1 flex-1 bg-slate-800 rounded-full overflow-hidden w-24">
                                                 <div
-                                                    className={`h-full transition-all ${row.loan_amount <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                                                    style={{ width: `${row.loan_amount_paid + row.loan_amount <= 0 ? 0 : Math.min((row.loan_amount_paid / (row.loan_amount_paid + row.loan_amount)) * 100, 100)}%` }}
+                                                    className={`h-full transition-all ${row.loan_initial_total <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                                    style={{ width: `${row.loan_initial_total <= 0 ? 0 : Math.min((row.loan_amount_paid / row.loan_initial_total) * 100, 100)}%` }}
                                                 />
                                             </div>
                                             <span className="text-[8px] font-black text-blue-400 italic">
-                                                {row.loan_amount_paid + row.loan_amount <= 0 ? '0%' : (row.loan_amount_paid / (row.loan_amount_paid + row.loan_amount) * 100).toFixed(0) + '%'}
+                                                {row.loan_initial_total <= 0 ? '0%' : ((row.loan_amount_paid / row.loan_initial_total) * 100).toFixed(0) + '%'}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
@@ -130,7 +131,7 @@ export default function AdminRepaymentTable({
                                                 Déjà payé : <span className="text-white italic">{row.loan_amount_paid.toLocaleString('fr-FR')} F</span>
                                             </p>
                                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
-                                                Reste : <span className="text-emerald-500 italic">{(Math.max(0, row.loan_amount - row.loan_amount_paid)).toLocaleString('fr-FR')} F</span>
+                                                Reste : <span className="text-emerald-500 italic">{(row.loan_total_due).toLocaleString('fr-FR')} F</span>
                                             </p>
                                         </div>
                                     </div>
@@ -251,16 +252,18 @@ export default function AdminRepaymentTable({
                             <div className="flex justify-between items-end">
                                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Progression Prêt</p>
                                 <span className="text-[10px] font-black text-blue-400 italic">
-                                    {row.loan_amount_paid + row.loan_amount <= 0 ? '0%' : (row.loan_amount_paid / (row.loan_amount_paid + row.loan_amount) * 100).toFixed(0) + '%'}
+                                    {row.loan_initial_total <= 0 ? '0%' : ((row.loan_amount_paid / row.loan_initial_total) * 100).toFixed(0) + '%'}
                                 </span>
                             </div>
                             <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full transition-all ${row.loan_amount <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                                    style={{ width: `${row.loan_amount_paid + row.loan_amount <= 0 ? 0 : Math.min((row.loan_amount_paid / (row.loan_amount_paid + row.loan_amount)) * 100, 100)}%` }}
+                                    className={`h-full transition-all ${row.loan_initial_total <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                    style={{ width: `${row.loan_initial_total <= 0 ? 0 : Math.min((row.loan_amount_paid / row.loan_initial_total) * 100, 100)}%` }}
                                 />
                             </div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reste à payer : <span className="text-emerald-500">{(row.loan_amount - row.loan_amount_paid).toLocaleString('fr-FR')} F</span></p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                Reste à payer : <span className="text-emerald-500">{(row.loan_total_due).toLocaleString('fr-FR')} F</span>
+                            </p>
                         </div>
 
                         <div className="flex justify-between items-center pt-6 border-t border-white/5">
