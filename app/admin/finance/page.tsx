@@ -1,8 +1,10 @@
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
-import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User, Information } from '@carbon/icons-react'
+import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User, Information, ChartLine } from '@carbon/icons-react'
 
 import { DashboardFilters } from '../super/DashboardFilters'
+import InvestorSection from './InvestorSection'
+import { calculateProfitToShare, SHAREHOLDERS_CONFIG } from '@/utils/finance-utils'
 
 export default async function FinanceAuditPage({
     searchParams
@@ -11,6 +13,10 @@ export default async function FinanceAuditPage({
 }) {
     // 1. Contrôle de sécurité (Admin, Comptable ou Propriétaire)
     await requireAdminRole(['superadmin', 'admin_comptable', 'owner'])
+
+    const supabase = await createClient()
+    const supabaseAdmin = await createAdminClient()
+
 
     let params = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams || {}))
     const now = new Date()
@@ -30,18 +36,15 @@ export default async function FinanceAuditPage({
         startDate = new Date(year, month - 1, 1).toISOString();
     }
 
-    const supabase = await createClient()
-    const supabaseAdmin = await createAdminClient()
-
     // 2. Récupération des données (Période sélectionnée) - Bypassing RLS for audit
     // IMPORTANT: On filtre par validated_at pour les flux de trésorerie réels
     const { data: subs } = await supabaseAdmin.from('user_subscriptions').select('*, user:user_id(prenom, nom), plan:abonnements(name, price)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: commissions } = await supabaseAdmin.from('admin_commissions').select('*, admin:admin_id(prenom, nom), loan:loan_id(user_id, status)').gte('created_at', startDate).lte('created_at', endDate)
     const { data: withdrawals } = await supabaseAdmin.from('admin_withdrawals').select('*, admin:admin_id(prenom, nom)').gte('created_at', startDate).lte('created_at', endDate)
-    
+
     // Pour l'audit de performance, on regarde les paiements REÇUS sur la période
     const { data: verifiedRembInPeriod } = await supabaseAdmin.from('remboursements').select('*, user:user_id(prenom, nom), loan:loan_id(*)').eq('status', 'verified').gte('validated_at', startDate).lte('validated_at', endDate)
-    
+
     // 4. Construction du Livre-Journal (Audit des flux de la période)
     const journal: any[] = []
     let periodSubsTotal = 0
@@ -71,14 +74,14 @@ export default async function FinanceAuditPage({
     verifiedRembInPeriod?.forEach((r: any) => {
         const loan = r.loan as any
         const amount = Number(r.amount_declared) || 0
-        
+
         // On récupère la structure du prêt pour savoir ce qu'on recouvre
         // Note: C'est une simplification, en réalité on recouvre d'abord les pénalités, puis frais, puis capital
         // Mais pour l'audit de flux, on peut proratiser ou utiliser des flags si on avait une table de ventilation
         // Ici on va identifier si c'est le paiement final qui libère les marges
-        
+
         const isLastPayment = (Number(loan.amount_paid) >= (Number(loan.amount) + (Number(loan.service_fee) || 500) + (Number(loan.extension_fee) || 0)))
-        
+
         // Si c'est un remboursement, c'est du CASH_IN
         journal.push({
             date: r.validated_at,
@@ -93,19 +96,19 @@ export default async function FinanceAuditPage({
         // Pour l'audit de performance on va simplifier : tout ce qui dépasse le capital prêté est du revenu
         // Pour être précis, on va regarder si le prêt a des frais d'extension
         if (loan.is_extended && Number(loan.extension_fee) > 0) {
-             // On considère l'extension comme un revenu dès qu'elle est facturée/payée
-             // Pour cet audit, on va juste noter sa présence
+            // On considère l'extension comme un revenu dès qu'elle est facturée/payée
+            // Pour cet audit, on va juste noter sa présence
         }
     })
 
     // On recalcule les totaux de période via les prêts ayant changé de statut ou ayant reçu des fonds
     // Mais pour la "Performance de la Période", le plus fiable est de regarder les PLUS-VALUES réalisées
     const { data: loansPaidInPeriod } = await supabaseAdmin.from('prets').select('*').eq('status', 'paid').gte('updated_at', startDate).lte('updated_at', endDate)
-    
+
     loansPaidInPeriod?.forEach((l: any) => {
         periodFeesTotal += (Number(l.service_fee) || 500)
         periodExtensionTotal += (Number(l.extension_fee) || 0)
-        
+
         const debt = calculateLoanDebt(l as any)
         periodPenaltiesTotal += debt.latePenalties
     })
@@ -143,34 +146,44 @@ export default async function FinanceAuditPage({
     const { data: allLoansGlobal } = await supabaseAdmin.from('prets').select('amount, amount_paid, status').in('status', ['approved', 'active', 'paid', 'overdue'])
     const { data: allWithGlobal } = await supabaseAdmin.from('admin_withdrawals').select('amount').eq('status', 'approved')
 
-    const totalGlobalCashIn = (allRembGlobal?.reduce((acc, r) => acc + Number(r.amount_declared), 0) || 0) +
-        (allSubsGlobal?.reduce((acc, s: any) => acc + Number(s.plan?.price || 0), 0) || 0)
-
-    const totalGlobalCashOut = (allLoansGlobal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0) +
-        (allWithGlobal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0)
-
-    const theoreticalCashBalance = INITIAL_CAPITAL + totalGlobalCashIn - totalGlobalCashOut
-
     // --- 6. AUDIT DU RISQUE (PAR - Portfolio At Risk) ---
     const { data: allActiveLoansAudit } = await supabaseAdmin.from('prets').select('*').in('status', ['active', 'overdue'])
-    
+
     const riskStats = (allActiveLoansAudit || []).reduce((acc, loan) => {
         const debt = calculateLoanDebt(loan as any)
         const isOverdue = loan.status === 'overdue'
+        const remainingPrincipal = Math.max(0, Number(loan.amount) - Number(loan.amount_paid))
+
         return {
             totalDebt: acc.totalDebt + debt.totalDebt,
-            principleAtRisk: acc.principleAtRisk + (isOverdue ? Math.max(0, Number(loan.amount) - Number(loan.amount_paid)) : 0),
-            totalActivePrinciple: acc.totalActivePrinciple + Math.max(0, Number(loan.amount) - Number(loan.amount_paid))
+            principleAtRisk: acc.principleAtRisk + (isOverdue ? remainingPrincipal : 0),
+            totalActivePrinciple: acc.totalActivePrinciple + remainingPrincipal
         }
     }, { totalDebt: 0, principleAtRisk: 0, totalActivePrinciple: 0 })
 
     const parRate = riskStats.totalActivePrinciple > 0 ? (riskStats.principleAtRisk / riskStats.totalActivePrinciple) * 100 : 0
-    const roiGlobal = ((theoreticalCashBalance - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100
+
+    // --- 7. LOGIQUE DE LA CAISSE ÉTANCHE (DOUBLE CAISSE) ---
+    const totalWithdrawals = allWithGlobal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0
+    const capitalInCirculation = riskStats.totalActivePrinciple
+    
+    // On récupère le profit total depuis notre utilitaire certifié
+    const { realizedProfit: totalPortfolioProfit, forecastedProfit } = await calculateProfitToShare(supabaseAdmin)
+
+    const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalPortfolioProfit - totalWithdrawals - capitalInCirculation)
+    const maxCapitalAllowedInHand = Math.max(0, INITIAL_CAPITAL - capitalInCirculation)
+    const capitalInHand = Math.max(0, Math.min(maxCapitalAllowedInHand, totalCashInCaisse))
+    const benefitsInHand = Math.max(0, totalCashInCaisse - capitalInHand)
+    const benefitsReinvested = Math.max(0, (capitalInCirculation + totalWithdrawals) - INITIAL_CAPITAL)
+
+    const roiGlobal = (totalPortfolioProfit / INITIAL_CAPITAL) * 100
 
     // --- 7. PERFORMANCE DE LA PÉRIODE ---
     const periodGrossRevenue = periodSubsTotal + periodFeesTotal + periodExtensionTotal + periodPenaltiesTotal
     const periodCommissions = commissions?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
     const periodNetProfit = periodGrossRevenue - periodCommissions
+
+    const totalAmountLent = allLoansGlobal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
 
     return (
         <div className="py-16 md:py-32 page-transition min-h-screen">
@@ -192,42 +205,96 @@ export default async function FinanceAuditPage({
                     <DashboardFilters currentMonth={month} currentYear={year} currentPeriod={period} />
                 </header>
 
-                {/* SOLDE MOBILE MONEY - Immersion Totale */}
-                <div className="glass-panel p-16 bg-blue-600 rounded-[3rem] relative overflow-hidden group border-blue-400/20 shadow-[0_50px_100px_-20px_rgba(37,99,235,0.3)]">
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/5 rounded-full blur-[120px] -mr-64 -mt-64 group-hover:scale-110 transition-transform duration-[2s]"></div>
-                    <div className="relative z-10 flex flex-col lg:flex-row justify-between items-center gap-16">
-                        <div className="space-y-6">
-                            <p className="text-[11px] font-black text-blue-200 uppercase tracking-[0.4em] italic flex items-center gap-3">
-                                <Wallet size={20} /> Trésorerie Théorique Mobile Money
-                            </p>
-                            <h2 className="text-7xl md:text-9xl font-black text-white italic tracking-tighter leading-none">
-                                {theoreticalCashBalance.toLocaleString('fr-FR')} <span className="text-3xl uppercase not-italic opacity-50">FCFA</span>
-                            </h2>
-                            <div className="flex items-center gap-6">
-                                <div className="px-6 py-3 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10">
-                                    <p className="text-[10px] text-blue-100 font-black uppercase italic tracking-widest">ROI Global : <span className={roiGlobal >= 0 ? 'text-emerald-400' : 'text-red-400'}>{roiGlobal.toFixed(2)}%</span></p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+                    <div className="glass-panel p-10 bg-slate-900 border border-white/5">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Total Prêt Actif (Encours)</p>
+                        <p className="text-4xl font-black text-white italic tracking-tighter">{riskStats.totalActivePrinciple.toLocaleString('fr-FR')} F</p>
+                        <p className="text-[8px] font-bold text-slate-600 uppercase mt-2 italic">Capital actuellement sur le terrain</p>
+                    </div>
+                    <div className="glass-panel p-10 bg-slate-900/50 border-slate-800">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Bénéfice Net Encaissé</p>
+                        <p className="text-4xl font-black text-emerald-500 italic tracking-tighter">+{totalPortfolioProfit.toLocaleString('fr-FR')} F</p>
+                    </div>
+                    <div className="glass-panel p-10 bg-blue-600/10 border-blue-500/20">
+                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 italic">Bénéfice Cible (Horizon)</p>
+                        <p className="text-4xl font-black text-white italic tracking-tighter">+{forecastedProfit.toLocaleString('fr-FR')} F</p>
+                        <p className="text-[8px] font-bold text-blue-400/60 uppercase mt-2 italic">Projection si tous sont payés</p>
+                    </div>
+                    <div className="glass-panel p-10 bg-slate-900/50 border-slate-800 flex flex-col justify-center">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">ROI Global Actuel</p>
+                        <p className="text-4xl font-black text-white italic tracking-tighter">{roiGlobal.toFixed(2)}%</p>
+                    </div>
+                    <div className="glass-panel p-10 bg-slate-900/50 border-slate-800 flex flex-col justify-center text-center">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">PAR Ratio</p>
+                        <p className={`text-4xl font-black italic tracking-tighter ${parRate > 15 ? 'text-red-500' : 'text-emerald-500'}`}>{parRate.toFixed(1)}%</p>
+                    </div>
+                </div>
+
+                {/* VÉRITABLE RÉSERVE DE LIQUIDITÉ (DOUBLE CAISSE) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* CAISSE CAPITAL */}
+                    <div className="glass-panel p-16 bg-slate-950 border-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-opacity">
+                             <Wallet size={120} className="text-white" />
+                        </div>
+                        <div className="relative z-10 space-y-8">
+                            <div className="space-y-2">
+                                <div className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] italic flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
+                                    Réserve Capital (Plafond 2M)
                                 </div>
-                                <p className="text-xs text-blue-200/60 font-medium italic">Calculé sur la base du capital initial de {INITIAL_CAPITAL.toLocaleString()} F</p>
+                                <h2 className="text-7xl md:text-8xl font-black text-white italic tracking-tighter leading-none">
+                                    {capitalInHand.toLocaleString('fr-FR')} <span className="text-3xl uppercase not-italic opacity-50 text-slate-500">F</span>
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-6 pt-8 border-t border-white/5">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Capital Dehors</p>
+                                    <p className="text-xl font-bold text-slate-300 italic">{capitalInCirculation.toLocaleString()} F</p>
+                                </div>
+                                <div className="w-px h-8 bg-white/5"></div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Statut</p>
+                                    <p className={`text-xl font-bold italic ${capitalInHand === 0 ? 'text-blue-500' : 'text-emerald-500'}`}>
+                                        {capitalInHand === 0 ? 'Entièrement Prêté' : 'Disponible'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full lg:w-auto">
-                            <div className="p-8 bg-white/10 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 hover:bg-white/15 transition-all">
-                                <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-3">Total Entrées</p>
-                                <p className="text-4xl font-black text-white italic tracking-tighter">+{totalGlobalCashIn.toLocaleString('fr-FR')} F</p>
+                    {/* CAISSE BÉNÉFICES */}
+                    <div className="glass-panel p-16 bg-emerald-600/10 border-emerald-500/20 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-opacity">
+                             <ChartLine size={120} className="text-emerald-500" />
+                        </div>
+                        <div className="relative z-10 space-y-8">
+                            <div className="space-y-2">
+                                <div className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.4em] italic flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                    Cagnotte Bénéfices Réels
+                                </div>
+                                <h2 className="text-7xl md:text-8xl font-black text-emerald-500 italic tracking-tighter leading-none">
+                                    {benefitsInHand.toLocaleString('fr-FR')} <span className="text-3xl uppercase not-italic opacity-50 text-emerald-500/50">F</span>
+                                </h2>
                             </div>
-                            <div className="p-8 bg-black/20 backdrop-blur-2xl rounded-[2.5rem] border border-white/5 hover:bg-black/30 transition-all">
-                                <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest mb-3">Total Sorties</p>
-                                <p className="text-4xl font-black text-white italic tracking-tighter">-{totalGlobalCashOut.toLocaleString('fr-FR')} F</p>
+                            <div className="flex items-center gap-6 pt-8 border-t border-emerald-500/10">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest italic">Profit Total (Vie)</p>
+                                    <p className="text-xl font-bold text-emerald-400 italic">+{totalPortfolioProfit.toLocaleString()} F</p>
+                                </div>
+                                <div className="w-px h-8 bg-emerald-500/10"></div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest italic">Réinvesti</p>
+                                    <p className="text-xl font-bold text-blue-400 italic">-{benefitsReinvested.toLocaleString()} F</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                {/* PERFORMANCE ET RISQUE */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                     {/* REVENUS DE LA PÉRIODE */}
-                     <div className="glass-panel p-12 space-y-8">
+                    {/* REVENUS DE LA PÉRIODE */}
+                    <div className="glass-panel p-12 space-y-8">
                         <div className="flex justify-between items-end">
                             <div className="space-y-2">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] italic">Performance Période</p>
@@ -238,7 +305,7 @@ export default async function FinanceAuditPage({
                                 <p className="text-2xl font-black text-emerald-500 italic">+{periodGrossRevenue.toLocaleString('fr-FR')} F</p>
                             </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/5">
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Abonnements</p>
@@ -257,10 +324,10 @@ export default async function FinanceAuditPage({
                                 <p className="text-xl font-bold text-blue-500 italic">-{periodCommissions.toLocaleString()} F</p>
                             </div>
                         </div>
-                     </div>
+                    </div>
 
-                     {/* ANALYSE DU RISQUE (PAR) */}
-                     <div className="glass-panel p-12 bg-slate-900/40 relative overflow-hidden group hover:border-red-500/20">
+                    {/* ANALYSE DU RISQUE (PAR) */}
+                    <div className="glass-panel p-12 bg-slate-900/40 relative overflow-hidden group hover:border-red-500/20">
                         <div className="flex justify-between items-start">
                             <div className="space-y-4">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] italic leading-tight">Exposition Risque Bancaire<br />(Portfolio At Risk)</p>
@@ -283,12 +350,12 @@ export default async function FinanceAuditPage({
                             </div>
                         </div>
                         <div className="mt-8 h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <div 
+                            <div
                                 className={`h-full transition-all duration-1000 ${parRate > 15 ? 'bg-red-500' : 'bg-amber-500'}`}
                                 style={{ width: `${Math.min(100, parRate)}%` }}
-                             />
+                            />
                         </div>
-                     </div>
+                    </div>
                 </div>
 
                 {/* JOURNAL DES FLUX FLAMBANT NEUF */}
@@ -318,9 +385,8 @@ export default async function FinanceAuditPage({
                                             <p className="text-[10px] text-slate-600 font-mono italic">{new Date(entry.date).toLocaleTimeString('fr-FR')}</p>
                                         </td>
                                         <td className="px-12 py-8">
-                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${
-                                                entry.type.startsWith('REVENUE') || entry.type.startsWith('CASH_IN') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                            }`}>
+                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${entry.type.startsWith('REVENUE') || entry.type.startsWith('CASH_IN') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                }`}>
                                                 {entry.type.replace(/_/g, ' ')}
                                             </span>
                                         </td>
