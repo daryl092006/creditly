@@ -19,7 +19,7 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
     const paid = Number(loan.amount_paid) || 0;
 
     // 1. Service Fee Calculation (standard fallback for older records)
-    const fee = Number(loan.service_fee) !== null && loan.service_fee !== undefined
+    const fee = (loan.service_fee !== null && loan.service_fee !== undefined)
         ? Number(loan.service_fee)
         : (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0);
 

@@ -6,7 +6,7 @@ import { requireAdminRole } from '@/utils/admin-security'
 import { calculateLoanDebt } from '@/utils/loan-utils'
 
 export default async function UserManagementPage() {
-    await requireAdminRole(['superadmin', 'owner', 'admin_comptable'])
+    const { roles: currentUserRoles } = await requireAdminRole(['superadmin', 'owner', 'admin_comptable'])
     const supabase = await createClient()
 
     const { data: users, error } = await supabase
@@ -67,7 +67,7 @@ export default async function UserManagementPage() {
                 </div>
 
                 <div className="glass-panel overflow-hidden bg-slate-900/50 border-white/5 shadow-2xl">
-                    <UserManagementTable rows={rows} />
+                    <UserManagementTable rows={rows} currentUserRoles={currentUserRoles as any} />
                 </div>
             </div>
         </div>

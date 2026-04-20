@@ -6,7 +6,11 @@ import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import Link from 'next/link'
 
-export default function UserManagementTable({ rows }: { rows: Array<{ id: string; name: string; email: string; is_active: boolean; roles: string[]; whatsapp?: string; has_active_loans?: boolean; debt?: number }> }) {
+export default function UserManagementTable({ rows, currentUserRoles }: { 
+    rows: Array<{ id: string; name: string; email: string; is_active: boolean; roles: string[]; whatsapp?: string; has_active_loans?: boolean; debt?: number }>,
+    currentUserRoles: string[]
+}) {
+    const isOwner = currentUserRoles.includes('owner')
     const [loading, setLoading] = useState<string | null>(null)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, email: string, type: 'delete' | 'blacklist', hasLoans?: boolean } | null>(null)
@@ -18,6 +22,14 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
     const getRoles = (row: { id: string; roles: string[] }) => localRolesMap[row.id] ?? row.roles
 
     const handleToggleRole = async (userId: string, roleToToggle: string, currentDisplayedRoles: string[]) => {
+        if (!isOwner) {
+            setErrorAction({
+                title: "Accès Refusé",
+                message: "Seul le Propriétaire peut modifier les rôles de la plateforme."
+            })
+            return
+        }
+
         let newRoles: string[]
         if (currentDisplayedRoles.includes(roleToToggle)) {
             newRoles = currentDisplayedRoles.filter(r => r !== roleToToggle)
@@ -50,7 +62,7 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
         { id: 'admin_repayment', label: 'Admin Remboursement' },
         { id: 'admin_comptable', label: 'Admin Comptable' },
         { id: 'superadmin', label: 'Superadmin' },
-        { id: 'owner', label: 'Propriétaire' }
+        ...(isOwner ? [{ id: 'owner', label: 'Propriétaire' }] : [])
     ]
 
     const handleExecuteAction = async () => {
@@ -138,18 +150,36 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                             {getRoles(row).length} Rôle(s) <ChevronDown size={14} />
                                         </button>
 
-                                        <div className="absolute left-0 top-full mt-2 w-48 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/roles:opacity-100 group-hover/roles:visible transition-all z-20 p-2 space-y-1">
-                                            {availableRoles.map(role => (
-                                                <button
-                                                    key={role.id}
-                                                    onClick={() => handleToggleRole(row.id, role.id, getRoles(row))}
-                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${getRoles(row).includes(role.id) ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5'}`}
-                                                >
-                                                    {role.label}
-                                                    {getRoles(row).includes(role.id) && <CheckmarkFilled size={14} />}
+                                <td className="px-8 py-6">
+                                    <div className="relative group/roles">
+                                        {isOwner ? (
+                                            <>
+                                                <button className="flex items-center gap-2 bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 transition-all">
+                                                    {getRoles(row).length} Rôle(s) <ChevronDown size={14} />
                                                 </button>
-                                            ))}
-                                        </div>
+
+                                                <div className="absolute left-0 top-full mt-2 w-48 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/roles:opacity-100 group-hover/roles:visible transition-all z-20 p-2 space-y-1">
+                                                    {availableRoles.map(role => (
+                                                        <button
+                                                            key={role.id}
+                                                            onClick={() => handleToggleRole(row.id, role.id, getRoles(row))}
+                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${getRoles(row).includes(role.id) ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5'}`}
+                                                        >
+                                                            {role.label}
+                                                            {getRoles(row).includes(role.id) && <CheckmarkFilled size={14} />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-1">
+                                                {getRoles(row).map(r => (
+                                                    <span key={r} className="px-2 py-0.5 bg-slate-800 text-slate-400 border border-white/5 rounded text-[8px] font-black uppercase tracking-widest">
+                                                        {availableRoles.find(ar => ar.id === r)?.label || r}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {loading === row.id && (
                                             <div className="absolute -right-8 top-1/2 -translate-y-1/2">
@@ -167,22 +197,33 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                         >
                                             <InformationFilled size={18} />
                                         </Link>
-                                        <button
-                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
-                                            disabled={!!processingId || loading === row.id}
-                                            className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'delete' ? 'bg-amber-500/20 text-amber-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-amber-500/10 hover:text-amber-500 border border-white/5 hover:border-amber-500/20'}`}
-                                            title="Supprimer le compte uniquement"
-                                        >
-                                            <TrashCan size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
-                                            disabled={!!processingId || loading === row.id}
-                                            className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'blacklist' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
-                                            title="Bannir & Supprimer"
-                                        >
-                                            <Misuse size={18} />
-                                        </button>
+                                        {isOwner && (
+                                            <>
+                                                <Link
+                                                    href={`/admin/super/staff-loans/create?userId=${row.id}`}
+                                                    className="p-3 bg-slate-900 text-emerald-500 hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 rounded-xl transition-all"
+                                                    title="Accorder un prêt Staff"
+                                                >
+                                                    <Rocket size={18} />
+                                                </Link>
+                                                <button
+                                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
+                                                    disabled={!!processingId || loading === row.id}
+                                                    className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'delete' ? 'bg-amber-500/20 text-amber-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-amber-500/10 hover:text-amber-500 border border-white/5 hover:border-amber-500/20'}`}
+                                                    title="Supprimer le compte uniquement"
+                                                >
+                                                    <TrashCan size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
+                                                    disabled={!!processingId || loading === row.id}
+                                                    className={`p-3 rounded-xl transition-all ${processingId === row.id && confirmAction?.type === 'blacklist' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 border border-white/5 hover:border-red-500/20'}`}
+                                                    title="Bannir & Supprimer"
+                                                >
+                                                    <Misuse size={18} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
@@ -218,20 +259,24 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 >
                                     <InformationFilled size={18} />
                                 </Link>
-                                <button
-                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
-                                    className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
-                                    title="Supprimer"
-                                >
-                                    <TrashCan size={18} />
-                                </button>
-                                <button
-                                    onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
-                                    className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
-                                    title="Bannir"
-                                >
-                                    <Misuse size={18} />
-                                </button>
+                                {isOwner && (
+                                    <>
+                                        <button
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
+                                            className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                            title="Supprimer"
+                                        >
+                                            <TrashCan size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'blacklist', hasLoans: row.has_active_loans })}
+                                            className="w-10 h-10 bg-slate-800 text-red-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                            title="Bannir"
+                                        >
+                                            <Misuse size={18} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -245,15 +290,23 @@ export default function UserManagementTable({ rows }: { rows: Array<{ id: string
                                 <div className="space-y-2">
                                     <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic">Privilèges</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {availableRoles.map(role => (
-                                            <button
-                                                key={role.id}
-                                                onClick={() => handleToggleRole(row.id, role.id, getRoles(row))}
-                                                className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${getRoles(row).includes(role.id) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-white/5 text-slate-500'}`}
-                                            >
-                                                {role.label}
-                                            </button>
-                                        ))}
+                                        {isOwner ? (
+                                            availableRoles.map(role => (
+                                                <button
+                                                    key={role.id}
+                                                    onClick={() => handleToggleRole(row.id, role.id, getRoles(row))}
+                                                    className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${getRoles(row).includes(role.id) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                                                >
+                                                    {role.label}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            getRoles(row).map(r => (
+                                                <span key={r} className="px-2 py-1 bg-slate-800 text-slate-500 border border-white/5 rounded text-[8px] font-black uppercase tracking-widest">
+                                                    {availableRoles.find(ar => ar.id === r)?.label || r}
+                                                </span>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                                 {row.whatsapp && (

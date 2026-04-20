@@ -200,12 +200,12 @@ export default async function LoanDetailPage(props: { params: Promise<{ id: stri
                                     </div>
                                     <p className="text-3xl font-black text-white tracking-tighter italic">{(loan.amount || 0).toLocaleString('fr-FR')} FCFA</p>
                                 </div>
-                                <div className="p-6 rounded-2xl bg-blue-600 border border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
+                                <div className="p-6 rounded-2xl bg-blue-600 border-blue-500 shadow-xl shadow-blue-600/20 group hover:scale-[1.02] transition-transform">
                                     <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2 italic">Reste à payer</p>
                                     {(() => {
-                                        const fee = Number(loan.service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0);
-                                        const remaining = (Number(loan.amount) || 0) + fee - (Number(loan.amount_paid) || 0);
-                                        return <p className="text-3xl font-black text-white tracking-tighter italic">{remaining.toLocaleString('fr-FR')} FCFA</p>
+                                        const { calculateLoanDebt } = require('@/utils/loan-utils')
+                                        const { totalDebt } = calculateLoanDebt(loan as any)
+                                        return <p className="text-3xl font-black text-white tracking-tighter italic">{totalDebt.toLocaleString('fr-FR')} FCFA</p>
                                     })()}
                                 </div>
                             </div>

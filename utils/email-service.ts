@@ -30,7 +30,7 @@ function createGmailTransport() {
  * UTILS: PREMIUM EMAIL WRAPPER
  * Utilise le template de marque pour tous les envois.
  */
-function wrapEmailTemplate(opts: {
+export function wrapEmailTemplate(opts: {
     title: string;
     content: string;
     button?: { label: string; url: string };

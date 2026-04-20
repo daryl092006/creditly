@@ -28,38 +28,28 @@ export async function GET(request: Request) {
     if (action === 'test-email') {
         try {
             const { Resend } = await import('resend')
+            const { wrapEmailTemplate } = await import('@/utils/email-service')
             const resend = new Resend(process.env.RESEND_API_KEY)
 
             const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
             const toEmail = process.env.ADMIN_EMAIL || 'creditly001@gmail.com'
 
+            const title = '✅ Test Email Creditly — Configuration OK'
+            const content = `
+                <p>Hello Admin,</p>
+                <p>Si vous recevez cet email, votre configuration <strong>Resend</strong> fonctionne parfaitement avec le nouveau design Premium.</p>
+                <div style="background:#f8fafc; padding:15px; border-radius:8px; margin:20px 0; font-family: monospace; font-size: 13px;">
+                    <p style="margin: 0;"><strong>From:</strong> ${fromEmail}</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+                </div>
+            `
+            const button = { label: 'Accéder au Dashboard', url: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/super` }
+
             const { data, error } = await resend.emails.send({
                 from: `Creditly Test <${fromEmail}>`,
                 to: toEmail,
-                subject: '✅ Test Email Creditly — Configuration OK',
-                html: `
-                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #2563eb; border-radius: 10px;">
-                        <h2 style="color: #2563eb;">✅ Email de test Creditly</h2>
-                        <p>Si vous recevez cet email, votre configuration Resend fonctionne correctement.</p>
-                        <table style="width:100%; border-collapse:collapse; margin-top:20px;">
-                            <tr style="background:#f8fafc;">
-                                <td style="padding:8px; font-weight:bold;">From</td>
-                                <td style="padding:8px;">${fromEmail}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:8px; font-weight:bold;">To</td>
-                                <td style="padding:8px;">${toEmail}</td>
-                            </tr>
-                            <tr style="background:#f8fafc;">
-                                <td style="padding:8px; font-weight:bold;">Date</td>
-                                <td style="padding:8px;">${new Date().toLocaleString('fr-FR')}</td>
-                            </tr>
-                        </table>
-                        <p style="margin-top:20px; color:#666; font-size:12px;">
-                            Cet email a été envoyé depuis /api/admin/audit?action=test-email
-                        </p>
-                    </div>
-                `
+                subject: title,
+                html: wrapEmailTemplate({ title, content, button })
             })
 
             if (error) {

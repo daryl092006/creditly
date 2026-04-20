@@ -50,7 +50,7 @@ export default async function RepaymentPage({
                     </div>
                     <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter">Tout est <span className="premium-gradient-text uppercase">réglé.</span></h1>
                     <p className="text-slate-500 font-bold italic">Vous n&apos;avez aucun prêt actif à rembourser pour le moment.</p>
-                    <Link href="/client/dashboard">
+                    <Link href="/dashboard">
                         <button className="premium-button px-8">Retour au Dashboard</button>
                     </Link>
                 </div>
@@ -58,9 +58,9 @@ export default async function RepaymentPage({
         )
     }
 
-    const dueDate = new Date(loan.due_date).toLocaleDateString()
-    const fee = Number(loan.service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0)
-    const remainingBalance = (Number(loan.amount) + fee) - (Number(loan.amount_paid) || 0)
+    const { calculateLoanDebt } = require('@/utils/loan-utils')
+    const { totalDebt: remainingBalance, fee } = calculateLoanDebt(loan as any)
+    const dueDate = loan.due_date ? new Date(loan.due_date).toLocaleDateString() : 'Non définie'
 
     return (
         <div className="py-12 md:py-24 page-transition">
