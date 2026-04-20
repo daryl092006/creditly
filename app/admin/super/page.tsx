@@ -8,6 +8,9 @@ import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
 import AdminEmailControl from '@/app/components/admin/AdminEmailControl'
 
+import { calculateProfitToShare, getShareholderByEmail, SHAREHOLDERS_CONFIG } from '@/utils/finance-utils'
+import InvestorSection from '../finance/InvestorSection'
+
 export default async function SuperAdminPage({
     searchParams
 }: {
@@ -58,7 +61,8 @@ export default async function SuperAdminPage({
         { data: repaymentData },
         { data: totalCommissions, error: errComm },
         { data: pendingWithdrawals, error: errWith },
-        { data: notificationData }
+        { data: notificationData },
+        { data: settings }
     ] = await Promise.all([
         supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
@@ -70,14 +74,29 @@ export default async function SuperAdminPage({
         supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         checkGlobalQuotasStatus(month, year),
         supabase.from('abonnements').select('id, name, max_loan_amount'),
-        supabase.from('users').select('id, nom, prenom, roles').overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'admin_comptable', 'superadmin', 'owner']),
+        supabase.from('users').select('id, nom, prenom, email, roles').overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'admin_comptable', 'superadmin', 'owner']),
         supabase.from('kyc_submissions').select('admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null),
         supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null),
         supabase.from('remboursements').select('admin_id, status').gte('validated_at', startDate).lte('validated_at', endDate).not('admin_id', 'is', null),
         supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
         supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
-        supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5)
+        supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
     ]);
+
+    const ledger = settings?.value || { transactions: [] }
+    const totalWithdrawals = (ledger.transactions || []).filter((t: any) => t.type === 'withdrawal').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
+
+    const { realizedProfit: totalProfitEarned, forecastedProfit, breakdown } = await calculateProfitToShare(supabase)
+    
+    // CALCUL DE LA LIQUIDITÉ RÉELLE (Pour éviter les 603k fantômes)
+    const INITIAL_CAPITAL = 2000000
+    const capitalInCirculation = (allActiveLoans || []).reduce((acc, loan) => acc + Math.max(0, Number(loan.amount) - Number(loan.amount_paid)), 0)
+    
+    const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalProfitEarned - totalWithdrawals - capitalInCirculation)
+    const maxCapitalAllowedInHand = Math.max(0, INITIAL_CAPITAL - capitalInCirculation)
+    const capitalInHand = Math.max(0, Math.min(maxCapitalAllowedInHand, totalCashInCaisse))
+    const benefitsInHand = Math.max(0, totalCashInCaisse - capitalInHand)
 
     const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
     const periodPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
@@ -96,6 +115,8 @@ export default async function SuperAdminPage({
         offersMap[o.id] = o.name
         offersMap[o.max_loan_amount.toString()] = o.name
     })
+
+    const currentActivePenalties = (allActiveLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).latePenalties, 0)
 
     const quotasArray = Object.entries(globalQuotas || {}).map(([key, val]: any) => {
         const name = offersMap[key] || (key.length > 5 ? 'Offre Inconnue' : `${key} F`)
@@ -130,7 +151,7 @@ export default async function SuperAdminPage({
         const totalRealizedGains = totalCommissions?.filter((c: any) => c.admin_id === admin.id && (c.loan?.status === 'paid' || c.type === 'repayment_reward')).reduce((acc, c) => acc + Number(c.amount), 0) || 0
         const repaymentCount = repaymentData?.filter(a => a.admin_id === admin.id).length || 0
 
-        return { 
+        return {
             ...admin,
             totalActions: kycCount + loanCountTotal + repaymentCount,
             totalEarnings: totalRealizedGains,
@@ -138,8 +159,35 @@ export default async function SuperAdminPage({
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
-    const { data: allOverdueLoans } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').eq('status', 'overdue')
-    const currentActivePenalties = (allOverdueLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).latePenalties, 0)
+
+    // --- PERSONAL PROFIT SHARING LOGIC (DRY VERSION) ---
+    const { data: { user } } = await supabase.auth.getUser()
+    const currentAdmin = admins?.find(a => a.id === user?.id)
+    const userEmail = currentAdmin?.email || user?.email || ''
+
+    let myShareStats = null
+    if (currentAdmin) {
+        const match = getShareholderByEmail(userEmail, currentAdmin.roles || [])
+
+        if (match) {
+            const { realizedProfit, forecastedProfit } = await calculateProfitToShare(supabase)
+            const { data: ledgerSetting } = await supabase.from('system_settings').select('value').eq('key', 'investor_ledger').single()
+            const ledger = (ledgerSetting?.value || []) as any[]
+
+            const myTransactions = ledger.filter(t => t.name.toLowerCase().includes(match.name.toLowerCase()))
+            const totalAdjustments = myTransactions.reduce((acc, t) => acc + t.amount, 0)
+
+            myShareStats = {
+                name: match.name,
+                sharePercent: (match.share * 100).toFixed(1),
+                color: match.color,
+                theoreticalGain: Math.floor(totalProfitEarned * match.share),
+                availableBalance: Math.floor(benefitsInHand * match.share) + totalAdjustments,
+                forecastedBalance: Math.floor(forecastedProfit * match.share) + totalAdjustments,
+                adjustments: totalAdjustments
+            }
+        }
+    }
 
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">
@@ -162,6 +210,58 @@ export default async function SuperAdminPage({
                         <DashboardFilters currentMonth={month} currentYear={year} currentPeriod={period} />
                     </div>
                 </header>
+
+                {/* SHAREHOLDER PERSONAL PROFIT PILL */}
+                {myShareStats && (
+                    <div className="mb-12 animate-slide-up">
+                        <div className="glass-panel p-1 border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-900/20 rounded-[2.5rem] overflow-hidden">
+                            <div className="flex flex-col lg:flex-row items-center justify-between gap-8 p-8 sm:p-10">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 rounded-[2rem] flex items-center justify-center text-3xl font-black text-white italic shadow-2xl relative group" style={{ backgroundColor: myShareStats.color }}>
+                                        <div className="absolute inset-0 bg-white/20 rounded-[2rem] scale-0 group-hover:scale-100 transition-transform duration-500"></div>
+                                        {myShareStats.name.charAt(0)}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-3xl font-black text-white italic tracking-tighter uppercase">{myShareStats.name}</h3>
+                                            <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-[9px] font-black uppercase tracking-widest border border-blue-500/20">Associé {myShareStats.sharePercent}%</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-bold italic uppercase tracking-tight">Mon solde de bénéfices en temps réel</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-center gap-8">
+                                    <div className="text-center sm:text-right">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Gains Théoriques</p>
+                                        <p className="text-2xl font-black text-slate-300 italic tracking-tighter">{myShareStats.theoreticalGain.toLocaleString('fr-FR')} F</p>
+                                    </div>
+                                    <div className="h-10 w-px bg-white/5 hidden sm:block"></div>
+                                    <div className="text-center sm:text-right group cursor-help relative">
+                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Vision Horizon</p>
+                                        <p className="text-2xl font-black text-blue-500 italic tracking-tighter leading-none">
+                                            {myShareStats.forecastedBalance.toLocaleString('fr-FR')} F
+                                        </p>
+                                        <div className="absolute top-full right-0 mt-3 w-48 p-4 bg-slate-900 border border-white/10 rounded-2xl text-[9px] text-slate-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl italic leading-relaxed">
+                                            Si 100% des prêts actifs sont remboursés avec leurs frais et pénalités.
+                                        </div>
+                                    </div>
+                                    <div className="h-10 w-px bg-white/5 hidden sm:block"></div>
+                                    <div className="text-center sm:text-right">
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1 italic">Solde Retirable</p>
+                                        <p className="text-5xl font-black text-emerald-400 italic tracking-tighter leading-none">
+                                            {myShareStats.availableBalance.toLocaleString('fr-FR')} <span className="text-lg opacity-50 not-italic">F</span>
+                                        </p>
+                                    </div>
+                                    <Link href="/admin/finance">
+                                        <button className="h-16 px-8 rounded-3xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-600/20 flex items-center gap-3 italic">
+                                            <Wallet size={20} /> Détails & Retrait
+                                        </button>
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
                     {[
@@ -214,6 +314,16 @@ export default async function SuperAdminPage({
 
                         <section>
                             <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
+                        </section>
+
+                        <section className="pt-12">
+                            <InvestorSection 
+                                shareholders={SHAREHOLDERS_CONFIG} 
+                                totalProfitToShare={benefitsInHand}
+                                ledger={ledger.transactions || []}
+                                currentUserEmail={userEmail}
+                                profitBreakdown={breakdown}
+                            />
                         </section>
 
                         <section>
