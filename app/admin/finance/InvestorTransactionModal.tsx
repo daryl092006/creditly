@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Plus, Minus, Time, User, Wallet } from '@carbon/icons-react'
+import { Add, Subtract, Time, User, Wallet } from '@carbon/icons-react'
 
 export function InvestorTransactionModal({ 
     isOpen, 
@@ -55,14 +55,14 @@ export function InvestorTransactionModal({
                         disabled={loading}
                         className="h-16 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <Minus size={20} /> Retirer
+                        <Subtract size={20} /> Retirer
                     </button>
                     <button 
                         onClick={() => handleSubmit('investment')}
                         disabled={loading}
                         className="h-16 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-500 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <Plus size={20} /> Remettre
+                        <Add size={20} /> Remettre
                     </button>
                 </div>
 
