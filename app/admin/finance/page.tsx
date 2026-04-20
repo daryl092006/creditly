@@ -3,6 +3,7 @@ import { requireAdminRole } from '@/utils/admin-security'
 import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMultiple, CheckmarkFilled, Warning, List, User, Information } from '@carbon/icons-react'
 
 import { DashboardFilters } from '../super/DashboardFilters'
+import InvestorSection from './InvestorSection'
 
 export default async function FinanceAuditPage({
     searchParams
@@ -172,6 +173,44 @@ export default async function FinanceAuditPage({
     const periodCommissions = commissions?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
     const periodNetProfit = periodGrossRevenue - periodCommissions
 
+    // --- 8. PARTAGE DES BÉNÉFICES ASSOCIÉS (Post 18 Mars 2026) ---
+    const DISTRIBUTION_START_DATE = '2026-03-19T00:00:00Z'
+    
+    // Fetch all revenues since distribution start
+    const { data: globalSubsPostMarch } = await supabaseAdmin.from('user_subscriptions').select('plan:abonnements(price)').gte('created_at', DISTRIBUTION_START_DATE)
+    const { data: globalCommsPostMarch } = await supabaseAdmin.from('admin_commissions').select('amount').gte('created_at', DISTRIBUTION_START_DATE)
+    const { data: globalLoansPaidPostMarch } = await supabaseAdmin.from('prets').select('*').eq('status', 'paid').gte('updated_at', DISTRIBUTION_START_DATE)
+    
+    let globalFeesPostMarch = 0
+    let globalExtensionsPostMarch = 0
+    let globalPenaltiesPostMarch = 0
+    globalLoansPaidPostMarch?.forEach(l => {
+        globalFeesPostMarch += (Number(l.service_fee) || 500)
+        globalExtensionsPostMarch += (Number(l.extension_fee) || 0)
+        const debt = calculateLoanDebt(l as any)
+        globalPenaltiesPostMarch += debt.latePenalties
+    })
+
+    const globalSubsTotalPostMarch = globalSubsPostMarch?.reduce((acc, s: any) => acc + (Number(s.plan?.price) || 0), 0) || 0
+    const globalCommsTotalPostMarch = globalCommsPostMarch?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
+    
+    // Net Dividends to distribute
+    const totalProfitToShare = globalSubsTotalPostMarch + globalFeesPostMarch + globalExtensionsPostMarch + globalPenaltiesPostMarch - globalCommsTotalPostMarch
+
+    const shareholders = [
+        { name: 'Habib', share: 0.885, color: '#3b82f6' },
+        { name: 'Denis', share: 0.08, color: '#10b981' },
+        { name: 'Wilfried', share: 0.03, color: '#f59e0b' },
+        { name: 'Borel', share: 0.005, color: '#ef4444' }
+    ].map(s => ({
+        ...s,
+        amount: Math.floor(totalProfitToShare * s.share)
+    }))
+
+    // Fetch the investor ledger
+    const { data: ledgerSetting } = await supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').single()
+    const ledger = ledgerSetting?.value || []
+
     return (
         <div className="py-16 md:py-32 page-transition min-h-screen">
             <div className="admin-container space-y-24">
@@ -223,6 +262,13 @@ export default async function FinanceAuditPage({
                         </div>
                     </div>
                 </div>
+
+                {/* PARTAGE DES DIVIDENDES ASSOCIÉS DYNAMIQUE */}
+                <InvestorSection 
+                    shareholders={shareholders} 
+                    totalProfitToShare={totalProfitToShare}
+                    ledger={ledger as any[]}
+                />
 
                 {/* PERFORMANCE ET RISQUE */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
