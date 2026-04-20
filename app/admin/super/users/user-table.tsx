@@ -191,15 +191,17 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                                         >
                                             <InformationFilled size={18} />
                                         </Link>
+                                        {isOwner && row.roles.some(r => r.startsWith('admin_') || r === 'superadmin' || r === 'owner') && (
+                                            <Link
+                                                href={`/admin/super/staff-loans/create?userId=${row.id}`}
+                                                className="p-3 bg-slate-900 text-emerald-500 hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 rounded-xl transition-all"
+                                                title="Accorder un prêt Staff"
+                                            >
+                                                <Rocket size={18} />
+                                            </Link>
+                                        )}
                                         {isOwner && (
                                             <>
-                                                <Link
-                                                    href={`/admin/super/staff-loans/create?userId=${row.id}`}
-                                                    className="p-3 bg-slate-900 text-emerald-500 hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 rounded-xl transition-all"
-                                                    title="Accorder un prêt Staff"
-                                                >
-                                                    <Rocket size={18} />
-                                                </Link>
                                                 <button
                                                     onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
                                                     disabled={!!processingId || loading === row.id}
@@ -253,15 +255,17 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                                 >
                                     <InformationFilled size={18} />
                                 </Link>
+                                {isOwner && row.roles.some(r => r.startsWith('admin_') || r === 'superadmin' || r === 'owner') && (
+                                    <Link
+                                        href={`/admin/super/staff-loans/create?userId=${row.id}`}
+                                        className="w-10 h-10 bg-slate-800 text-emerald-500 rounded-xl border border-white/5 flex items-center justify-center"
+                                        title="Prêt Staff"
+                                    >
+                                        <Rocket size={18} />
+                                    </Link>
+                                )}
                                 {isOwner && (
                                     <>
-                                        <Link
-                                            href={`/admin/super/staff-loans/create?userId=${row.id}`}
-                                            className="w-10 h-10 bg-slate-800 text-emerald-500 rounded-xl border border-white/5 flex items-center justify-center"
-                                            title="Prêt Staff"
-                                        >
-                                            <Rocket size={18} />
-                                        </Link>
                                         <button
                                             onClick={() => setConfirmAction({ id: row.id, email: row.email, type: 'delete', hasLoans: row.has_active_loans })}
                                             className="w-10 h-10 bg-slate-800 text-amber-500 rounded-xl border border-white/5 flex items-center justify-center"
