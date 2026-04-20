@@ -232,7 +232,7 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     await sendAdminAlert({ subject, html });
 }
 
-type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'REPAYMENT_REMINDER_URGENT' | 'REPAYMENT_DUE_TODAY' | 'REPAYMENT_OVERDUE' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT' | 'LOAN_EXTENSION_CONFIRMED';
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'REPAYMENT_REMINDER_URGENT' | 'REPAYMENT_DUE_TODAY' | 'REPAYMENT_OVERDUE' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT' | 'LOAN_EXTENSION_CONFIRMED' | 'REMARKETING_NO_KYC' | 'REMARKETING_NO_LOAN';
 
 interface UserEmailData {
     email: string;
@@ -374,6 +374,28 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
                 <p>Échéance reportée au <strong>${data.newDueDate}</strong>.</p>
                 <p>Frais appliqués: ${fmt(data.fee || 500)}.</p>
             `;
+            break;
+
+        case 'REMARKETING_NO_KYC':
+            subject = `🚀 Débloquez votre premier prêt sur Creditly`;
+            title = 'Finalisez votre inscription';
+            content = `
+                <p>Bonjour ${data.name},</p>
+                <p>Vous avez créé votre compte, mais vous n'avez pas encore soumis vos documents de vérification (KYC).</p>
+                <p>C'est l'étape indispensable pour accéder à nos offres de financement rapides et sans tracas.</p>
+            `;
+            button = { label: 'Vérifier mon identité', url: `${process.env.NEXT_PUBLIC_SITE_URL}/client/kyc` };
+            break;
+
+        case 'REMARKETING_NO_LOAN':
+            subject = `💸 Votre ligne de crédit est prête !`;
+            title = 'Besoin d\'un coup de pouce ?';
+            content = `
+                <p>Bonjour ${data.name},</p>
+                <p>Bonne nouvelle : votre compte est validé et vérifié !</p>
+                <p>Saviez-vous que vous pouvez demander jusqu'à 800.000 FCFA en moins de 5 minutes ? Vos fonds sont prêts à être débloqués.</p>
+            `;
+            button = { label: 'Faire une demande de prêt', url: `${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/request` };
             break;
     }
 
