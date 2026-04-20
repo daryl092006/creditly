@@ -85,8 +85,11 @@ export default async function AdminMyLoansPage() {
                                         return (
                                             <tr key={loan.id} className="hover:bg-white/[0.01] transition-colors">
                                                 <td className="px-8 py-6">
-                                                    <p className="font-black text-white italic tracking-tight">{loan.description || 'Prêt Staff'}</p>
-                                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Octroyé le {new Date(loan.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    <p className="font-black text-white italic tracking-tight">{loan.payout_name || 'Prêt Staff'}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-tighter rounded border border-emerald-500/20">Staff 0%</span>
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest italic">Octroyé le {new Date(loan.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    </div>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <p className="font-black text-slate-400 italic">{loan.amount.toLocaleString('fr-FR')} F</p>

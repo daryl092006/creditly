@@ -44,9 +44,8 @@ export async function createStaffLoan(
                 status: 'active', // Directement actif car approuvé par l'owner
                 due_date: new Date(startDate).toISOString(),
                 service_fee: 0,
-                interest_rate: 0,
-                description: description,
-                payout_status: 'paid' // Considéré comme déjà payé à l'admin
+                payout_name: description, // On utilise payout_name pour stocker la description puisque la colonne dédiée n'existe pas
+                amount_paid: 0
             })
         } else {
             const amountPerMonth = Math.floor(amountTotal / installmentsCount)
@@ -62,9 +61,8 @@ export async function createStaffLoan(
                     status: 'active',
                     due_date: dueDate.toISOString(),
                     service_fee: 0,
-                    interest_rate: 0,
-                    description: `${description} - Échéance ${i + 1}/${installmentsCount}`,
-                    payout_status: 'paid'
+                    payout_name: `${description} - ${i + 1}/${installmentsCount}`,
+                    amount_paid: 0
                 })
             }
         }
