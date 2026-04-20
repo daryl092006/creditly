@@ -31,15 +31,18 @@ export default async function AdminRepaymentPage({
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
 
     const rows = repayments?.map(r => {
-        const { totalDebt } = calculateLoanDebt(r.loan as any)
+        const { totalDebt, principle, fee, extensionFee, latePenalties, paid } = calculateLoanDebt(r.loan as any)
+        const initialTotal = principle + fee + (extensionFee || 0) + (latePenalties || 0)
+
         return {
             id: r.id,
             loan_id: r.loan_id,
             user_id: r.user_id,
             user: `${r.user?.prenom} ${r.user?.nom} (${r.user?.email})`,
             whatsapp: r.user?.whatsapp || r.user?.telephone,
-            loan_amount: totalDebt,
-            loan_amount_paid: r.loan?.amount_paid || 0,
+            loan_initial_total: initialTotal,
+            loan_total_due: totalDebt,
+            loan_amount_paid: paid,
             amount_declared: r.amount_declared,
             proof_url: r.proof_url,
             date: r.created_at,
