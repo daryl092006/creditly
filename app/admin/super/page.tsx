@@ -40,6 +40,7 @@ export default async function SuperAdminPage({
     }
 
     const supabase = await createClient()
+    const supabaseAdmin = await createAdminClient()
 
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
 
@@ -81,13 +82,13 @@ export default async function SuperAdminPage({
         supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
         supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5),
-        supabase.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
+        supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
     ]);
 
     const ledger = settings?.value || { transactions: [] }
     const totalWithdrawals = (ledger.transactions || []).filter((t: any) => t.type === 'withdrawal').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
 
-    const { realizedProfit: totalProfitEarned, forecastedProfit, breakdown } = await calculateProfitToShare(supabase)
+    const { realizedProfit: totalProfitEarned, forecastedProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
     
     // CALCUL DE LA LIQUIDITÉ RÉELLE (Pour éviter les 603k fantômes)
     const INITIAL_CAPITAL = 2000000
@@ -170,8 +171,7 @@ export default async function SuperAdminPage({
         const match = getShareholderByEmail(userEmail, currentAdmin.roles || [])
 
         if (match) {
-            const { realizedProfit, forecastedProfit } = await calculateProfitToShare(supabase)
-            const { data: ledgerSetting } = await supabase.from('system_settings').select('value').eq('key', 'investor_ledger').single()
+            const { data: ledgerSetting } = await supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
             const ledger = (ledgerSetting?.value || []) as any[]
 
             const myTransactions = ledger.filter(t => t.name.toLowerCase().includes(match.name.toLowerCase()))
