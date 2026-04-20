@@ -24,6 +24,11 @@ export default async function FinanceAuditPage({
     const month = params.month ? parseInt(params.month) : now.getMonth() + 1
     const year = params.year ? parseInt(params.year) : now.getFullYear()
 
+    // RÉCUPÉRATION DE L'EMAIL POUR LE FILTRE DE CONFIDENTIALITÉ
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: admins } = await supabaseAdmin.from('users').select('email').eq('id', user?.id).single()
+    const userEmail = admins?.email || user?.email || ''
+
     let startDate: string;
     let endDate: string = new Date(year, month, 0, 23, 59, 59).toISOString();
 
@@ -168,7 +173,9 @@ export default async function FinanceAuditPage({
     const capitalInCirculation = riskStats.totalActivePrinciple
     
     // On récupère le profit total depuis notre utilitaire certifié
-    const { realizedProfit: totalPortfolioProfit, forecastedProfit } = await calculateProfitToShare(supabaseAdmin)
+    const { realizedProfit: totalPortfolioProfit, forecastedProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
+    const { data: ledgerSetting } = await supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
+    const ledger = ledgerSetting?.value || { transactions: [] }
 
     const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalPortfolioProfit - totalWithdrawals - capitalInCirculation)
     const maxCapitalAllowedInHand = Math.max(0, INITIAL_CAPITAL - capitalInCirculation)
