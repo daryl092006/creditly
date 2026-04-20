@@ -232,7 +232,7 @@ export async function sendAdminNotification(type: NotificationType, data: Notifi
     await sendAdminAlert({ subject, html });
 }
 
-type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'REPAYMENT_REMINDER_URGENT' | 'REPAYMENT_DUE_TODAY' | 'REPAYMENT_OVERDUE' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT' | 'LOAN_EXTENSION_CONFIRMED' | 'REMARKETING_NO_KYC' | 'REMARKETING_NO_LOAN';
+type UserNotificationType = 'KYC_APPROVED' | 'KYC_REJECTED' | 'LOAN_APPROVED' | 'LOAN_REJECTED' | 'LOAN_ACTIVE' | 'REPAYMENT_VALIDATED' | 'REPAYMENT_REJECTED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_REJECTED' | 'LOAN_REQUEST_RECEIVED' | 'REPAYMENT_RECEIVED' | 'KYC_SUBMISSION_RECEIVED' | 'SUBSCRIPTION_RECEIVED' | 'REPAYMENT_REMINDER' | 'REPAYMENT_REMINDER_URGENT' | 'REPAYMENT_DUE_TODAY' | 'REPAYMENT_OVERDUE' | 'SUBSCRIPTION_EXPIRING' | 'SUBSCRIPTION_EXPIRING_URGENT' | 'LOAN_EXTENSION_CONFIRMED' | 'REMARKETING_NO_KYC' | 'REMARKETING_NO_LOAN' | 'DIRECT_MESSAGE';
 
 interface UserEmailData {
     email: string;
@@ -245,6 +245,8 @@ interface UserEmailData {
     renewUrl?: string;
     newDueDate?: string;
     fee?: number;
+    subject?: string;
+    message?: string;
 }
 
 export async function sendUserEmail(type: UserNotificationType, data: UserEmailData) {
@@ -396,6 +398,12 @@ export async function sendUserEmail(type: UserNotificationType, data: UserEmailD
                 <p>Saviez-vous que vous pouvez demander jusqu'à 800.000 FCFA en moins de 5 minutes ? Vos fonds sont prêts à être débloqués.</p>
             `;
             button = { label: 'Faire une demande de prêt', url: `${process.env.NEXT_PUBLIC_SITE_URL}/client/loans/request` };
+            break;
+
+        case 'DIRECT_MESSAGE':
+            subject = data.subject || 'Notification Creditly';
+            title = subject;
+            content = `<div style="white-space: pre-line;">${data.message || ''}</div>`;
             break;
     }
 
