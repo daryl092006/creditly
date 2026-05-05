@@ -147,7 +147,7 @@ export async function submitRepayment(formData: FormData) {
     // FETCH LOAN WITH FULL DETAILS
     const { data: loan, error: loanError } = await supabase
         .from('prets')
-        .select('amount, amount_paid, service_fee, created_at, status, due_date')
+        .select('amount, amount_paid, service_fee, extension_fee, is_extended, created_at, status, due_date')
         .eq('id', loanId)
         .single()
 
@@ -162,9 +162,10 @@ export async function submitRepayment(formData: FormData) {
         return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${totalDebt.toLocaleString('fr-FR')} F, incluant pénalités éventuelles). Veuillez recalculer.` }
     }
 
+    const isExtension = formData.get('isExtension') === 'true'
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/repayment_${loanId}_${Date.now()}.${fileExt}`
+    const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
 
     try {
         // 1. Upload to Storage (repayment-proofs)
@@ -197,13 +198,13 @@ export async function submitRepayment(formData: FormData) {
         // 3. Notify Admin (Async)
         const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
         try {
-            await sendAdminNotification('REPAYMENT', {
+            await sendAdminNotification(isExtension ? 'LOAN_EXTENSION_REQUEST' : 'REPAYMENT', {
                 userEmail: user.email!,
                 userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 amount: numAmount
             })
 
-            await sendUserEmail('REPAYMENT_RECEIVED', {
+            await sendUserEmail(isExtension ? 'LOAN_EXTENSION_RECEIVED' : 'REPAYMENT_RECEIVED', {
                 email: user.email!,
                 name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 amount: numAmount
