@@ -60,6 +60,25 @@ export default function SettingsForm({ initialSettings }: { initialSettings: any
                                         </div>
                                     )}
                                 </button>
+                            ) : setting.key === 'shareholders_config' ? (
+                                <div className="flex-1 space-y-4">
+                                    <textarea
+                                        defaultValue={typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value, null, 2)}
+                                        onBlur={(e) => {
+                                            try {
+                                                const parsed = JSON.parse(e.target.value)
+                                                if (JSON.stringify(parsed) !== JSON.stringify(setting.value)) {
+                                                    handleUpdate(setting.key, e.target.value)
+                                                }
+                                            } catch (err) {
+                                                setMessage({ type: 'error', text: 'Format JSON invalide.' })
+                                            }
+                                        }}
+                                        rows={8}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:border-blue-500/50 outline-none transition-all"
+                                    />
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase italic tracking-widest">Format: [&#123; "email": "...", "share": 0.1, "color": "#...", "name": "..." &#125;]</p>
+                                </div>
                             ) : (
                                 <>
                                     <input

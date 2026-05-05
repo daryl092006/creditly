@@ -5,6 +5,7 @@ import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '
 import ContactInfoForm from './ContactInfoForm'
 import DashboardSuccessToast from './DashboardSuccessToast'
 import ExtensionButton from '../loans/extension-button'
+import { getSettingValue } from '../../admin/settings/actions'
 
 interface SubscriptionPlan {
     name: string
@@ -45,6 +46,9 @@ export default async function ClientDashboard() {
 
     // LAZY-CRON: Auto-update statuses silently
     await supabase.rpc('auto_update_system_statuses')
+
+    const extFeeSetting = await getSettingValue('loan_extension_fee', '500')
+    const extensionFee = parseInt(extFeeSetting)
 
     const {
         data: { user },
@@ -398,6 +402,7 @@ export default async function ClientDashboard() {
                                             isExtended={latestLoan.is_extended}
                                             status={latestLoan.status}
                                             hasOverdue={hasOverdue}
+                                            extensionFee={extensionFee}
                                         />
                                     </div>
                                 )}

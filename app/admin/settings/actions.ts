@@ -21,7 +21,7 @@ export async function updateSystemSetting(key: string, value: string) {
 
     revalidatePath('/admin/settings')
     revalidatePath('/client/subscriptions/payment')
-    // We might need to revalidate more if these are used elsewhere
+    revalidatePath('/client/loans')
     return { success: true }
 }
 
@@ -33,4 +33,16 @@ export async function getSystemSettings() {
     // Clés obsolètes depuis que les frais sont définis par plan d'abonnement
     const OBSOLETE_KEYS = ['platform_fee', 'operator_fee_reserve']
     return data.filter((s: any) => !OBSOLETE_KEYS.includes(s.key))
+}
+
+export async function getSettingValue(key: string, defaultValue: string = ''): Promise<string> {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', key)
+        .single()
+
+    if (error || !data) return defaultValue
+    return data.value
 }
