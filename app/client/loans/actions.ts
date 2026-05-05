@@ -171,6 +171,7 @@ export async function submitRepayment(formData: FormData) {
         return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${allowedMax.toLocaleString('fr-FR')} F). Veuillez recalculer.` }
     }
 
+    const isExtension = formData.get('isExtension') === 'true'
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
