@@ -23,8 +23,9 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         }
 
         const numAmount = Number(amount)
-        if (numAmount > remainingBalance + 1) {
-            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant (${remainingBalance.toLocaleString('fr-FR')} F).`)
+        const allowedSurplus = 500 // On autorise la marge pour les frais d'extension
+        if (numAmount > remainingBalance + allowedSurplus + 1) {
+            setError(`Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse le solde restant + les frais de prolongation éventuels (${(remainingBalance + allowedSurplus).toLocaleString('fr-FR')} F).`)
             document.getElementById('amount')?.focus()
             return
         }

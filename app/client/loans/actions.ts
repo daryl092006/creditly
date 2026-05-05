@@ -157,12 +157,15 @@ export async function submitRepayment(formData: FormData) {
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
     const { totalDebt } = calculateLoanDebt(loan as any)
 
-    const isExtension = formData.get('isExtension') === 'true'
+    const isExtensionForm = formData.get('isExtension') === 'true'
     const extensionFeeStr = await getSettingValue('loan_extension_fee', '500')
     const extensionFeeValue = parseInt(extensionFeeStr)
 
-    // STRICT VALIDATION: On autorise un surplus uniquement si c'est une prolongation
-    const allowedMax = isExtension ? (totalDebt + extensionFeeValue) : totalDebt
+    // AUTO-DETECTION : Si le montant dépasse la dette, on considère que c'est une demande d'extension
+    const isExtension = isExtensionForm || (numAmount > totalDebt && !loan.is_extended)
+    
+    // On autorise le dépassement de 500F si le prêt n'est pas encore prolongé
+    const allowedMax = (!loan.is_extended) ? (totalDebt + extensionFeeValue) : totalDebt
     
     if (numAmount > allowedMax + 1) {
         return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${allowedMax.toLocaleString('fr-FR')} F). Veuillez recalculer.` }
