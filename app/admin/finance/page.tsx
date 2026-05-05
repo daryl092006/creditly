@@ -89,12 +89,14 @@ export default async function FinanceAuditPage({
 
         const isLastPayment = (Number(loan.amount_paid) >= (Number(loan.amount) + (Number(loan.service_fee) || 500) + (Number(loan.extension_fee) || 0)))
 
+        const isExtension = r.proof_url?.includes('extension_')
+
         // Si c'est un remboursement, c'est du CASH_IN
         journal.push({
             date: r.validated_at,
-            type: 'CASH_IN_REPAYMENT',
+            type: isExtension ? 'CASH_IN_EXTENSION' : 'CASH_IN_REPAYMENT',
             amount: amount,
-            label: `Encaissement Remboursement (Dossier ${loan.id.slice(0, 5)})`,
+            label: isExtension ? `Frais de Prolongation (+5j)` : `Encaissement Remboursement (Dossier ${loan.id.slice(0, 5)})`,
             user: r.user ? `${r.user.prenom} ${r.user.nom}` : 'Client',
             status: 'COMPLETED'
         })

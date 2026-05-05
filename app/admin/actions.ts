@@ -344,49 +344,56 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     // 3. Update Loan Balance if Verified
     if (status === 'verified') {
         const amountVerified = Number(repayment.amount_declared) || 0
-        const { data: loan } = await supabase.from('prets').select('id, amount, amount_paid, service_fee, created_at, status, due_date').eq('id', repayment.loan_id).single()
+        const isExtensionRequest = repayment.proof_url?.includes('extension_')
+        
+        const { data: loan } = await supabase.from('prets').select('id, amount, amount_paid, service_fee, extension_fee, is_extended, created_at, status, due_date').eq('id', repayment.loan_id).single()
 
         if (loan) {
             const { calculateLoanDebt } = await import('@/utils/loan-utils')
             const { totalDebt, fee } = calculateLoanDebt(loan as any)
             const currentPaid = Number(loan.amount_paid) || 0
 
-            // STRICT VALIDATION: Refuse validation if receipt amount exceeds current total debt
-            if (amountVerified > totalDebt + 1) {
-                return { error: `Validation refusée : Le reçu (${amountVerified.toLocaleString('fr-FR')} F) dépasse la dette totale actuelle (${totalDebt.toLocaleString('fr-FR')} F, pénalités incluses). Rejeter le reçu.` }
+            // SÉCURITÉ : Pour un remboursement classique, on vérifie qu'il ne dépasse pas la dette
+            if (!isExtensionRequest && amountVerified > totalDebt + 1) {
+                return { error: `Validation refusée : Le reçu (${amountVerified.toLocaleString('fr-FR')} F) dépasse la dette totale actuelle (${totalDebt.toLocaleString('fr-FR')} F). Rejeter le reçu.` }
             }
 
-            const amountAppliedToLoan = amountVerified
-            const surplusGenerated = Math.max(0, amountVerified - totalDebt)
             const newTotalPaid = currentPaid + amountVerified
+            const isFullyPaid = !isExtensionRequest && (amountVerified >= totalDebt)
 
-            // Un prêt est considéré comme soldé ssi le montant versé couvre 
-            // la dette totale actuelle (incluant pénalités)
-            const isFullyPaid = amountVerified >= totalDebt
+            // Préparation des mises à jour du prêt
+            const loanUpdates: any = {
+                amount_paid: newTotalPaid,
+                ...(isFullyPaid ? { status: 'paid' } : {})
+            }
 
-            // Mettre à jour le prêt ET le remboursement (pour tracker le surplus/pénalité)
+            // LOGIQUE SPÉCIFIQUE EXTENSION
+            if (isExtensionRequest) {
+                const currentDueDate = new Date(loan.due_date || new Date())
+                const newDueDate = new Date(currentDueDate)
+                newDueDate.setDate(newDueDate.getDate() + 5)
+                
+                loanUpdates.due_date = newDueDate.toISOString()
+                loanUpdates.is_extended = true
+                loanUpdates.extension_fee = (Number(loan.extension_fee) || 0) + amountVerified
+                loanUpdates.extension_date = new Date().toISOString()
+            }
+
+            // Mettre à jour le prêt ET le remboursement
             await Promise.all([
                 supabase
                     .from('prets')
-                    .update({
-                        amount_paid: newTotalPaid,
-                        ...(isFullyPaid ? { status: 'paid' } : {})
-                    })
+                    .update(loanUpdates)
                     .eq('id', repayment.loan_id),
                 supabase
                     .from('remboursements')
-                    .update({ surplus_amount: surplusGenerated })
+                    .update({ surplus_amount: isExtensionRequest ? 0 : Math.max(0, amountVerified - totalDebt) })
                     .eq('id', repaymentId)
             ])
 
-            // L'intégralité du montant vérifié est créditée au solde payé du prêt.
-            // (Les pénalités éventuelles sont déduites dynamiquement lors du calcul de la dette totale).
-
-            // --- REPAYMENT COMMISSION (Only if fee was charged) ---
-            // L'admin remboursement touche 20% du service_fee du prêt
-            const repaymentShare = Math.round(fee * 0.2)
-
-            if (fee > 0) { // Only if there's a service fee on this loan
+            // --- REPAYMENT COMMISSION (Only if normal repayment and fee was charged) ---
+            if (!isExtensionRequest && fee > 0) { 
+                const repaymentShare = Math.round(fee * 0.2)
                 const { count } = await supabase
                     .from('admin_commissions')
                     .select('*', { count: 'exact', head: true })
@@ -403,7 +410,6 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     })
                 }
             }
-            // --- END REPAYMENT COMMISSION ---
         }
     }
 
