@@ -157,12 +157,17 @@ export async function submitRepayment(formData: FormData) {
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
     const { totalDebt } = calculateLoanDebt(loan as any)
 
-    // STRICT VALIDATION: Server-side check for any surplus
-    if (numAmount > totalDebt + 1) {
-        return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${totalDebt.toLocaleString('fr-FR')} F, incluant pénalités éventuelles). Veuillez recalculer.` }
+    const isExtension = formData.get('isExtension') === 'true'
+    const extensionFeeStr = await getSettingValue('loan_extension_fee', '500')
+    const extensionFeeValue = parseInt(extensionFeeStr)
+
+    // STRICT VALIDATION: On autorise un surplus uniquement si c'est une prolongation
+    const allowedMax = isExtension ? (totalDebt + extensionFeeValue) : totalDebt
+    
+    if (numAmount > allowedMax + 1) {
+        return { error: `Le montant saisi (${numAmount.toLocaleString('fr-FR')} F) dépasse votre solde restant actuel (${allowedMax.toLocaleString('fr-FR')} F). Veuillez recalculer.` }
     }
 
-    const isExtension = formData.get('isExtension') === 'true'
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
