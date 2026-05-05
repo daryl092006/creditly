@@ -16,8 +16,8 @@ export default function LoanListActions({ loan, profile }: LoanListActionsProps)
 
     const FEE_START_DATE = new Date('2026-03-09T00:00:00')
     const loanDate = new Date(loan.created_at)
-    const hasFee = loanDate >= FEE_START_DATE
-    const totalAmount = hasFee ? (loan.amount + 500) : loan.amount
+    const serviceFee = Number(loan.service_fee) || (loanDate >= new Date('2026-03-09') ? 500 : 0)
+    const totalAmount = loan.amount + serviceFee + (Number(loan.extension_fee) || 0)
     const amountInWords = numberToFrench(totalAmount)
 
     const handleDownload = async (e: React.MouseEvent) => {

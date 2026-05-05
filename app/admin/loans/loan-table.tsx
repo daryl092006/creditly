@@ -228,7 +228,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                 </td>
                                 <td className="px-6 py-4">
                                     <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-1">Total : {row.amount ? (row.amount + (row.service_fee || 0)).toLocaleString('fr-FR') : '0'} FCFA</p>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">{(row.amount || 0).toLocaleString()} Capital + {(row.service_fee || 0).toLocaleString()} Frais</p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">{(row.amount || 0).toLocaleString('fr-FR')} Capital + {(row.service_fee || 0).toLocaleString('fr-FR')} Frais</p>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">

@@ -15,6 +15,7 @@ import {
 } from '@carbon/icons-react'
 import LoanListActions from './loan-list-actions'
 import ExtensionButton from './extension-button'
+import { getSettingValue } from '../../admin/settings/actions'
 
 // Formule de calcul du total à payer (Capital + Frais + Extension)
 const calculateTotalToPay = (loan: any) => {
@@ -29,6 +30,9 @@ export default async function ClientLoansPage() {
     
     // Mise à jour automatique des statuts (RPC)
     await supabase.rpc('auto_update_system_statuses')
+
+    const extFeeSetting = await getSettingValue('loan_extension_fee', '500')
+    const extensionFee = parseInt(extFeeSetting)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return redirect('/auth/login')
@@ -154,7 +158,7 @@ export default async function ClientLoansPage() {
                                                     </td>
                                                     <td className="px-8 py-6 text-right">
                                                         <div className="flex items-center justify-end gap-3">
-                                                            <ExtensionButton loanId={loan.id} isExtended={loan.is_extended} status={loan.status} hasOverdue={hasOverdue} />
+                                                            <ExtensionButton loanId={loan.id} isExtended={loan.is_extended} status={loan.status} hasOverdue={hasOverdue} extensionFee={extensionFee} />
                                                             <LoanListActions loan={loan} profile={loan.user} />
                                                             <Link href={`/client/loans/${loan.id}`} className="p-2 bg-slate-800/50 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-all">
                                                                 <ArrowLeft size={16} className="rotate-180" />
@@ -220,7 +224,7 @@ export default async function ClientLoansPage() {
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <ExtensionButton loanId={loan.id} isExtended={loan.is_extended} status={loan.status} hasOverdue={hasOverdue} />
+                                                <ExtensionButton loanId={loan.id} isExtended={loan.is_extended} status={loan.status} hasOverdue={hasOverdue} extensionFee={extensionFee} />
                                                 {(loan.status === 'active' || loan.status === 'overdue') && (
                                                     <Link href={`/client/loans/repayment?loanId=${loan.id}`} className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">Payer</Link>
                                                 )}
