@@ -108,10 +108,16 @@ export default function AdminRepaymentTable({
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <div className="space-y-1">
-                                        <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                    </div>
-                                </td>
+                                     <div className="space-y-2">
+                                         <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                         {row.proof_url?.includes('extension_') && (
+                                             <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
+                                                 <div className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"></div>
+                                                 Prolongation (+5j)
+                                             </div>
+                                         )}
+                                     </div>
+                                 </td>
                                 <td className="px-8 py-6">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-2">Total : {row.loan_initial_total.toLocaleString('fr-FR')} F</p>
@@ -245,6 +251,11 @@ export default function AdminRepaymentTable({
                             <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant à valider</p>
                             <div className="flex items-center gap-4">
                                 <p className="font-black text-emerald-400 text-2xl tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                {row.proof_url?.includes('extension_') && (
+                                    <div className="px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
+                                        Prolongation
+                                    </div>
+                                )}
                             </div>
                         </div>
 
