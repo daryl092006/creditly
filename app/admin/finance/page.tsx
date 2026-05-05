@@ -4,7 +4,7 @@ import { Currency, Wallet, Document, Time, ArrowUpRight, ArrowDownRight, UserMul
 
 import { DashboardFilters } from '../super/DashboardFilters'
 import InvestorSection from './InvestorSection'
-import { calculateProfitToShare, SHAREHOLDERS_CONFIG } from '@/utils/finance-utils'
+import { calculateProfitToShare, getShareholdersConfig } from '@/utils/finance-utils'
 
 export default async function FinanceAuditPage({
     searchParams
@@ -24,10 +24,12 @@ export default async function FinanceAuditPage({
     const month = params.month ? parseInt(params.month) : now.getMonth() + 1
     const year = params.year ? parseInt(params.year) : now.getFullYear()
 
-    // RÉCUPÉRATION DE L'EMAIL POUR LE FILTRE DE CONFIDENTIALITÉ
+    // RÉCUPÉRATION DE L'EMAIL ET RÔLES POUR LE FILTRE DE CONFIDENTIALITÉ
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: admins } = await supabaseAdmin.from('users').select('email').eq('id', user?.id).single()
-    const userEmail = admins?.email || user?.email || ''
+    const { data: adminUser } = await supabaseAdmin.from('users').select('email, roles').eq('id', user?.id).single()
+    const userEmail = adminUser?.email || user?.email || ''
+    const userRoles = adminUser?.roles || []
+    const isOwner = userRoles.includes('owner') || userRoles.includes('superadmin')
 
     let startDate: string;
     let endDate: string = new Date(year, month, 0, 23, 59, 59).toISOString();
@@ -148,13 +150,13 @@ export default async function FinanceAuditPage({
     const INITIAL_CAPITAL = 2000000
     const { data: allRembGlobal } = await supabaseAdmin.from('remboursements').select('amount_declared').eq('status', 'verified')
     const { data: allSubsGlobal } = await supabaseAdmin.from('user_subscriptions').select('plan:abonnements(price)')
-    const { data: allLoansGlobal } = await supabaseAdmin.from('prets').select('amount, amount_paid, status').in('status', ['approved', 'active', 'paid', 'overdue'])
+    const { data: allLoansGlobal } = await supabaseAdmin.from('prets').select('id, user_id, amount, amount_paid, status, service_fee, extension_fee, created_at, due_date').in('status', ['approved', 'active', 'paid', 'overdue'])
     const { data: allWithGlobal } = await supabaseAdmin.from('admin_withdrawals').select('amount').eq('status', 'approved')
 
     // --- 6. AUDIT DU RISQUE (PAR - Portfolio At Risk) ---
     const { data: allActiveLoansAudit } = await supabaseAdmin.from('prets').select('*').in('status', ['active', 'overdue'])
 
-    const riskStats = (allActiveLoansAudit || []).reduce((acc, loan) => {
+    const riskStats = (allActiveLoansAudit || []).reduce((acc: any, loan) => {
         const debt = calculateLoanDebt(loan as any)
         const isOverdue = loan.status === 'overdue'
         const remainingPrincipal = Math.max(0, Number(loan.amount) - Number(loan.amount_paid))
@@ -168,14 +170,77 @@ export default async function FinanceAuditPage({
 
     const parRate = riskStats.totalActivePrinciple > 0 ? (riskStats.principleAtRisk / riskStats.totalActivePrinciple) * 100 : 0
 
+    // FETCH REAL TRANSACTIONS AND COMMISSIONS
+    const [
+        { data: investorTransactions },
+        { data: allCommissions },
+        { data: allUsers }
+    ] = await Promise.all([
+        supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
+        supabaseAdmin.from('admin_commissions').select('*, loan:loan_id(status)'),
+        supabaseAdmin.from('users').select('id, email')
+    ])
+
     // --- 7. LOGIQUE DE LA CAISSE ÉTANCHE (DOUBLE CAISSE) ---
-    const totalWithdrawals = allWithGlobal?.reduce((acc, w) => acc + Number(w.amount), 0) || 0
+    const totalInvestorWithdrawals = investorTransactions?.filter(t => t.type === 'withdrawal' && t.status === 'approved').reduce((acc, t) => acc + Math.abs(Number(t.amount)), 0) || 0
+    const totalInvestorInvestments = investorTransactions?.filter(t => t.type === 'investment' && t.status === 'approved').reduce((acc, t) => acc + Number(t.amount), 0) || 0
+
+    const totalWithdrawals = (allWithGlobal?.reduce((acc: number, w: any) => acc + Number(w.amount), 0) || 0) + totalInvestorWithdrawals
     const capitalInCirculation = riskStats.totalActivePrinciple
+
+    const { realizedProfit: totalPortfolioProfit, theoreticalProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
+    const shareholders = await getShareholdersConfig(supabaseAdmin)
+
+    // Mapper les emails aux IDs pour lier les commissions
+    const emailToId = Object.fromEntries(allUsers?.map(u => [u.email?.toLowerCase(), u.id]) || [])
+    const idToEmail = Object.fromEntries(allUsers?.map(u => [u.id, u.email?.toLowerCase()]) || [])
+
+    // --- LOGIQUE DE PARTS DYNAMIQUES (CAPITAL FLOTTANT) ---
+    const INITIAL_TOTAL_CAPITAL = 2000000;
     
-    // On récupère le profit total depuis notre utilitaire certifié
-    const { realizedProfit: totalPortfolioProfit, forecastedProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
-    const { data: ledgerSetting } = await supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
-    const ledger = ledgerSetting?.value || { transactions: [] }
+    // 1. Calcul du capital actuel de chacun (Base + Investissements approuvés)
+    const shareholdersWithCapital = shareholders.map(s => {
+        const baseCapital = INITIAL_TOTAL_CAPITAL * s.share;
+        const myInvestments = investorTransactions
+            ?.filter(t => t.shareholder_name?.toLowerCase().trim() === s.name.toLowerCase().trim() && t.type === 'investment' && t.status === 'approved')
+            .reduce((acc, t) => acc + Math.abs(Number(t.amount)), 0) || 0;
+            
+        return { 
+            ...s, 
+            currentCapital: baseCapital + myInvestments 
+        };
+    });
+    
+    const totalCurrentCapital = shareholdersWithCapital.reduce((acc, s) => acc + s.currentCapital, 0);
+
+    // 2. Enrichir les shareholders avec leurs commissions gagnées ET leur nouvelle part dynamique
+    const enrichedShareholders = shareholdersWithCapital.map(s => {
+        const dynamicShare = s.currentCapital / totalCurrentCapital;
+        const adminId = emailToId[s.email?.toLowerCase()]
+        const myComms = allCommissions?.filter(c => c.admin_id === adminId) || []
+        
+        // Commissions réalisées (prêt payé ou récompense remboursement)
+        const realizedComms = myComms.filter(c => c.loan?.status === 'paid' || c.type === 'repayment_reward')
+        const totalComms = realizedComms.reduce((acc, c) => acc + Number(c.amount), 0)
+        
+        // CALCUL DE LA DETTE PERSONNELLE (si l'associé est aussi client)
+        const myLoans = allLoansGlobal?.filter(l => idToEmail[l.user_id] === s.email?.toLowerCase()) || []
+        const myDebt = myLoans.reduce((acc, l) => {
+            if (l.status === 'paid' || l.status === 'rejected') return acc
+            const { totalDebt } = calculateLoanDebt(l as any)
+            return acc + totalDebt
+        }, 0)
+        
+        return { 
+            ...s, 
+            realizedComms: totalComms, 
+            totalDebt: myDebt,
+            share: dynamicShare, // On remplace la part fixe par la part dynamique pour les calculs de bénéfices
+            originalShare: s.share // On garde l'originale pour info
+        }
+    })
+    
+    const ledger = { transactions: investorTransactions || [] }
 
     const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalPortfolioProfit - totalWithdrawals - capitalInCirculation)
     const maxCapitalAllowedInHand = Math.max(0, INITIAL_CAPITAL - capitalInCirculation)
@@ -187,10 +252,10 @@ export default async function FinanceAuditPage({
 
     // --- 7. PERFORMANCE DE LA PÉRIODE ---
     const periodGrossRevenue = periodSubsTotal + periodFeesTotal + periodExtensionTotal + periodPenaltiesTotal
-    const periodCommissions = commissions?.reduce((acc, c) => acc + Number(c.amount), 0) || 0
+    const periodCommissions = commissions?.reduce((acc: number, c: any) => acc + Number(c.amount), 0) || 0
     const periodNetProfit = periodGrossRevenue - periodCommissions
 
-    const totalAmountLent = allLoansGlobal?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
+    const totalAmountLent = allLoansGlobal?.reduce((acc: number, l: any) => acc + Number(l.amount), 0) || 0
 
     return (
         <div className="py-16 md:py-32 page-transition min-h-screen">
@@ -224,7 +289,7 @@ export default async function FinanceAuditPage({
                     </div>
                     <div className="glass-panel p-10 bg-blue-600/10 border-blue-500/20">
                         <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 italic">Bénéfice Cible (Horizon)</p>
-                        <p className="text-4xl font-black text-white italic tracking-tighter">+{forecastedProfit.toLocaleString('fr-FR')} F</p>
+                        <p className="text-4xl font-black text-white italic tracking-tighter">+{theoreticalProfit.toLocaleString('fr-FR')} F</p>
                         <p className="text-[8px] font-bold text-blue-400/60 uppercase mt-2 italic">Projection si tous sont payés</p>
                     </div>
                     <div className="glass-panel p-10 bg-slate-900/50 border-slate-800 flex flex-col justify-center">
@@ -257,7 +322,7 @@ export default async function FinanceAuditPage({
                             <div className="flex items-center gap-6 pt-8 border-t border-white/5">
                                 <div className="space-y-1">
                                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Capital Dehors</p>
-                                    <p className="text-xl font-bold text-slate-300 italic">{capitalInCirculation.toLocaleString()} F</p>
+                                    <p className="text-xl font-bold text-slate-300 italic">{capitalInCirculation.toLocaleString('fr-FR')} F</p>
                                 </div>
                                 <div className="w-px h-8 bg-white/5"></div>
                                 <div className="space-y-1">
@@ -288,12 +353,12 @@ export default async function FinanceAuditPage({
                             <div className="flex items-center gap-6 pt-8 border-t border-emerald-500/10">
                                 <div className="space-y-1">
                                     <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest italic">Profit Total (Vie)</p>
-                                    <p className="text-xl font-bold text-emerald-400 italic">+{totalPortfolioProfit.toLocaleString()} F</p>
+                                    <p className="text-xl font-bold text-emerald-400 italic">+{totalPortfolioProfit.toLocaleString('fr-FR')} F</p>
                                 </div>
                                 <div className="w-px h-8 bg-emerald-500/10"></div>
                                 <div className="space-y-1">
                                     <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest italic">Réinvesti</p>
-                                    <p className="text-xl font-bold text-blue-400 italic">-{benefitsReinvested.toLocaleString()} F</p>
+                                    <p className="text-xl font-bold text-blue-400 italic">-{benefitsReinvested.toLocaleString('fr-FR')} F</p>
                                 </div>
                             </div>
                         </div>
@@ -316,19 +381,19 @@ export default async function FinanceAuditPage({
                         <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/5">
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Abonnements</p>
-                                <p className="text-xl font-bold text-white italic">{periodSubsTotal.toLocaleString()} F</p>
+                                <p className="text-xl font-bold text-white italic">{periodSubsTotal.toLocaleString('fr-FR')} F</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Frais (Dossier + Ext)</p>
-                                <p className="text-xl font-bold text-white italic">{(periodFeesTotal + periodExtensionTotal).toLocaleString()} F</p>
+                                <p className="text-xl font-bold text-white italic">{(periodFeesTotal + periodExtensionTotal).toLocaleString('fr-FR')} F</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Pénalités Retard</p>
-                                <p className="text-xl font-bold text-white italic">{periodPenaltiesTotal.toLocaleString()} F</p>
+                                <p className="text-xl font-bold text-white italic">{periodPenaltiesTotal.toLocaleString('fr-FR')} F</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest italic">Dépenses Comms</p>
-                                <p className="text-xl font-bold text-blue-500 italic">-{periodCommissions.toLocaleString()} F</p>
+                                <p className="text-xl font-bold text-blue-500 italic">-{periodCommissions.toLocaleString('fr-FR')} F</p>
                             </div>
                         </div>
                     </div>
@@ -348,11 +413,11 @@ export default async function FinanceAuditPage({
                             <div className="text-right space-y-4">
                                 <div>
                                     <p className="text-[9px] font-black text-red-500 uppercase tracking-widest italic leading-none">Capital en Souffrance</p>
-                                    <p className="text-2xl font-black text-white italic">{riskStats.principleAtRisk.toLocaleString()} F</p>
+                                    <p className="text-2xl font-black text-white italic">{riskStats.principleAtRisk.toLocaleString('fr-FR')} F</p>
                                 </div>
                                 <div>
                                     <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Capital Actif Total</p>
-                                    <p className="text-xl font-black text-slate-400 italic">{riskStats.totalActivePrinciple.toLocaleString()} F</p>
+                                    <p className="text-xl font-black text-slate-400 italic">{riskStats.totalActivePrinciple.toLocaleString('fr-FR')} F</p>
                                 </div>
                             </div>
                         </div>
@@ -364,6 +429,16 @@ export default async function FinanceAuditPage({
                         </div>
                     </div>
                 </div>
+                
+                {/* SECTION INVESTISSEURS */}
+                <InvestorSection 
+                    shareholders={enrichedShareholders}
+                    totalProfitToShare={totalPortfolioProfit}
+                    ledger={investorTransactions || []}
+                    currentUserEmail={userEmail}
+                    profitBreakdown={breakdown}
+                    showAll={isOwner}
+                />
 
                 {/* JOURNAL DES FLUX FLAMBANT NEUF */}
                 <div className="glass-panel overflow-hidden bg-slate-900/20 border-white/[0.03]">

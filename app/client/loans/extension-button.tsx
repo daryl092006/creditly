@@ -10,9 +10,10 @@ interface ExtensionButtonProps {
     isExtended: boolean;
     status: string;
     hasOverdue: boolean;
+    extensionFee: number;
 }
 
-export default function ExtensionButton({ loanId, isExtended, status, hasOverdue }: ExtensionButtonProps) {
+export default function ExtensionButton({ loanId, isExtended, status, hasOverdue, extensionFee }: ExtensionButtonProps) {
     const [loading, setLoading] = useState(false)
     const router = useRouter()
 
@@ -24,7 +25,7 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
             return
         }
 
-        if (!confirm("Voulez-vous prolonger ce prêt de 5 jours pour 500F de frais ? Cette action est possible une seule fois.")) {
+        if (!confirm(`Voulez-vous prolonger ce prêt de 5 jours pour ${extensionFee}F de frais ? Cette action est possible une seule fois.`)) {
             return
         }
 

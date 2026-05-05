@@ -107,7 +107,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                             </div>
                             <div className="text-center md:text-left">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Volume Total</p>
-                                <p className="text-lg font-black text-white italic">{analysis.metrics.totalVolume.toLocaleString()} F</p>
+                                <p className="text-lg font-black text-white italic">{analysis.metrics.totalVolume.toLocaleString('fr-FR')} F</p>
                             </div>
                             <div className="text-center md:text-left">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Prêts Clôturés</p>

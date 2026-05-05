@@ -8,7 +8,7 @@ import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
 import AdminEmailControl from '@/app/components/admin/AdminEmailControl'
 
-import { calculateProfitToShare, getShareholderByEmail, SHAREHOLDERS_CONFIG } from '@/utils/finance-utils'
+import { calculateProfitToShare, getShareholderByEmail, getShareholdersConfig } from '@/utils/finance-utils'
 import InvestorSection from '../finance/InvestorSection'
 
 export default async function SuperAdminPage({
@@ -63,11 +63,12 @@ export default async function SuperAdminPage({
         { data: totalCommissions, error: errComm },
         { data: pendingWithdrawals, error: errWith },
         { data: notificationData },
-        { data: settings }
+        { data: transactionsResult },
+        { data: allWithGlobal }
     ] = await Promise.all([
         supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
-        supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date').in('status', ['active', 'overdue']),
+        supabase.from('prets').select('user_id, amount, amount_paid, service_fee, created_at, status, due_date').in('status', ['active', 'overdue']),
         supabase.from('prets').select('amount, amount_paid, admin_id, created_at, status, service_fee').eq('status', 'paid'),
         supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -82,34 +83,92 @@ export default async function SuperAdminPage({
         supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
         supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5),
-        supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
+        supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
+        supabase.from('admin_withdrawals').select('amount').eq('status', 'approved')
     ]);
 
-    const ledger = settings?.value || { transactions: [] }
-    const totalWithdrawals = (ledger.transactions || []).filter((t: any) => t.type === 'withdrawal').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
+    const ledgerTransactions = (transactionsResult as any) || []
+    
+    // NOUVEAU : Intégration des flux associés dans la trésorerie globale
+    const totalInvestorWithdrawals = ledgerTransactions.filter((t: any) => t.type === 'withdrawal' && t.status === 'approved').reduce((acc: number, t: any) => acc + Math.abs(Number(t.amount)), 0)
+    const totalInvestorInvestments = ledgerTransactions.filter((t: any) => t.type === 'investment' && t.status === 'approved').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
 
-    const { realizedProfit: totalProfitEarned, forecastedProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
+    const totalWithdrawals = (allWithGlobal?.reduce((acc: number, w: any) => acc + Number(w.amount), 0) || 0) + totalInvestorWithdrawals
+
+    const { realizedProfit: totalProfitEarned, theoreticalProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
+    const shareholders = await getShareholdersConfig(supabaseAdmin)
     
     // CALCUL DE LA LIQUIDITÉ RÉELLE (Pour éviter les 603k fantômes)
-    const INITIAL_CAPITAL = 2000000
-    const capitalInCirculation = (allActiveLoans || []).reduce((acc, loan) => acc + Math.max(0, Number(loan.amount) - Number(loan.amount_paid)), 0)
+    const INITIAL_TOTAL_CAPITAL = 2000000
+    const capitalInCirculation = (allActiveLoans || []).reduce((acc: number, loan) => acc + Math.max(0, Number(loan.amount) - Number(loan.amount_paid)), 0)
     
-    const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalProfitEarned - totalWithdrawals - capitalInCirculation)
-    const maxCapitalAllowedInHand = Math.max(0, INITIAL_CAPITAL - capitalInCirculation)
+    // Le capital disponible augmente avec les réinvestissements ("Remises")
+    const totalCashInCaisse = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) + totalProfitEarned - totalWithdrawals - capitalInCirculation)
+    const maxCapitalAllowedInHand = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) - capitalInCirculation)
     const capitalInHand = Math.max(0, Math.min(maxCapitalAllowedInHand, totalCashInCaisse))
     const benefitsInHand = Math.max(0, totalCashInCaisse - capitalInHand)
 
-    const monthlyRevenue = monthlySubs?.reduce((acc, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
-    const periodPenaltiesCollected = allRemboursements?.reduce((acc, r) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+    // --- LOGIQUE DE PARTS DYNAMIQUES (CAPITAL FLOTTANT) ---
+    const allUsers = admins || [] // On utilise la liste des admins déjà chargée
+    const idToEmail = Object.fromEntries(allUsers.map(u => [u.id, u.email?.toLowerCase()]))
 
-    const activeStats = (allActiveLoans || []).reduce((acc, loan) => acc + calculateLoanDebt(loan as any).totalDebt, 0)
+    const shareholdersWithCapital = shareholders.map(s => {
+        const baseCapital = INITIAL_TOTAL_CAPITAL * s.share;
+        const myInvestments = ledgerTransactions
+            ?.filter((t: any) => 
+                (t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()) && 
+                t.type === 'investment' && 
+                t.status === 'approved'
+            )
+            .reduce((acc: number, t: any) => acc + Math.abs(Number(t.amount)), 0) || 0;
+            
+        return { ...s, currentCapital: baseCapital + myInvestments };
+    });
+    
+    const totalCurrentCapital = shareholdersWithCapital.reduce((acc: number, s: any) => acc + s.currentCapital, 0);
+
+    const enrichedShareholders = shareholdersWithCapital.map(s => {
+        const dynamicShare = s.currentCapital / totalCurrentCapital;
+        const adminId = allUsers.find(u => u.email?.toLowerCase() === s.email?.toLowerCase())?.id
+        const myComms = totalCommissions?.filter((c: any) => c.admin_id === adminId) || []
+        const realizedComms = myComms.filter((c: any) => c.loan?.status === 'paid' || c.type === 'repayment_reward')
+        const totalComms = realizedComms.reduce((acc: number, c: any) => acc + Number(c.amount), 0)
+        
+        // Dette
+        const myLoans = allActiveLoans?.filter(l => idToEmail[l.user_id] === s.email?.toLowerCase()) || []
+        const myDebt = myLoans.reduce((acc: number, l: any) => {
+            const { totalDebt } = calculateLoanDebt(l as any)
+            return acc + totalDebt
+        }, 0)
+
+        const myTransactions = ledgerTransactions.filter((t: any) => 
+            t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()
+        )
+        const approvedTransactions = myTransactions.filter((t: any) => t.status === 'approved')
+        const totalAdjustments = approvedTransactions.reduce((acc: number, t: any) => acc + Number(t.amount), 0)
+        
+        return { 
+            ...s, 
+            realizedComms: totalComms, 
+            totalDebt: myDebt,
+            share: dynamicShare,
+            originalShare: s.share,
+            totalAdjustments: totalAdjustments,
+            balance: Math.floor(totalProfitEarned * dynamicShare) + totalAdjustments + totalComms
+        }
+    })
+
+    const monthlyRevenue = monthlySubs?.reduce((acc: number, sub: any) => acc + (Number(sub.plan?.price) || 0), 0) || 0
+    const periodPenaltiesCollected = allRemboursements?.reduce((acc: number, r: any) => acc + (Number(r.surplus_amount) || 0), 0) || 0
+
+    const activeStats = (allActiveLoans || []).reduce((acc: number, loan: any) => acc + calculateLoanDebt(loan as any).totalDebt, 0)
     const totalRemainingToRecover = activeStats
 
-    const totalFeesCollected = allPaidLoans?.reduce((acc, l) => acc + (Number(l.service_fee || 0) * 0.4), 0) || 0
+    const totalFeesCollected = allPaidLoans?.reduce((acc: number, l: any) => acc + (Number(l.service_fee || 0) * 0.4), 0) || 0
     const monthlyFeesRevenue = allPaidLoans?.filter(l =>
         new Date(l.created_at) >= new Date(startDate) &&
         new Date(l.created_at) <= new Date(endDate)
-    ).reduce((acc, l) => acc + Number(l.service_fee || 0), 0) || 0
+    ).reduce((acc: number, l) => acc + Number(l.service_fee || 0), 0) || 0
 
     const offersMap: Record<string, string> = {}
     allOffersNames?.forEach(o => {
@@ -160,32 +219,21 @@ export default async function SuperAdminPage({
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
-
     // --- PERSONAL PROFIT SHARING LOGIC (DRY VERSION) ---
     const { data: { user } } = await supabase.auth.getUser()
-    const currentAdmin = admins?.find(a => a.id === user?.id)
-    const userEmail = currentAdmin?.email || user?.email || ''
+    const currentEmail = allUsers.find(a => a.id === user?.id)?.email || user?.email || ''
 
     let myShareStats = null
-    if (currentAdmin) {
-        const match = getShareholderByEmail(userEmail, currentAdmin.roles || [])
-
-        if (match) {
-            const { data: ledgerSetting } = await supabaseAdmin.from('system_settings').select('value').eq('key', 'investor_ledger').maybeSingle()
-            const ledger = (ledgerSetting?.value || []) as any[]
-
-            const myTransactions = ledger.filter(t => t.name.toLowerCase().includes(match.name.toLowerCase()))
-            const totalAdjustments = myTransactions.reduce((acc, t) => acc + t.amount, 0)
-
-            myShareStats = {
-                name: match.name,
-                sharePercent: (match.share * 100).toFixed(1),
-                color: match.color,
-                theoreticalGain: Math.floor(totalProfitEarned * match.share),
-                availableBalance: Math.floor(benefitsInHand * match.share) + totalAdjustments,
-                forecastedBalance: Math.floor(forecastedProfit * match.share) + totalAdjustments,
-                adjustments: totalAdjustments
-            }
+    const myEnriched = enrichedShareholders.find(s => s.email?.toLowerCase() === currentEmail.toLowerCase())
+    if (myEnriched) {
+        myShareStats = {
+            name: myEnriched.name,
+            sharePercent: (myEnriched.share * 100).toFixed(3),
+            color: myEnriched.color,
+            theoreticalGain: Math.floor(theoreticalProfit * myEnriched.share),
+            availableBalance: myEnriched.balance,
+            forecastedBalance: Math.floor(theoreticalProfit * myEnriched.share) + (myEnriched.balance - Math.floor(totalProfitEarned * myEnriched.share)),
+            adjustments: myEnriched.balance - Math.floor(totalProfitEarned * myEnriched.share) - myEnriched.realizedComms
         }
     }
 
@@ -318,10 +366,10 @@ export default async function SuperAdminPage({
 
                         <section className="pt-12">
                             <InvestorSection 
-                                shareholders={SHAREHOLDERS_CONFIG} 
-                                totalProfitToShare={benefitsInHand}
-                                ledger={ledger.transactions || []}
-                                currentUserEmail={userEmail}
+                                shareholders={enrichedShareholders} 
+                                totalProfitToShare={totalProfitEarned}
+                                ledger={ledgerTransactions}
+                                currentUserEmail={currentEmail}
                                 profitBreakdown={breakdown}
                             />
                         </section>

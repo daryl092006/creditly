@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 import { sendAdminNotification, sendUserEmail } from '@/utils/email-service'
+import { getSettingValue } from '../../admin/settings/actions'
 
 export async function requestLoan(
     amount: number,
@@ -267,14 +268,17 @@ export async function extendLoan(loanId: string) {
         const newDueDate = new Date(currentDueDate)
         newDueDate.setDate(newDueDate.getDate() + 5)
 
-        // 4. Update the Loan (using admin client to bypass user RLS if needed, although user can normally update their own pending/active status if schema allows, but better safe for financial updates)
+        // 4. Update the Loan
+        const extensionFeeStr = await getSettingValue('loan_extension_fee', '500')
+        const extensionFee = parseInt(extensionFeeStr)
+
         const adminSupabase = await createAdminClient()
         const { error: updateError } = await adminSupabase
             .from('prets')
             .update({
                 due_date: newDueDate.toISOString(),
                 is_extended: true,
-                extension_fee: 500,
+                extension_fee: extensionFee,
                 extension_date: new Date().toISOString()
             })
             .eq('id', loanId)
@@ -297,7 +301,7 @@ export async function extendLoan(loanId: string) {
                     email: user.email!,
                     name: `${profile.prenom} ${profile.nom}`,
                     newDueDate: newDueDate.toLocaleDateString('fr-FR'),
-                    fee: 500
+                    fee: extensionFee
                 })
             ]);
         } catch (e) {
