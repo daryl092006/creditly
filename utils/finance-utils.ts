@@ -31,7 +31,7 @@ export async function getShareholdersConfig(supabase: any) {
 export async function calculateProfitToShare(supabase: any) {
     // 1. REVENUS RÉELS (DÉJÀ ENCAISSÉS)
     // On récupère les abonnements, mais on devra filtrer ceux dont le client a un prêt actif
-    const { data: sPost } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(price)').gte('created_at', DISTRIBUTION_START_DATE)
+    const { data: sPost } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(price)').in('status', ['active', 'expired']).gte('created_at', DISTRIBUTION_START_DATE)
     
     // Récupération des IDs des clients ayant des prêts non soldés (active, overdue)
     const { data: activeLoanUsers } = await supabase.from('prets').select('user_id').in('status', ['active', 'overdue'])

@@ -353,10 +353,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             const { totalDebt, fee } = calculateLoanDebt(loan as any)
             const currentPaid = Number(loan.amount_paid) || 0
 
-            // SÉCURITÉ : Pour un remboursement classique, on vérifie qu'il ne dépasse pas la dette
-            if (!isExtensionRequest && amountVerified > totalDebt + 1) {
-                return { error: `Validation refusée : Le reçu (${amountVerified.toLocaleString('fr-FR')} F) dépasse la dette totale actuelle (${totalDebt.toLocaleString('fr-FR')} F). Rejeter le reçu.` }
-            }
+            // SÉCURITÉ : On laisse l'admin valider même si ça dépasse (gestion des surplus et arrondis)
 
             const newTotalPaid = currentPaid + amountVerified
             const isFullyPaid = !isExtensionRequest && (amountVerified >= totalDebt)
@@ -630,6 +627,61 @@ export async function rejectSubscription(subId: string, reason: string) {
     revalidatePath('/client/subscriptions')
     revalidatePath('/client/loans/request')
     return { success: true }
+}
+
+export async function cancelSubscriptionAdmin(subId: string) {
+    const role = await getCurrentUserRole()
+    if (!role || !['superadmin', 'owner'].includes(role)) {
+        return { error: "Accès refusé. Seul le Super Admin ou le Propriétaire peut annuler des abonnements." }
+    }
+
+    const supabase = await createAdminClient()
+    const supabaseUser = await createClient()
+    const { data: { user } } = await supabaseUser.auth.getUser()
+    const adminId = user?.id
+
+    try {
+        const { error } = await supabase
+            .from('user_subscriptions')
+            .update({
+                status: 'cancelled',
+                is_active: false,
+                admin_id: adminId,
+                reviewed_at: new Date().toISOString()
+            })
+            .eq('id', subId)
+
+        if (error) return { error: getUserFriendlyErrorMessage(error) }
+
+        // Fetch user details for email notification
+        const { data: subData } = await supabase
+            .from('user_subscriptions')
+            .select('user:user_id(email, nom, prenom), plan:abonnements(name)')
+            .eq('id', subId)
+            .single()
+
+        if (subData?.user) {
+            const userData = subData.user as any
+            const planName = (subData.plan as any)?.name || 'Inconnu'
+            
+            const { sendUserEmail } = await import('@/utils/email-service')
+            await sendUserEmail('DIRECT_MESSAGE', {
+                email: userData.email,
+                name: `${userData.prenom} ${userData.nom}`,
+                subject: `❌ Annulation de votre abonnement ${planName}`,
+                message: `Bonjour ${userData.prenom},\n\nNous vous informons que votre abonnement ${planName} a été annulé par un administrateur.\n\nPar conséquent, vos avantages premium ne sont plus actifs. Si vous pensez qu'il s'agit d'une erreur, veuillez contacter le support.\n\nCordialement,\nL'équipe Creditly`
+            })
+        }
+
+        revalidatePath('/admin/super/subscriptions')
+        revalidatePath('/client/dashboard')
+        revalidatePath('/client/subscriptions')
+        revalidatePath('/client/loans/request')
+        return { success: true }
+    } catch (e: any) {
+        console.error("Cancellation Error:", e)
+        return { error: e.message || "Erreur lors de l'annulation." }
+    }
 }
 
 export async function deleteUserSecurely(userId: string) {

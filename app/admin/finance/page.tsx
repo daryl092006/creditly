@@ -64,14 +64,18 @@ export default async function FinanceAuditPage({
     subs?.forEach((s: any) => {
         const p = s.plan as any
         const price = Number(p?.price) || 0
-        periodSubsTotal += price
+        
+        // On ne compte dans le total QUE les abonnements actifs ou expirés
+        const isCounted = ['active', 'expired'].includes(s.status)
+        if (isCounted) periodSubsTotal += price
+
         journal.push({
             date: s.created_at,
-            type: 'REVENUE_SUBS',
-            amount: price,
-            label: `Abonnement ${p?.name || 'Inconnu'}`,
+            type: s.status === 'cancelled' ? 'REVENUE_CANCELLED' : 'REVENUE_SUBS',
+            amount: isCounted ? price : 0,
+            label: `Abonnement ${p?.name || 'Inconnu'} ${s.status === 'cancelled' ? '(ANNULÉ)' : ''}`,
             user: s.user ? `${s.user.prenom} ${s.user.nom}` : 'Client',
-            status: 'COMPLETED'
+            status: s.status.toUpperCase()
         })
     })
 
@@ -469,7 +473,7 @@ export default async function FinanceAuditPage({
                                             <p className="text-[10px] text-slate-600 font-mono italic">{new Date(entry.date).toLocaleTimeString('fr-FR')}</p>
                                         </td>
                                         <td className="px-12 py-8">
-                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${entry.type.startsWith('REVENUE') || entry.type.startsWith('CASH_IN') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                            <span className={`text-[9px] font-black px-3 py-1.5 rounded-lg border italic tracking-widest uppercase ${entry.type === 'REVENUE_CANCELLED' ? 'bg-slate-800 text-slate-500 border-slate-700' : (entry.type.startsWith('REVENUE') || entry.type.startsWith('CASH_IN')) ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
                                                 }`}>
                                                 {entry.type.replace(/_/g, ' ')}
                                             </span>

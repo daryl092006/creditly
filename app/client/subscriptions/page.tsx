@@ -61,6 +61,7 @@ export default async function SubscriptionsPage() {
     const expiredSub = !activeSub ? allSubs?.find((s: any) => (s.status === 'expired' || s.status === 'active') && s.end_date && s.end_date <= now) : null
     const pendingSub = allSubs?.find((s: any) => s.status === 'pending')
     const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
+    const cancelledSub = allSubs?.find((s: any) => s.status === 'cancelled')
 
     // Days remaining on active subscription (for urgency display)
     const activeSubExpiresInDays = activeSub?.end_date
@@ -161,6 +162,19 @@ export default async function SubscriptionsPage() {
                                     <p className="text-[10px] font-black text-red-400 uppercase tracking-widest italic">Statut : Expiré</p>
                                     <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {expiredSub.plan?.name || '...'}</p>
                                     <p className="text-[8px] font-bold text-slate-500 uppercase italic">Veuillez renouveler votre accès</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {cancelledSub && (
+                            <div className="glass-panel p-6 bg-slate-500/10 border-slate-500/20 flex items-center gap-6 animate-fade-in shadow-xl shadow-slate-500/5">
+                                <div className="w-14 h-14 bg-slate-600/20 text-slate-400 border border-slate-500/30 rounded-2xl flex items-center justify-center">
+                                    <Misuse size={32} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Statut : Annulé</p>
+                                    <p className="text-xl font-black text-white uppercase italic tracking-tighter tabular-nums">Plan {cancelledSub.plan?.name || '...'}</p>
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase italic">Votre abonnement a été annulé</p>
                                 </div>
                             </div>
                         )}

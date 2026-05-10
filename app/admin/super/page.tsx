@@ -66,7 +66,7 @@ export default async function SuperAdminPage({
         { data: transactionsResult },
         { data: allWithGlobal }
     ] = await Promise.all([
-        supabase.from('user_subscriptions').select('*, plan:abonnements(price)').gte('created_at', startDate).lte('created_at', endDate),
+        supabase.from('user_subscriptions').select('*, plan:abonnements(price)').in('status', ['active', 'expired']).gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('prets').select('user_id, amount, amount_paid, service_fee, created_at, status, due_date').in('status', ['active', 'overdue']),
         supabase.from('prets').select('amount, amount_paid, admin_id, created_at, status, service_fee').eq('status', 'paid'),

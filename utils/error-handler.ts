@@ -33,8 +33,14 @@ export function getUserFriendlyErrorMessage(error: unknown): string {
     // Next.js specific
     if (message.includes('NEXT_REDIRECT')) throw error; // Let Next.js redirects pass through
 
+    if (message.includes('check constraint')) return "Valeur non autorisée pour ce champ.";
+    
     // Fallback for technical strings that shouldn't be shown
-    if (message.includes('{"')) return "Une erreur technique s'est produite.";
+    if (message.includes('{"')) {
+        const parsed = JSON.parse(message);
+        if (parsed.message) return parsed.message;
+        return "Une erreur technique s'est produite.";
+    }
 
     // If it seems to be an intentional user-facing error (custom thrown), return it
     // We assume short messages without code syntax are safe.

@@ -120,8 +120,6 @@ export async function subscribeToPlan(formData: FormData) {
             console.error('Erreur notification (non-bloquant):', notifErr)
         }
 
-        revalidatePath('/client/subscriptions')
-        revalidatePath('/client/dashboard')
         return { success: true }
     } catch (e: any) {
         return { error: e.message || "Erreur lors de la souscription." }

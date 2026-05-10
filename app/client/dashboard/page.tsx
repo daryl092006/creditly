@@ -130,11 +130,12 @@ export default async function ClientDashboard() {
             id: `sub-${s.created_at}`,
             text: s.status === 'pending' ? `Paiement abonnement ${s.plan?.name || '...'} en cours de validation` :
                 s.status === 'active' ? `Abonnement ${s.plan?.name || '...'} actif` :
-                    s.status === 'rejected' ? `Paiement ${s.plan?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                s.status === 'rejected' ? `Paiement ${s.plan?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                s.status === 'cancelled' ? `Abonnement ${s.plan?.name || '...'} annulé` :
                         `Abonnement ${s.plan?.name || '...'} expiré`,
             date: s.created_at,
             type: s.status === 'pending' ? 'pending' : 'status',
-            status: s.status
+            status: s.status === 'cancelled' ? 'rejected' : s.status // Use 'rejected' style for cancelled
         })),
         ...(recentLoans?.map(l => ({
             id: `loan-${l.id}`,
@@ -356,15 +357,16 @@ export default async function ClientDashboard() {
                                     <span className="text-xl font-black text-white italic truncate">{activeSub?.plan?.name || expiredSub?.plan?.name || latestSubscription?.plan?.name || 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${activeSub ? 'bg-emerald-500/10 text-emerald-500' :
                                         expiredSub ? 'bg-red-500/10 text-red-500' :
-                                            latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-800 text-slate-500'
+                                            latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'bg-amber-500/10 text-amber-500' : 
+                                            latestSubscription && latestSubscription.status === 'cancelled' ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-slate-500'
                                         }`}>
-                                        {activeSub ? 'Actif' : expiredSub ? 'Expiré' : latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'Validation' : 'Aucun'}
+                                        {activeSub ? 'Actif' : expiredSub ? 'Expiré' : latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'Validation' : latestSubscription?.status === 'cancelled' ? 'Annulé' : 'Aucun'}
                                     </span>
                                 </div>
                                 <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest animate-pulse">
                                     {activeSub && activeSub.end_date
                                         ? `Échéance : ${new Date(activeSub.end_date).toLocaleDateString('fr-FR')}`
-                                        : expiredSub ? '⚠️ Abonnement expiré' : 'Services restreints'}
+                                        : expiredSub ? '⚠️ Abonnement expiré' : latestSubscription?.status === 'cancelled' ? '❌ Abonnement annulé' : 'Services restreints'}
                                 </p>
                             </div>
                         </div>

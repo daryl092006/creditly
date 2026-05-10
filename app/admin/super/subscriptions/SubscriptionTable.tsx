@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 
-import { activateSubscription, rejectSubscription } from '@/app/admin/actions'
+import { activateSubscription, rejectSubscription, cancelSubscriptionAdmin } from '@/app/admin/actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 import { Calendar, User, Identification, Checkmark, Close, View } from '@carbon/icons-react'
@@ -15,7 +15,7 @@ interface Subscription {
     proof_url: string
     created_at: string
     is_active: boolean
-    status: 'pending' | 'active' | 'rejected' | 'expired'
+    status: 'pending' | 'active' | 'rejected' | 'expired' | 'cancelled'
     start_date?: string
     end_date?: string
     plan: {
@@ -40,10 +40,11 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [confirmSub, setConfirmSub] = useState<Subscription | null>(null)
     const [rejectSub, setRejectSub] = useState<Subscription | null>(null)
+    const [cancelSub, setCancelSub] = useState<Subscription | null>(null)
     const [rejectionReason, setRejectionReason] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'expired' | 'rejected'>('all')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'expired' | 'rejected' | 'cancelled'>('all')
     const [planFilter, setPlanFilter] = useState(initialPlan)
 
     // Get unique plans from rows for the filter
@@ -58,6 +59,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
         else if (statusFilter === 'active') matchesStatus = sub.status === 'active' && !isExpired;
         else if (statusFilter === 'expired') matchesStatus = isExpired;
         else if (statusFilter === 'rejected') matchesStatus = sub.status === 'rejected';
+        else if (statusFilter === 'cancelled') matchesStatus = sub.status === 'cancelled';
 
         // Plan filter
         const matchesPlan = planFilter === 'all' || sub.plan.name === planFilter;
@@ -103,6 +105,22 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
         setIsProcessing(false)
     }
 
+    const handleCancelAdmin = async () => {
+        if (!cancelSub) return
+        setIsProcessing(true)
+        const result = await cancelSubscriptionAdmin(cancelSub.id)
+        if (result?.error) {
+            setErrorAction({
+                title: "Erreur d'Annulation",
+                message: result.error
+            })
+        } else {
+            setCancelSub(null)
+            router.refresh()
+        }
+        setIsProcessing(false)
+    }
+
     return (
         <div className="relative animate-fade-in">
             {/* Filter Bar */}
@@ -114,6 +132,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                         { id: 'active', label: 'Actifs', count: rows.filter(r => r.status === 'active' && (!r.end_date || new Date(r.end_date) >= new Date())).length },
                         { id: 'expired', label: 'Expirés', count: rows.filter(r => (r.status === 'active' && r.end_date && new Date(r.end_date) < new Date()) || r.status === 'expired').length },
                         { id: 'rejected', label: 'Refusés', count: rows.filter(r => r.status === 'rejected').length },
+                        { id: 'cancelled', label: 'Annulés', count: rows.filter(r => r.status === 'cancelled').length },
                     ].map((f) => (
                         <button
                             key={f.id}
@@ -177,7 +196,9 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {filteredRows.map((sub) => (
+                                {filteredRows.map((sub) => {
+                                    const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+                                    return (
                                     <tr key={sub.id} className="hover:bg-white/5 transition-colors group">
                                         <td className="px-6 py-6">
                                             <div className="flex items-center gap-2">
@@ -271,20 +292,29 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                             <Close size={20} />
                                                         </button>
                                                     </>
+                                                ) : sub.status === 'active' && !isExpired ? (
+                                                    <button
+                                                        onClick={() => setCancelSub(sub)}
+                                                        className="h-10 px-4 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 border border-transparent transition-all active:scale-95 flex items-center gap-2"
+                                                    >
+                                                        <Close size={16} />
+                                                        <span>Annuler</span>
+                                                    </button>
                                                 ) : (
                                                     (() => {
-                                                        const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
                                                         const displayStatus = isExpired ? 'expired' : sub.status;
 
                                                         return (
                                                             <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${displayStatus === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                                                 displayStatus === 'expired' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' :
-                                                                    displayStatus === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                    displayStatus === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                    displayStatus === 'cancelled' ? 'bg-slate-700/50 text-slate-400 border-slate-700' :
                                                                         'bg-slate-800 text-slate-500 border-slate-700'
                                                                 }`}>
                                                                 {displayStatus === 'active' ? 'Activé' :
                                                                     displayStatus === 'expired' ? 'Expiré' :
                                                                         displayStatus === 'rejected' ? 'Refusé' :
+                                                                    displayStatus === 'cancelled' ? 'Annulé' :
                                                                             displayStatus}
                                                             </span>
                                                         );
@@ -293,14 +323,17 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
 
                     {/* Mobile Cards View */}
                     <div className="space-y-4 xl:hidden">
-                        {filteredRows.map((sub) => (
+                        {filteredRows.map((sub) => {
+                            const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();
+                            return (
                             <div key={sub.id} className="glass-panel p-6 bg-slate-900 border-slate-800 space-y-6">
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -380,6 +413,10 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                 <Close size={24} />
                                             </button>
                                         </>
+                                    ) : sub.status === 'active' && !isExpired ? (
+                                        <button onClick={() => setCancelSub(sub)} className="flex-1 py-4 bg-slate-800 text-red-500 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-white/5 active:scale-95">
+                                            Annuler l&apos;abonnement
+                                        </button>
                                     ) : (
                                         <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">
@@ -388,6 +425,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                     if (isExpired) return 'Abonnement Expiré';
                                                     if (sub.status === 'active') return 'Abonnement Actif';
                                                     if (sub.status === 'rejected') return 'Paiement Refusé';
+                                                    if (sub.status === 'cancelled') return 'Abonnement Annulé';
                                                     return sub.status;
                                                 })()}
                                             </span>
@@ -395,7 +433,8 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                     )}
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </>
             )}
@@ -441,6 +480,18 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                     />
                 </div>
             </ConfirmModal>
+
+            {/* Admin Cancellation Modal */}
+            <ConfirmModal
+                isOpen={!!cancelSub}
+                onClose={() => setCancelSub(null)}
+                onConfirm={handleCancelAdmin}
+                title="Annuler l'Abonnement ?"
+                message={cancelSub ? `Voulez-vous vraiment annuler l'abonnement actif de ${cancelSub.user.prenom} ${cancelSub.user.nom} ? Cela lui retirera ses avantages immédiatement.` : ""}
+                confirmText="Oui, Annuler"
+                variant="danger"
+                isLoading={isProcessing}
+            />
 
             {/* Error Feedback Modal */}
             <ConfirmModal
