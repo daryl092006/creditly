@@ -5,6 +5,7 @@ import { getCurrentUserRole } from '@/utils/admin-security'
 import { revalidatePath } from 'next/cache'
 import { getUserFriendlyErrorMessage } from '@/utils/error-handler'
 import { sendUserEmail } from '@/utils/email-service'
+import { logAuditAction } from '@/utils/audit-logger'
 
 export async function getSignedProofUrl(path: string, bucket: string) {
     const supabase = await createAdminClient()
@@ -227,6 +228,28 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 updates.service_fee = fee
             }
 
+            // ── DOUBLE VALIDATION pour les prêts >= 25 000 FCFA ──────────────────
+            if (Number(loan.amount) >= 25000) {
+                if (!loan.first_validated_by) {
+                    // Première validation : enregistrer l'admin et attendre la seconde
+                    await supabase.from('prets').update({
+                        first_validated_by: adminId,
+                        requires_double_validation: true
+                    }).eq('id', loanId)
+                    return {
+                        success: false,
+                        requiresSecondValidation: true,
+                        message: `✅ Première validation enregistrée. Ce prêt de ${Number(loan.amount).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur avant activation.`
+                    }
+                } else if (loan.first_validated_by === adminId) {
+                    return { error: "Vous avez déjà effectué la première validation. Un autre administrateur doit effectuer la seconde validation." }
+                } else {
+                    // Deuxième validation : un admin différent confirme
+                    updates.second_validated_by = adminId
+                }
+            }
+            // ── FIN DOUBLE VALIDATION ────────────────────────────────────────────
+
             // --- COMMISSION SHARING LOGIC ---
             // 1. Get KYC Admin for this user
             const { data: kyc } = await supabase
@@ -244,7 +267,7 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 // La plateforme conserve les 40% restants
                 const kycShare = Math.round(fee * 0.2)   // 20% du frais
                 const loanShare = Math.round(fee * 0.2)  // 20% du frais
-                const commissions = []
+                const commissions: any[] = []
 
                 if (kycAdminId && loanAdminId && kycAdminId === loanAdminId) {
                     // Une seule personne a fait KYC + Prêt → elle touche 40%
@@ -252,7 +275,8 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                         loan_id: loanId,
                         admin_id: kycAdminId,
                         amount: kycShare + loanShare,
-                        type: 'kyc_and_loan_reward'
+                        type: 'kyc_and_loan_reward',
+                        status: 'locked'
                     })
                 } else {
                     if (kycAdminId) {
@@ -260,7 +284,8 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                             loan_id: loanId,
                             admin_id: kycAdminId,
                             amount: kycShare,
-                            type: 'kyc_reward'
+                            type: 'kyc_reward',
+                            status: 'locked'
                         })
                     }
                     if (loanAdminId) {
@@ -268,7 +293,8 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                             loan_id: loanId,
                             admin_id: loanAdminId,
                             amount: loanShare,
-                            type: 'loan_reward'
+                            type: 'loan_reward',
+                            status: 'locked'
                         })
                     }
                 }
@@ -289,6 +315,36 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
         .eq('id', loanId)
 
     if (updateError) return { error: getUserFriendlyErrorMessage(updateError) }
+
+    // AUDIT LOG
+    await logAuditAction({
+        actorId: adminId!,
+        actorRole: role,
+        action: status === 'approved' || status === 'active' ? 'LOAN_APPROVAL' : 'LOAN_REJECTION',
+        targetTable: 'prets',
+        targetId: loanId,
+        oldValue: { status: loan.status },
+        newValue: { status: updates.status, ...updates }
+    })
+
+    // Incrémenter les stats de performance de l'agent valideur (non-bloquant)
+    if (adminId && (status === 'active' || status === 'rejected')) {
+        try {
+            const { data: perf } = await supabase
+                .from('agent_performance')
+                .select('total_validations')
+                .eq('agent_id', adminId)
+                .maybeSingle()
+            if (perf) {
+                await supabase.from('agent_performance')
+                    .update({ total_validations: (perf.total_validations || 0) + 1, updated_at: new Date().toISOString() })
+                    .eq('agent_id', adminId)
+            } else {
+                await supabase.from('agent_performance')
+                    .insert({ agent_id: adminId, total_validations: 1 })
+            }
+        } catch (e) { /* Non-bloquant */ }
+    }
 
     // Notify User safely
     const { data: userData } = await supabase.from('users').select('email, prenom, nom').eq('id', loan.user_id).single()
@@ -329,23 +385,58 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
         return { error: "Ce remboursement a déjà été traité (validé ou rejeté)." }
     }
 
+    // ── DOUBLE VALIDATION pour les remboursements >= 50 000 FCFA ───────────────
+    if (status === 'verified' && Number(repayment.amount_declared) >= 50000) {
+        if (!repayment.first_validated_by) {
+            // Première validation : enregistrer l'admin et attendre la seconde
+            await supabase.from('remboursements').update({
+                first_validated_by: adminId,
+                requires_double_validation: true
+            }).eq('id', repaymentId)
+
+            revalidatePath('/admin/repayments')
+            return {
+                success: false,
+                requiresSecondValidation: true,
+                message: `✅ Première validation enregistrée. Ce remboursement de ${Number(repayment.amount_declared).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur avant d'être activé.`
+            }
+        } else if (repayment.first_validated_by === adminId) {
+            return { error: "Vous avez déjà effectué la première validation. Un autre administrateur doit effectuer la seconde validation." }
+        } else {
+            // Seconde validation par un tiers : on autorise la mise à jour finale
+        }
+    }
+    // ── FIN DOUBLE VALIDATION ────────────────────────────────────────────
+
     // 2. Perform DB Update
     const { error: repError } = await supabase
         .from('remboursements')
         .update({
             status,
             validated_at: new Date().toISOString(),
-            admin_id: adminId
+            admin_id: adminId,
+            ...(status === 'verified' && repayment.first_validated_by ? { second_validated_by: adminId } : {})
         })
         .eq('id', repaymentId)
 
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
 
+    // AUDIT LOG
+    await logAuditAction({
+        actorId: adminId!,
+        actorRole: role,
+        action: status === 'verified' ? 'REPAYMENT_VALIDATION' : 'REPAYMENT_REJECTION',
+        targetTable: 'remboursements',
+        targetId: repaymentId,
+        oldValue: { status: repayment.status },
+        newValue: { status: status, validated_at: new Date().toISOString() }
+    })
+
     // 3. Update Loan Balance if Verified
     if (status === 'verified') {
         const amountVerified = Number(repayment.amount_declared) || 0
         const isExtensionRequest = repayment.proof_url?.includes('extension_')
-        
+
         const { data: loan } = await supabase.from('prets').select('id, amount, amount_paid, service_fee, extension_fee, is_extended, created_at, status, due_date').eq('id', repayment.loan_id).single()
 
         if (loan) {
@@ -369,7 +460,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                 const currentDueDate = new Date(loan.due_date || new Date())
                 const newDueDate = new Date(currentDueDate)
                 newDueDate.setDate(newDueDate.getDate() + 5)
-                
+
                 loanUpdates.due_date = newDueDate.toISOString()
                 loanUpdates.is_extended = true
                 loanUpdates.extension_fee = (Number(loan.extension_fee) || 0) + amountVerified
@@ -388,8 +479,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     .eq('id', repaymentId)
             ])
 
-            // --- REPAYMENT COMMISSION (Only if normal repayment and fee was charged) ---
-            if (!isExtensionRequest && fee > 0) { 
+            // --- COMMISSION REMBOURSEMENT (Verrouillée, puis déverrouillage si prêt soldé) ---
+            if (!isExtensionRequest && fee > 0) {
                 const repaymentShare = Math.round(fee * 0.2)
                 const { count } = await supabase
                     .from('admin_commissions')
@@ -403,9 +494,46 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                         admin_id: adminId,
                         amount: repaymentShare,
                         type: 'repayment_reward',
+                        status: 'locked',
                         created_at: new Date().toISOString()
                     })
                 }
+            }
+
+            // ── DÉVERROUILLAGE DES COMMISSIONS si prêt entièrement soldé ─────────
+            if (isFullyPaid) {
+                // Débloquer TOUTES les commissions liées à ce prêt
+                await supabase
+                    .from('admin_commissions')
+                    .update({ status: 'payable', unlocked_at: new Date().toISOString() })
+                    .eq('loan_id', loan.id)
+                    .eq('status', 'locked')
+
+                // Resynchroniser le score du client après remboursement complet
+                try {
+                    const { calculateAndSyncUserRisk } = await import('@/utils/scoring-engine')
+                    await calculateAndSyncUserRisk(repayment.user_id, supabase as any)
+                } catch (e) { /* Non-bloquant */ }
+            }
+            // ── FIN DÉVERROUILLAGE ───────────────────────────────────────────────
+
+            // Incrémenter les stats de performance de l'agent remboursement (non-bloquant)
+            if (adminId) {
+                try {
+                    const { data: perf } = await supabase
+                        .from('agent_performance')
+                        .select('total_validations')
+                        .eq('agent_id', adminId)
+                        .maybeSingle()
+                    if (perf) {
+                        await supabase.from('agent_performance')
+                            .update({ total_validations: (perf.total_validations || 0) + 1, updated_at: new Date().toISOString() })
+                            .eq('agent_id', adminId)
+                    } else {
+                        await supabase.from('agent_performance')
+                            .insert({ agent_id: adminId, total_validations: 1 })
+                    }
+                } catch (e) { /* Non-bloquant */ }
             }
         }
     }
@@ -663,7 +791,7 @@ export async function cancelSubscriptionAdmin(subId: string) {
         if (subData?.user) {
             const userData = subData.user as any
             const planName = (subData.plan as any)?.name || 'Inconnu'
-            
+
             const { sendUserEmail } = await import('@/utils/email-service')
             await sendUserEmail('DIRECT_MESSAGE', {
                 email: userData.email,

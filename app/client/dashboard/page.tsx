@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time } from '@carbon/icons-react'
+import { CheckmarkOutline, Rocket, Flash, Wallet, Chat, Help, Add, Time, Identification } from '@carbon/icons-react'
 import ContactInfoForm from './ContactInfoForm'
 import DashboardSuccessToast from './DashboardSuccessToast'
 import ExtensionButton from '../loans/extension-button'
@@ -108,6 +108,16 @@ export default async function ClientDashboard() {
         accountManager = adminData
     }
 
+    const { data: assistanceSessions } = await supabase
+        .from('impersonation_sessions')
+        .select('*')
+        .eq('target_user_id', user.id)
+        .in('status', ['pending', 'active'])
+        .order('created_at', { ascending: false })
+
+    const activeAssistance = assistanceSessions?.find(s => s.status === 'active')
+    const pendingAssistance = assistanceSessions?.find(s => s.status === 'pending')
+
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
     const totalOutstanding = activeLoans?.reduce((acc, loan) => {
         return acc + calculateLoanDebt(loan as any).totalDebt;
@@ -130,9 +140,9 @@ export default async function ClientDashboard() {
             id: `sub-${s.created_at}`,
             text: s.status === 'pending' ? `Paiement abonnement ${s.plan?.name || '...'} en cours de validation` :
                 s.status === 'active' ? `Abonnement ${s.plan?.name || '...'} actif` :
-                s.status === 'rejected' ? `Paiement ${s.plan?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
-                s.status === 'cancelled' ? `Abonnement ${s.plan?.name || '...'} annulé` :
-                        `Abonnement ${s.plan?.name || '...'} expiré`,
+                    s.status === 'rejected' ? `Paiement ${s.plan?.name || '...'} refusé : ${s.rejection_reason || 'Inconnu'}` :
+                        s.status === 'cancelled' ? `Abonnement ${s.plan?.name || '...'} annulé` :
+                            `Abonnement ${s.plan?.name || '...'} expiré`,
             date: s.created_at,
             type: s.status === 'pending' ? 'pending' : 'status',
             status: s.status === 'cancelled' ? 'rejected' : s.status // Use 'rejected' style for cancelled
@@ -194,11 +204,44 @@ export default async function ClientDashboard() {
     const showSubExpiryAlert = subExpiresInDays !== null && subExpiresInDays <= 3 && subExpiresInDays > 0
 
     const hasOverdue = activeLoans?.some(l => l.status === 'overdue') || false
+    const kycNeedsAttention = kycDocs?.status === 'rejected' || !kycDocs
 
     return (
         <div className="py-16 md:py-32 page-transition">
             <DashboardSuccessToast />
             <div className="main-container space-y-24">
+                {/* Assistance Alert */}
+                {(activeAssistance || pendingAssistance) && (
+                    <div className="animate-bounce-subtle">
+                        <Link
+                            href={`/client/support/ticket/${activeAssistance?.ticket_id || pendingAssistance?.ticket_id}`}
+                            className={`flex items-center gap-6 p-8 rounded-[2.5rem] border-2 shadow-2xl transition-all group ${activeAssistance
+                                ? 'bg-red-500/10 border-red-500/20 hover:bg-red-500/20'
+                                : 'bg-blue-600/10 border-blue-500/20 hover:bg-blue-600/20 shadow-blue-500/20'
+                                }`}
+                        >
+                            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shrink-0 shadow-lg ${activeAssistance ? 'bg-red-500 shadow-red-500/20 text-white' : 'bg-blue-600 shadow-blue-500/20 text-white'
+                                }`}>
+                                <Identification size={32} />
+                            </div>
+                            <div className="flex-1">
+                                <p className={`text-[10px] font-black uppercase tracking-[0.3em] leading-none mb-2 ${activeAssistance ? 'text-red-500' : 'text-blue-500'
+                                    }`}>
+                                    {activeAssistance ? '🔒 Accès Assistance Actif' : '🛡️ Demande d\'Assistance Technique'}
+                                </p>
+                                <p className="text-lg font-black text-white italic leading-tight">
+                                    {activeAssistance
+                                        ? "Un agent technique Creditly étudie votre dossier en direct. Cliquez pour gérer l'accès."
+                                        : "Un agent a besoin d'accéder à votre écran pour vous aider. Cliquez pour voir le code OTP."}
+                                </p>
+                            </div>
+                            <div className={`${activeAssistance ? 'text-red-500' : 'text-blue-500'} font-black italic uppercase text-xs tracking-widest group-hover:translate-x-2 transition-transform`}>
+                                {activeAssistance ? 'Gérer →' : 'Voir OTP →'}
+                            </div>
+                        </Link>
+                    </div>
+                )}
+
                 {/* Hero Dashboard Header - Elevated & Wide */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-16 group">
                     <div className="space-y-8 max-w-4xl">
@@ -214,18 +257,41 @@ export default async function ClientDashboard() {
                             Bonjour <span className="text-white not-italic font-black decoration-blue-500 decoration-4 underline-offset-8 underline">{profile?.prenom || 'Client'}</span>. Vous avez le plein contrôle sur votre portefeuille <span className="text-blue-500">Creditly</span>.
                         </p>
                         <div className="flex flex-wrap gap-6 animate-fade-in delay-200">
-                            <Link href="/client/loans/request" className="w-full sm:w-auto">
-                                <button className="premium-button px-12 py-5 shadow-2xl shadow-emerald-500/20 active:scale-95 flex items-center gap-3 group/btn text-sm">
-                                    <Add size={24} className="group-hover/btn:rotate-90 transition-transform duration-500" />
-                                    <span>Nouveau Prêt</span>
-                                </button>
-                            </Link>
+                            {profile?.is_account_active ? (
+                                <Link href="/client/loans/request" className="w-full sm:w-auto">
+                                    <button
+                                        disabled={hasOverdue || !activeSub || totalOutstanding > 0}
+                                        className={`premium-button px-12 py-5 shadow-2xl active:scale-95 flex items-center gap-3 group/btn text-sm ${(hasOverdue || !activeSub || totalOutstanding > 0)
+                                            ? 'opacity-50 cursor-not-allowed grayscale'
+                                            : 'shadow-emerald-500/20'
+                                            }`}
+                                    >
+                                        <Add size={24} className="group-hover/btn:rotate-90 transition-transform duration-500" />
+                                        <span>Nouveau Prêt</span>
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link href="/client/kyc" className="w-full sm:w-auto">
+                                    <button className="premium-button px-12 py-5 shadow-2xl shadow-blue-500/20 active:scale-95 flex items-center gap-3 group/btn text-sm bg-blue-600">
+                                        <Identification size={24} className="group-hover/btn:scale-110 transition-transform duration-500" />
+                                        <span>Finaliser mon KYC</span>
+                                    </button>
+                                </Link>
+                            )}
                             <Link href="/client/loans" className="w-full sm:w-auto">
                                 <button className="glass-panel bg-white/5 border-white/10 px-12 py-5 text-[11px] font-black uppercase tracking-widest hover:border-blue-500/40 hover:text-blue-400 transition-all active:scale-95 text-slate-400 italic">
                                     Historique Dossiers
                                 </button>
                             </Link>
                         </div>
+
+                        {(hasOverdue || !activeSub || (profile?.is_account_active && totalOutstanding > 0)) && (
+                            <p className="text-[10px] font-black text-red-400 uppercase tracking-widest italic mt-4 animate-pulse">
+                                {hasOverdue ? "⚠️ Prêt en retard : régularisez pour emprunter à nouveau." :
+                                    !activeSub ? "💳 Abonnement requis pour accéder aux prêts." :
+                                        totalOutstanding > 0 ? "⏳ Un prêt est déjà en cours. Soldez-le pour le suivant." : ""}
+                            </p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full xl:w-auto animate-fade-in delay-300">
@@ -272,21 +338,18 @@ export default async function ClientDashboard() {
                     <div className="mb-6 animate-fade-in">
                         <Link
                             href="/client/subscriptions"
-                            className={`flex items-center gap-4 p-6 rounded-3xl group transition-all ${
-                                subExpiresInDays === 1
-                                    ? 'bg-red-500/10 border border-red-500/20 hover:bg-red-500/20'
-                                    : 'bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20'
-                            }`}
+                            className={`flex items-center gap-4 p-6 rounded-3xl group transition-all ${subExpiresInDays === 1
+                                ? 'bg-red-500/10 border border-red-500/20 hover:bg-red-500/20'
+                                : 'bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20'
+                                }`}
                         >
-                            <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-lg shrink-0 ${
-                                subExpiresInDays === 1 ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'
-                            }`}>
+                            <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-lg shrink-0 ${subExpiresInDays === 1 ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'
+                                }`}>
                                 <Flash size={24} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 ${
-                                    subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
-                                }`}>
+                                <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 ${subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
+                                    }`}>
                                     {subExpiresInDays === 1
                                         ? '🚨 Dernier jour — Abonnement expire demain'
                                         : `⏳ J-${subExpiresInDays} — Votre abonnement expire bientôt`}
@@ -295,9 +358,8 @@ export default async function ClientDashboard() {
                                     Plan {activeSub?.plan?.name} — Échéance le {new Date(activeSub!.end_date).toLocaleDateString('fr-FR')}. Renouvelez maintenant pour éviter l'interruption.
                                 </p>
                             </div>
-                            <div className={`font-black italic uppercase text-[10px] tracking-widest group-hover:translate-x-2 transition-transform shrink-0 ${
-                                subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
-                            }`}>
+                            <div className={`font-black italic uppercase text-[10px] tracking-widest group-hover:translate-x-2 transition-transform shrink-0 ${subExpiresInDays === 1 ? 'text-red-500' : 'text-amber-500'
+                                }`}>
                                 Renouveler →
                             </div>
                         </Link>
@@ -357,8 +419,8 @@ export default async function ClientDashboard() {
                                     <span className="text-xl font-black text-white italic truncate">{activeSub?.plan?.name || expiredSub?.plan?.name || latestSubscription?.plan?.name || 'N/A'}</span>
                                     <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter ${activeSub ? 'bg-emerald-500/10 text-emerald-500' :
                                         expiredSub ? 'bg-red-500/10 text-red-500' :
-                                            latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'bg-amber-500/10 text-amber-500' : 
-                                            latestSubscription && latestSubscription.status === 'cancelled' ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-slate-500'
+                                            latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'bg-amber-500/10 text-amber-500' :
+                                                latestSubscription && latestSubscription.status === 'cancelled' ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-slate-500'
                                         }`}>
                                         {activeSub ? 'Actif' : expiredSub ? 'Expiré' : latestSubscription && (latestSubscription.status === 'pending' || !latestSubscription.is_active) ? 'Validation' : latestSubscription?.status === 'cancelled' ? 'Annulé' : 'Aucun'}
                                     </span>
@@ -679,10 +741,13 @@ export default async function ClientDashboard() {
                                     <Chat size={20} />
                                     <span>Chat Live</span>
                                 </Link>
-                                <button className="glass-panel bg-slate-800/50 border-slate-700 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3">
+                                <Link
+                                    href="/client/support"
+                                    className="glass-panel bg-slate-800/50 border-slate-700 px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-3"
+                                >
                                     <Help size={20} className="text-blue-500" />
-                                    Questions fréquentes
-                                </button>
+                                    Mes Tickets
+                                </Link>
                             </div>
                         </div>
                         <div className="hidden lg:block relative">

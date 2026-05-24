@@ -4,9 +4,12 @@ import Link from 'next/link'
 import { ChevronLeft } from '@carbon/icons-react'
 import { requireAdminRole } from '@/utils/admin-security'
 import { calculateLoanDebt } from '@/utils/loan-utils'
+import { getShareholdersConfig } from '@/utils/finance-utils'
 
 export default async function UserManagementPage() {
-    const { roles: currentUserRoles } = await requireAdminRole(['superadmin', 'owner', 'admin_comptable'])
+    const { roles: currentUserRoles } = await requireAdminRole(['superadmin', 'owner', 'admin_comptable', 'support_n1'])
+    const isSupport = currentUserRoles.includes('support_n1') && !currentUserRoles.includes('superadmin') && !currentUserRoles.includes('owner') && !currentUserRoles.includes('admin_comptable');
+
     const supabase = await createClient()
 
     const { data: users, error } = await supabase
@@ -25,11 +28,13 @@ export default async function UserManagementPage() {
         userDebts.set(l.user_id, (userDebts.get(l.user_id) || 0) + totalDebt)
     })
 
+    const shareholders = await getShareholdersConfig(supabase)
+
     const rows = users?.map(u => ({
         id: u.id,
         email: u.email,
-        name: `${u.prenom || ''} ${u.nom || ''}`,
-        whatsapp: u.whatsapp,
+        name: isSupport ? (u.prenom || '') : `${u.prenom || ''} ${u.nom || ''}`,
+        whatsapp: isSupport ? '***' : u.whatsapp,
         roles: u.roles || [],
         is_active: u.is_account_active,
         has_active_loans: userDebts.has(u.id) && userDebts.get(u.id)! > 0,
@@ -67,7 +72,7 @@ export default async function UserManagementPage() {
                 </div>
 
                 <div className="glass-panel overflow-hidden bg-slate-900/50 border-white/5 shadow-2xl">
-                    <UserManagementTable rows={rows} currentUserRoles={currentUserRoles as any} />
+                    <UserManagementTable rows={rows} currentUserRoles={currentUserRoles as any} initialShareholders={shareholders} />
                 </div>
             </div>
         </div>

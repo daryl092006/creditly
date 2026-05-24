@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "next": "15.1.4",
     "nodemailer": "^8.0.4",
+    "pg": "^8.21.0",
     "postcss-import": "^16.1.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",

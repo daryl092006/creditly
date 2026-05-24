@@ -46,6 +46,11 @@ export default async function DashboardPage() {
 
     const roles = (profile?.roles || []) as string[]
 
+    // Priority: If the user has a 'client' role, send them to the client dashboard.
+    if (roles.includes('client')) {
+        return redirect('/client/dashboard')
+    }
+
     // Redirect based on priority roles
     if (roles.includes('owner') || roles.includes('superadmin')) {
         return redirect('/admin/super')
@@ -60,6 +65,6 @@ export default async function DashboardPage() {
         return redirect('/admin/repayments')
     }
 
-    // Default to client dashboard
+    // Default fallback
     return redirect('/client/dashboard')
 }

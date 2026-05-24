@@ -64,7 +64,7 @@ export default async function FinanceAuditPage({
     subs?.forEach((s: any) => {
         const p = s.plan as any
         const price = Number(p?.price) || 0
-        
+
         // On ne compte dans le total QUE les abonnements actifs ou expirés
         const isCounted = ['active', 'expired'].includes(s.status)
         if (isCounted) periodSubsTotal += price
@@ -138,13 +138,53 @@ export default async function FinanceAuditPage({
         })
     })
 
-    // Flux de trésorerie : Retraits validés
+    // --- 5. CALCULS FINANCIERS GLOBAUX & FETCH COMPLÉMENTAIRE ---
+    const { getPlatformCapital, getShareholdersConfig, calculateProfitToShare } = await import('@/utils/finance-utils')
+    const INITIAL_CAPITAL = await getPlatformCapital(supabaseAdmin)
+
+    // On regroupe les gros fetches ici
+    const [
+        { data: allRembGlobal },
+        { data: allSubsGlobal },
+        { data: allLoansGlobal },
+        { data: allWithGlobal },
+        { data: investorTransactions },
+        { data: allCommissions },
+        { data: allUsers },
+        { data: allActiveLoansAudit }
+    ] = await Promise.all([
+        supabaseAdmin.from('remboursements').select('amount_declared').eq('status', 'verified'),
+        supabaseAdmin.from('user_subscriptions').select('plan:abonnements(price)'),
+        supabaseAdmin.from('prets').select('id, user_id, amount, amount_paid, status, service_fee, extension_fee, created_at, due_date').in('status', ['approved', 'active', 'paid', 'overdue']),
+        supabaseAdmin.from('admin_withdrawals').select('amount').eq('status', 'approved'),
+        supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
+        supabaseAdmin.from('admin_commissions').select('*, loan:loan_id(status)'),
+        supabaseAdmin.from('users').select('id, email'),
+        supabaseAdmin.from('prets').select('*').in('status', ['active', 'overdue'])
+    ])
+
+    // --- 6. ADD INVESTOR TRANSACTIONS TO JOURNAL (FILTERED BY PERIOD) ---
+    investorTransactions?.forEach((t: any) => {
+        const tDate = new Date(t.date)
+        if (tDate >= new Date(startDate) && tDate <= new Date(endDate)) {
+            journal.push({
+                date: t.date,
+                type: t.type === 'investment' ? 'CASH_IN_INVESTOR' : 'CASH_OUT_INVESTOR',
+                amount: t.amount,
+                label: t.type === 'investment' ? `Réinvestissement Associé (${t.shareholder_name})` : `Retrait Dividendes Associé (${t.shareholder_name})`,
+                user: t.shareholder_name,
+                status: t.status?.toUpperCase() || 'APPROVED'
+            })
+        }
+    })
+
+    // Flux de trésorerie : Retraits validés (Admin)
     withdrawals?.forEach((w: any) => {
         journal.push({
             date: w.created_at,
             type: 'CASH_OUT_ADMIN',
             amount: -Number(w.amount),
-            label: `Sortie de Trésorerie (Retrait)`,
+            label: `Sortie de Trésorerie (Retrait Admin)`,
             user: w.admin ? `${w.admin.prenom} ${w.admin.nom}` : 'Admin',
             status: w.status === 'approved' ? 'COMPLETED' : 'PENDING'
         })
@@ -152,15 +192,7 @@ export default async function FinanceAuditPage({
 
     const sortedJournal = journal.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 100)
 
-    // --- 5. CALCULS FINANCIERS GLOBAUX ---
-    const INITIAL_CAPITAL = 2000000
-    const { data: allRembGlobal } = await supabaseAdmin.from('remboursements').select('amount_declared').eq('status', 'verified')
-    const { data: allSubsGlobal } = await supabaseAdmin.from('user_subscriptions').select('plan:abonnements(price)')
-    const { data: allLoansGlobal } = await supabaseAdmin.from('prets').select('id, user_id, amount, amount_paid, status, service_fee, extension_fee, created_at, due_date').in('status', ['approved', 'active', 'paid', 'overdue'])
-    const { data: allWithGlobal } = await supabaseAdmin.from('admin_withdrawals').select('amount').eq('status', 'approved')
-
-    // --- 6. AUDIT DU RISQUE (PAR - Portfolio At Risk) ---
-    const { data: allActiveLoansAudit } = await supabaseAdmin.from('prets').select('*').in('status', ['active', 'overdue'])
+    // --- 7. AUDIT DU RISQUE (PAR - Portfolio At Risk) ---
 
     const riskStats = (allActiveLoansAudit || []).reduce((acc: any, loan) => {
         const debt = calculateLoanDebt(loan as any)
@@ -176,16 +208,7 @@ export default async function FinanceAuditPage({
 
     const parRate = riskStats.totalActivePrinciple > 0 ? (riskStats.principleAtRisk / riskStats.totalActivePrinciple) * 100 : 0
 
-    // FETCH REAL TRANSACTIONS AND COMMISSIONS
-    const [
-        { data: investorTransactions },
-        { data: allCommissions },
-        { data: allUsers }
-    ] = await Promise.all([
-        supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
-        supabaseAdmin.from('admin_commissions').select('*, loan:loan_id(status)'),
-        supabaseAdmin.from('users').select('id, email')
-    ])
+
 
     // --- 7. LOGIQUE DE LA CAISSE ÉTANCHE (DOUBLE CAISSE) ---
     const totalInvestorWithdrawals = investorTransactions?.filter(t => t.type === 'withdrawal' && t.status === 'approved').reduce((acc, t) => acc + Math.abs(Number(t.amount)), 0) || 0
@@ -201,34 +224,18 @@ export default async function FinanceAuditPage({
     const emailToId = Object.fromEntries(allUsers?.map(u => [u.email?.toLowerCase(), u.id]) || [])
     const idToEmail = Object.fromEntries(allUsers?.map(u => [u.id, u.email?.toLowerCase()]) || [])
 
-    // --- LOGIQUE DE PARTS DYNAMIQUES (CAPITAL FLOTTANT) ---
-    const INITIAL_TOTAL_CAPITAL = 2000000;
-    
-    // 1. Calcul du capital actuel de chacun (Base + Investissements approuvés)
-    const shareholdersWithCapital = shareholders.map(s => {
-        const baseCapital = INITIAL_TOTAL_CAPITAL * s.share;
-        const myInvestments = investorTransactions
-            ?.filter(t => t.shareholder_name?.toLowerCase().trim() === s.name.toLowerCase().trim() && t.type === 'investment' && t.status === 'approved')
-            .reduce((acc, t) => acc + Math.abs(Number(t.amount)), 0) || 0;
-            
-        return { 
-            ...s, 
-            currentCapital: baseCapital + myInvestments 
-        };
-    });
-    
-    const totalCurrentCapital = shareholdersWithCapital.reduce((acc, s) => acc + s.currentCapital, 0);
+    // --- LOGIQUE DE PARTS (CAPITAL GLOBAL DYNAMISÉ) ---
+    const totalCurrentCapital = INITIAL_CAPITAL;
 
-    // 2. Enrichir les shareholders avec leurs commissions gagnées ET leur nouvelle part dynamique
-    const enrichedShareholders = shareholdersWithCapital.map(s => {
-        const dynamicShare = s.currentCapital / totalCurrentCapital;
+    // 1. Enrichir les shareholders avec leurs commissions gagnées
+    const enrichedShareholders = shareholders.map(s => {
         const adminId = emailToId[s.email?.toLowerCase()]
         const myComms = allCommissions?.filter(c => c.admin_id === adminId) || []
-        
+
         // Commissions réalisées (prêt payé ou récompense remboursement)
         const realizedComms = myComms.filter(c => c.loan?.status === 'paid' || c.type === 'repayment_reward')
         const totalComms = realizedComms.reduce((acc, c) => acc + Number(c.amount), 0)
-        
+
         // CALCUL DE LA DETTE PERSONNELLE (si l'associé est aussi client)
         const myLoans = allLoansGlobal?.filter(l => idToEmail[l.user_id] === s.email?.toLowerCase()) || []
         const myDebt = myLoans.reduce((acc, l) => {
@@ -236,16 +243,16 @@ export default async function FinanceAuditPage({
             const { totalDebt } = calculateLoanDebt(l as any)
             return acc + totalDebt
         }, 0)
-        
-        return { 
-            ...s, 
-            realizedComms: totalComms, 
+
+        return {
+            ...s,
+            realizedComms: totalComms,
             totalDebt: myDebt,
-            share: dynamicShare, // On remplace la part fixe par la part dynamique pour les calculs de bénéfices
-            originalShare: s.share // On garde l'originale pour info
+            currentCapital: INITIAL_CAPITAL * s.share,
+            originalShare: s.originalShare || s.share
         }
     })
-    
+
     const ledger = { transactions: investorTransactions || [] }
 
     const totalCashInCaisse = Math.max(0, INITIAL_CAPITAL + totalPortfolioProfit - totalWithdrawals - capitalInCirculation)
@@ -313,7 +320,7 @@ export default async function FinanceAuditPage({
                     {/* CAISSE CAPITAL */}
                     <div className="glass-panel p-16 bg-slate-950 border-white/5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-opacity">
-                             <Wallet size={120} className="text-white" />
+                            <Wallet size={120} className="text-white" />
                         </div>
                         <div className="relative z-10 space-y-8">
                             <div className="space-y-2">
@@ -344,7 +351,7 @@ export default async function FinanceAuditPage({
                     {/* CAISSE BÉNÉFICES */}
                     <div className="glass-panel p-16 bg-emerald-600/10 border-emerald-500/20 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-opacity">
-                             <ChartLine size={120} className="text-emerald-500" />
+                            <ChartLine size={120} className="text-emerald-500" />
                         </div>
                         <div className="relative z-10 space-y-8">
                             <div className="space-y-2">
@@ -435,9 +442,9 @@ export default async function FinanceAuditPage({
                         </div>
                     </div>
                 </div>
-                
+
                 {/* SECTION INVESTISSEURS */}
-                <InvestorSection 
+                <InvestorSection
                     shareholders={enrichedShareholders}
                     totalProfitToShare={totalPortfolioProfit}
                     ledger={investorTransactions || []}

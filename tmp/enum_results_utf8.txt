@@ -1,0 +1,11 @@
+✅ Success: STANDARD
+❌ Failed: Standard - invalid input value for enum risk_class_type: "Standard"
+✅ Success: ELITE
+❌ Failed: Elite - invalid input value for enum risk_class_type: "Elite"
+❌ Failed: FIABLE - invalid input value for enum risk_class_type: "FIABLE"
+❌ Failed: A SURVEILLER - invalid input value for enum risk_class_type: "A SURVEILLER"
+❌ Failed: A Surveiller - invalid input value for enum risk_class_type: "A Surveiller"
+❌ Failed: A surveiller - invalid input value for enum risk_class_type: "A surveiller"
+❌ Failed: RISQUE - invalid input value for enum risk_class_type: "RISQUE"
+❌ Failed: Risqué - invalid input value for enum risk_class_type: "Risqué"
+❌ Failed: Risque - invalid input value for enum risk_class_type: "Risque"

@@ -12,6 +12,7 @@ export interface LoanData {
     created_at: string;
     due_date?: string | null;
     status: string;
+    payout_name?: string | null;
 }
 
 export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.01) {
@@ -32,7 +33,11 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
     let latePenalties = 0;
     let daysLate = 0;
 
-    if (loan.status === 'overdue' && loan.due_date) {
+    // Detect if this is an Admin/Staff Loan
+    // Admin loans are explicitly created with service_fee = 0 and/or payout_name containing "staff"
+    const isStaffLoan = loan.service_fee === 0 || (loan.payout_name && loan.payout_name.toLowerCase().includes('staff'));
+
+    if (loan.status === 'overdue' && loan.due_date && !isStaffLoan) {
         const dueDate = new Date(loan.due_date);
         const today = new Date();
 

@@ -1,15 +1,19 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateUserRoles, deleteUserAccount, blacklistUserAccount } from './actions'
-import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown, Rocket } from '@carbon/icons-react'
+import { updateUserRoles, deleteUserAccount, blacklistUserAccount, updateShareholdersConfig } from './actions'
+import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown, Rocket, ChartPie, UserAvatar } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import Link from 'next/link'
 
-export default function UserManagementTable({ rows, currentUserRoles }: { 
+export default function UserManagementTable({ rows, currentUserRoles, initialShareholders }: {
     rows: Array<{ id: string; name: string; email: string; is_active: boolean; roles: string[]; whatsapp?: string; has_active_loans?: boolean; debt?: number }>,
-    currentUserRoles: string[]
+    currentUserRoles: string[],
+    initialShareholders?: any[]
 }) {
+    const [shareholders, setShareholders] = useState(initialShareholders || [])
+    const [redistributeData, setRedistributeData] = useState<{ userId: string, email: string, sharesToGive: number, newRoles: string[] } | null>(null)
+    const [redistributionPlan, setRedistributionPlan] = useState<Record<string, number>>({})
     const isOwner = currentUserRoles.includes('owner')
     const [loading, setLoading] = useState<string | null>(null)
     const [processingId, setProcessingId] = useState<string | null>(null)
@@ -39,6 +43,27 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
 
         if (newRoles.length === 0) newRoles = ['client'] // Fallback par défaut
 
+        // --- CHECK REDISTRIBUTION DES PARTS ---
+        // Si on retire tous les rôles admin et que c'est un actionnaire avec des parts > 0
+        const isStillAdmin = newRoles.some(r => r.startsWith('admin_') || r === 'superadmin' || r === 'owner')
+        const userEmail = rows.find(r => r.id === userId)?.email
+        const shareholder = shareholders.find(s => s.email?.toLowerCase() === userEmail?.toLowerCase())
+
+        if (!isStillAdmin && shareholder && Number(shareholder.share) > 0) {
+            setRedistributeData({
+                userId,
+                email: userEmail!,
+                sharesToGive: shareholder.share,
+                newRoles
+            })
+            // Initialisation du plan : on donne tout au premier autre admin par défaut pour faciliter
+            const others = shareholders.filter(s => s.email?.toLowerCase() !== userEmail?.toLowerCase())
+            if (others.length > 0) {
+                setRedistributionPlan({ [others[0].email]: shareholder.share })
+            }
+            return
+        }
+
         // Mise à jour optimiste immédiate de l'état local
         setLocalRolesMap((prev: Record<string, string[]>) => ({ ...prev, [userId]: newRoles }))
 
@@ -51,6 +76,39 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                 title: "Erreur de Privilège",
                 message: result.error
             })
+        }
+        setLoading(null)
+    }
+
+    const handleConfirmRedistribution = async () => {
+        if (!redistributeData) return
+        setLoading(redistributeData.userId)
+
+        // 1. Calculer la nouvelle config des shareholders
+        const newConfig = shareholders.map(s => {
+            if (s.email.toLowerCase() === redistributeData.email.toLowerCase()) {
+                return { ...s, share: 0 } // On met à zéro l'admin sortant
+            }
+            const extra = redistributionPlan[s.email] || 0
+            return { ...s, share: Number((Number(s.share) + extra).toFixed(6)) }
+        })
+
+        // 2. Envoyer la nouvelle config
+        const resConfig = await updateShareholdersConfig(newConfig)
+        if (resConfig.error) {
+            setErrorAction({ title: "Erreur Shareholder", message: resConfig.error })
+            setLoading(null)
+            return
+        }
+
+        // 3. Mettre à jour les rôles
+        const resRoles = await updateUserRoles(redistributeData.userId, redistributeData.newRoles as any)
+        if (resRoles.error) {
+            setErrorAction({ title: "Erreur Rôles", message: resRoles.error })
+        } else {
+            setLocalRolesMap((prev) => ({ ...prev, [redistributeData.userId]: redistributeData.newRoles }))
+            setShareholders(newConfig)
+            setRedistributeData(null)
         }
         setLoading(null)
     }
@@ -349,6 +407,62 @@ export default function UserManagementTable({ rows, currentUserRoles }: {
                 cancelText="Fermer"
                 variant="danger"
             />
+
+            {/* Redistribution Modal */}
+            <ConfirmModal
+                isOpen={!!redistributeData}
+                onClose={() => setRedistributeData(null)}
+                onConfirm={handleConfirmRedistribution}
+                title="Redistribution des Parts"
+                message={`L'utilisateur ${redistributeData?.email} possède ${(redistributeData?.sharesToGive || 0) * 100}% des parts. En lui retirant ses droits admin, vous devez redistribuer ses parts aux autres associés.`}
+                confirmText="Valider & Rendre Client"
+                variant="warning"
+                isLoading={loading === redistributeData?.userId}
+                customIcon={<ChartPie size={32} className="text-amber-500" />}
+            >
+                <div className="mt-6 space-y-4 text-left border-t border-white/5 pt-6">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Répartition des {(redistributeData?.sharesToGive || 0) * 100}% restants :</p>
+
+                    {shareholders.filter(s => s.email?.toLowerCase() !== redistributeData?.email.toLowerCase()).map(s => (
+                        <div key={s.email} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-slate-950 border border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shdaow-lg" style={{ backgroundColor: s.color }}>
+                                    <User size={16} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-white italic">{s.name}</p>
+                                    <p className="text-[8px] font-bold text-slate-500">{s.email}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-600">+</span>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    min="0"
+                                    max={redistributeData?.sharesToGive || 1}
+                                    value={redistributionPlan[s.email] || 0}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0
+                                        setRedistributionPlan(prev => ({ ...prev, [s.email]: val }))
+                                    }}
+                                    className="w-20 px-2 py-1 rounded bg-slate-900 border border-white/10 text-white text-xs font-mono"
+                                />
+                                <span className="text-[10px] font-black text-slate-600">pts</span>
+                            </div>
+                        </div>
+                    ))}
+
+                    <div className="p-3 rounded-xl bg-blue-600/10 border border-blue-500/20">
+                        <div className="flex justify-between items-center text-blue-500">
+                            <span className="text-[10px] font-black uppercase tracking-widest italic">Total à redistribuer</span>
+                            <span className="text-sm font-black italic">
+                                {(Object.values(redistributionPlan).reduce((a, b) => a + b, 0) * 100).toFixed(2)}% sur {(redistributeData?.sharesToGive || 0) * 100}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </ConfirmModal>
         </div>
     )
 }

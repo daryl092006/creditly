@@ -49,13 +49,52 @@ export async function requestLoan(
         }
 
         // Fetch the active sub specifically
-        const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee)').eq('user_id', user.id).eq('status', 'active').single();
+        const { data: currentSub } = await supabase.from('user_subscriptions').select('*, plan:abonnements(service_fee, max_loan_amount)').eq('user_id', user.id).eq('status', 'active').single();
         const plannedFee = currentSub?.plan?.service_fee ?? 0;
 
         // Vérifier les champs qui ne sont pas collectés pendant la demande de prêt (Garant)
         if (!profile.guarantor_nom || !profile.guarantor_prenom || !profile.guarantor_whatsapp) {
             return { error: "⚠️ Profil Incomplet. Veuillez renseigner les informations de votre personne de référence dans l'onglet 'Mes Informations' de votre Dashboard avant de faire un prêt." }
         }
+
+        // ── CONTRÔLE SCORING ET PLAFOND DYNAMIQUE ──────────────────────────────
+        try {
+            const { createAdminClient: createAdmin } = await import('@/utils/supabase/server');
+            const adminSupa = await createAdmin();
+            const { calculateAndSyncUserRisk, calculateDynamicLoanLimit } = await import('@/utils/scoring-engine');
+
+            // Calculer et synchroniser le score du client
+            const riskReport = await calculateAndSyncUserRisk(user.id, adminSupa as any);
+
+            if (riskReport.isBlocked) {
+                return { error: `🚫 Demande bloquée : ${riskReport.blockReason}` };
+            }
+
+            // Calculer le plafond dynamique autorisé
+            const planMax = currentSub?.plan?.max_loan_amount || 0;
+            if (planMax > 0) {
+                const limitReport = await calculateDynamicLoanLimit(user.id, planMax, currentSub?.id, adminSupa as any);
+                if (amount > limitReport.dynamicLimit && limitReport.dynamicLimit > 0) {
+                    return { error: `🚫 Montant refusé : Votre plafond dynamique actuel est de ${limitReport.dynamicLimit.toLocaleString('fr-FR')} FCFA (Score: ${riskReport.score}/100, Classe: ${riskReport.riskLabel}). Augmentez votre score en remboursant régulièrement.` };
+                }
+            }
+
+            // Enregistrer la décision de risque
+            await adminSupa.from('risk_decisions').insert({
+                user_id: user.id,
+                decision_type: 'LOAN_REQUEST',
+                decision_result: 'MANUAL_REVIEW_REQUIRED',
+                reason: `Score: ${riskReport.score}, Classe: ${riskReport.riskClass}, Ratio dette: ${riskReport.debtRatio}%`,
+                score_at_decision: riskReport.score,
+                debt_ratio: riskReport.debtRatio,
+                default_risk: riskReport.defaultRisk,
+                liquidity_exposure: 0
+            });
+        } catch (scoringError: any) {
+            // Ne pas bloquer la demande si le scoring échoue — logguer seulement
+            console.error('Scoring Engine Warning (non-bloquant):', scoringError.message);
+        }
+        // ── FIN CONTRÔLE SCORING ────────────────────────────────────────────────
 
         // 1. Atomic Transaction (Race Condition Fix)
         const { data: rpcData, error: rpcError } = await supabase.rpc('request_loan_transaction', {
@@ -167,8 +206,32 @@ export async function submitRepayment(formData: FormData) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
 
+    // Extraire la référence de transaction et l'opérateur depuis le FormData
+    const transactionReference = (formData.get('transactionReference') as string || '').trim();
+    const operator = (formData.get('operator') as string || 'MTN').toUpperCase();
+
     try {
-        // 1. Upload to Storage (repayment-proofs)
+        // 1. Lire le fichier en buffer pour le hachage anti-fraude
+        const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+        // 2. Contrôles anti-fraude via le service de réconciliation
+        const { processPaymentProof } = await import('@/utils/payment-reconciliation');
+        const reconciliation = await processPaymentProof({
+            userId: user.id,
+            loanId,
+            declaredAmount: numAmount,
+            operator,
+            transactionReference: transactionReference || `MANUAL_${loanId}_${Date.now()}`,
+            proofFileBuffer: fileBuffer,
+            senderPhone: formData.get('senderPhone') as string || '',
+            isExtension
+        });
+
+        if (!reconciliation.success) {
+            return { error: reconciliation.error || 'Erreur de vérification du paiement.' };
+        }
+
+        // 3. Upload to Storage (repayment-proofs)
         const { data: uploadData, error: uploadError } = await adminSupabase.storage
             .from('repayment-proofs')
             .upload(fileName, file, {
@@ -180,7 +243,7 @@ export async function submitRepayment(formData: FormData) {
             return { error: getUserFriendlyErrorMessage(uploadError) }
         }
 
-        // 2. Insert record
+        // 4. Insert record with hash and reconciliation data
         const { error: dbError } = await adminSupabase
             .from('remboursements')
             .insert({
@@ -188,6 +251,11 @@ export async function submitRepayment(formData: FormData) {
                 user_id: user.id,
                 amount_declared: numAmount,
                 proof_url: uploadData.path,
+                proof_hash: reconciliation.proofHash,
+                transaction_reference: transactionReference || null,
+                transaction_id: transactionReference || null,
+                operator: operator || null,
+                requires_double_validation: reconciliation.requiresDoubleValidation,
                 status: 'pending'
             })
 
@@ -198,13 +266,13 @@ export async function submitRepayment(formData: FormData) {
         // 3. Notify Admin (Async)
         const { data: profile } = await adminSupabase.from('users').select('nom, prenom').eq('id', user.id).single()
         try {
-            await sendAdminNotification(isExtension ? 'LOAN_EXTENSION_REQUEST' : 'REPAYMENT', {
+            await sendAdminNotification(isExtension ? 'LOAN_EXTENSION' : 'REPAYMENT', {
                 userEmail: user.email!,
                 userName: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 amount: numAmount
             })
 
-            await sendUserEmail(isExtension ? 'LOAN_EXTENSION_RECEIVED' : 'REPAYMENT_RECEIVED', {
+            await sendUserEmail(isExtension ? 'LOAN_EXTENSION_CONFIRMED' : 'REPAYMENT_RECEIVED', {
                 email: user.email!,
                 name: profile ? `${profile.prenom} ${profile.nom}` : user.email!,
                 amount: numAmount

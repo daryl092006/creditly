@@ -38,9 +38,48 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
     const { id } = await params
     const supabase = await createClient()
 
+    const { data: authData } = await supabase.auth.getUser()
+    const currentUser = authData.user;
+
+    // Fetch Current User Roles to determine if Support only
+    const { data: currentUserData } = await supabase.from('users').select('roles').eq('id', currentUser?.id).single()
+    const isSupport = currentUserData?.roles?.includes('support_n1') && !currentUserData?.roles?.includes('superadmin') && !currentUserData?.roles?.includes('owner') && !currentUserData?.roles?.includes('compliance');
+
     // Fetch User Profile
     const { data: user } = await supabase.from('users').select('*').eq('id', id).single()
     if (!user) notFound()
+
+    if (isSupport) {
+        user.nom = '***';
+        user.guarantor_nom = '***';
+        user.guarantor_prenom = '***';
+        user.guarantor_whatsapp = '***';
+        // Enregistrer un log d'accès (non-bloquant)
+        if (currentUser) {
+            try {
+                await supabase.from('audit_logs').insert({
+                    actor_user_id: currentUser.id,
+                    target_id: user.id,
+                    target_table: 'users',
+                    action_type: 'VIEW_PROFILE_REDACTED',
+                    new_value_json: { reason: 'support_access' }
+                });
+            } catch (_) { /* Table non migrée, on continue */ }
+        }
+    } else {
+        // Enregistrer un log d'accès complet pour l'audit des admins (non-bloquant)
+        if (currentUser) {
+            try {
+                await supabase.from('audit_logs').insert({
+                    actor_user_id: currentUser.id,
+                    target_id: user.id,
+                    target_table: 'users',
+                    action_type: 'VIEW_PROFILE_FULL',
+                    new_value_json: { reason: 'admin_full_access' }
+                });
+            } catch (_) { /* Table non migrée, on continue */ }
+        }
+    }
 
     // Fetch KYC
     const { data: kyc } = await supabase.from('kyc_submissions').select('*').eq('user_id', id).single()
@@ -53,10 +92,10 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
     const { data: subsResult } = await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', id).order('created_at', { ascending: false })
     const subs = (subsResult || []) as unknown as UserSubscription[]
 
-    // Get Signed URLs for KYC docs if they exist
-    const idCardUrl = kyc?.id_card_url ? (await getSignedProofUrl(kyc.id_card_url, 'kyc-documents')).url : null
-    const selfieUrl = kyc?.selfie_url ? (await getSignedProofUrl(kyc.selfie_url, 'kyc-documents')).url : null
-    const residenceUrl = kyc?.proof_of_residence_url ? (await getSignedProofUrl(kyc.proof_of_residence_url, 'kyc-documents')).url : null
+    // Get Signed URLs for KYC docs if they exist (Hide for support)
+    const idCardUrl = (!isSupport && kyc?.id_card_url) ? (await getSignedProofUrl(kyc.id_card_url, 'kyc-documents')).url : null
+    const selfieUrl = (!isSupport && kyc?.selfie_url) ? (await getSignedProofUrl(kyc.selfie_url, 'kyc-documents')).url : null
+    const residenceUrl = (!isSupport && kyc?.proof_of_residence_url) ? (await getSignedProofUrl(kyc.proof_of_residence_url, 'kyc-documents')).url : null
 
     // Calculate Debt
     const activeLoans = loans.filter(l => ['active', 'overdue'].includes(l.status))
@@ -71,7 +110,9 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
 
     // 6. Automated Analysis & Scoring
     const { calculateUserScore } = await import('@/utils/scoring-utils')
-    const analysis = calculateUserScore(loans, user.created_at, !!activeSub)
+    const roles = user.roles || []
+    const isAdmin = roles.some((r: string) => r.startsWith('admin_') || r === 'owner' || r === 'superadmin')
+    const analysis = calculateUserScore(loans, user.created_at, !!activeSub, isAdmin)
 
     return (
         <div className="py-10 md:py-16 animate-fade-in">
@@ -81,7 +122,7 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
                     <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-12">
                         <div className="flex items-center gap-8">
-                             <div className="relative">
+                            <div className="relative">
                                 <svg className="w-32 h-32 transform -rotate-90">
                                     <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
                                     <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={364.4} strokeDashoffset={364.4 - (364.4 * analysis.score) / 100} className="transition-all duration-1000 ease-out" style={{ color: analysis.color }} />
@@ -90,16 +131,16 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
                                     <span className="text-3xl font-black text-white italic tracking-tighter tabular-nums">{analysis.score}</span>
                                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Score</span>
                                 </div>
-                             </div>
-                             <div className="space-y-2">
+                            </div>
+                            <div className="space-y-2">
                                 <span className="text-[10px] font-black px-3 py-1 rounded-full border border-white/10 italic tracking-widest uppercase" style={{ color: analysis.color, backgroundColor: `${analysis.color}10`, borderColor: `${analysis.color}20` }}>
                                     {analysis.label}
                                 </span>
                                 <h2 className="text-2xl font-black text-white italic tracking-tighter">{user.prenom} {user.nom}</h2>
                                 <p className="text-sm text-slate-500 font-medium italic max-w-md">{analysis.description}</p>
-                             </div>
+                            </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 w-full md:w-auto">
                             <div className="text-center md:text-left">
                                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">Remboursements</p>

@@ -19,7 +19,7 @@ interface Subscription {
 }
 
 
-export default function LoanRequestForm({ subscription, userData, repaymentPhones, dueDateRaw, applicableServiceFee }: {
+export default function LoanRequestForm({ subscription, userData, repaymentPhones, dueDateRaw, applicableServiceFee, dynamicMaxAmount }: {
     subscription: Subscription,
     userData: {
         nom: string,
@@ -36,10 +36,13 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
     };
     dueDateRaw: Date;
     applicableServiceFee: number;
+    dynamicMaxAmount?: number;
 }) {
     const router = useRouter()
     const [step, setStep] = useState(1)
-    const [amount, setAmount] = useState<number>(subscription.plan.max_loan_amount)
+    // Plafond effectif = dynamicMaxAmount (scoring) si fourni, sinon max du plan
+    const effectiveMax = dynamicMaxAmount ?? subscription.plan.max_loan_amount
+    const [amount, setAmount] = useState<number>(effectiveMax)
     const [payoutPhone, setPayoutPhone] = useState('')
     const [payoutName, setPayoutName] = useState('')
     const [payoutNetwork, setPayoutNetwork] = useState('MTN')
@@ -59,8 +62,8 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
             return false
         }
 
-        if (amount > subscription.plan.max_loan_amount) {
-            setError(`Votre limite est de ${subscription.plan.max_loan_amount.toLocaleString('fr-FR')} FCFA.`)
+        if (amount > effectiveMax) {
+            setError(`Votre plafond autorisé est de ${effectiveMax.toLocaleString('fr-FR')} FCFA.`)
             document.getElementById('amount')?.focus()
             return false
         }
@@ -176,17 +179,17 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
                             id="amount"
                             type="number"
                             value={amount}
-                            max={subscription.plan.max_loan_amount}
+                            max={effectiveMax}
                             min={1000}
                             step={500}
-                            onChange={(e) => setAmount(Number(e.target.value))}
+                            onChange={(e) => setAmount(Math.min(Number(e.target.value), effectiveMax))}
                             className="w-full px-6 py-6 rounded-2xl border border-white/5 bg-slate-950 text-white text-3xl font-black italic tracking-tighter focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all"
                         />
                         <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-700 font-black text-xs uppercase tracking-widest group-focus-within/input:text-blue-500 transition-colors italic">FCFA</div>
                     </div>
                     <div className="flex justify-between px-1">
                         <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Min: 1,000</p>
-                        <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Max: {subscription.plan.max_loan_amount.toLocaleString('fr-FR')}</p>
+                        <p className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] italic">Max: {effectiveMax.toLocaleString('fr-FR')}</p>
                     </div>
                     {applicableServiceFee > 0 && (
                         <div className="mt-2 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl flex justify-between items-center">

@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
-export type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner'
+export type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | 'support_n1'
 
 export async function requireAdminRole(allowedRoles: UserRole[]) {
     const supabase = await createClient()
@@ -35,6 +35,7 @@ export async function requireAdminRole(allowedRoles: UserRole[]) {
         if (userRoles.includes('admin_repayment')) redirect('/admin/repayments')
         if (userRoles.includes('admin_loan')) redirect('/admin/loans')
         if (userRoles.includes('admin_kyc')) redirect('/admin/kyc')
+        if (userRoles.includes('support_n1')) redirect('/admin/support')
         if (userRoles.includes('client')) redirect('/client/dashboard')
 
         redirect('/')
@@ -63,6 +64,7 @@ export async function getCurrentUserRole(): Promise<UserRole | null> {
     if (roles.includes('admin_loan')) return 'admin_loan'
     if (roles.includes('admin_repayment')) return 'admin_repayment'
     if (roles.includes('admin_kyc')) return 'admin_kyc'
+    if (roles.includes('support_n1')) return 'support_n1'
 
     return roles.length > 0 ? roles[0] : null
 }

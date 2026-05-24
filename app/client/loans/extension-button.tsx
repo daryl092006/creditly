@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Time } from '@carbon/icons-react'
-import { extendLoan } from './actions'
+import { extendLoan, submitRepayment } from './actions'
 import { useRouter } from 'next/navigation'
 
 interface ExtensionButtonProps {
@@ -14,8 +14,12 @@ interface ExtensionButtonProps {
 }
 
 export default function ExtensionButton({ loanId, isExtended, status, hasOverdue, extensionFee }: ExtensionButtonProps) {
+    const router = useRouter()
     const [showModal, setShowModal] = useState(false)
     const [file, setFile] = useState<File | null>(null)
+    const [transactionId, setTransactionId] = useState('')
+    const [operator, setOperator] = useState('')
+    const [senderPhone, setSenderPhone] = useState('')
     const [submitting, setSubmitting] = useState(false)
 
     if (isExtended || (status !== 'active' && status !== 'approved')) return null
@@ -27,6 +31,18 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
     }
 
     const handleSubmitExtension = async () => {
+        if (!transactionId || transactionId.trim().length < 4) {
+            alert("Veuillez saisir votre ID de transaction Mobile Money.")
+            return
+        }
+        if (!operator) {
+            alert("Veuillez sélectionner votre opérateur Mobile Money.")
+            return
+        }
+        if (!senderPhone || senderPhone.trim().length < 8) {
+            alert("Veuillez saisir le numéro de téléphone de l'expéditeur.")
+            return
+        }
         if (!file) {
             alert("Veuillez sélectionner une preuve de paiement.")
             return
@@ -39,6 +55,9 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
             formData.append('amount', extensionFee.toString())
             formData.append('proof', file)
             formData.append('isExtension', 'true') // Flag pour identifier la demande
+            formData.append('transactionReference', transactionId.trim())
+            formData.append('operator', operator)
+            formData.append('senderPhone', senderPhone.trim())
 
             const result = await submitRepayment(formData)
 
@@ -48,6 +67,9 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
                 alert("Votre demande de prolongation a été envoyée. Elle sera effective dès que l'administrateur aura validé votre paiement de " + extensionFee + "F.")
                 setShowModal(false)
                 setFile(null)
+                setTransactionId('')
+                setOperator('')
+                setSenderPhone('')
                 router.refresh()
             }
         } catch (err) {
@@ -61,9 +83,9 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
         <>
             <button
                 onClick={() => setShowModal(true)}
-                disabled={loading}
+                disabled={submitting}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    loading 
+                    submitting 
                     ? 'bg-purple-600/20 text-purple-400 animate-pulse cursor-not-allowed' 
                     : 'bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white shadow-lg shadow-purple-600/5'
                 }`}
@@ -94,12 +116,56 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
                             </div>
 
                             <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">
+                                    ID de Transaction Mobile Money
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Ex: CI-9923-8812 ou MP..."
+                                    value={transactionId}
+                                    onChange={(e) => setTransactionId(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/5 text-xs text-slate-300 font-bold italic focus:border-purple-500/50 outline-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">
+                                        Opérateur
+                                    </label>
+                                    <select
+                                        value={operator}
+                                        onChange={(e) => setOperator(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/5 text-xs text-slate-300 font-bold italic focus:border-purple-500/50 outline-none cursor-pointer"
+                                    >
+                                        <option value="" disabled className="bg-slate-950 text-slate-600">Choisir</option>
+                                        <option value="MTN" className="bg-slate-950 text-white">MTN</option>
+                                        <option value="Moov" className="bg-slate-950 text-white">Moov</option>
+                                        <option value="Celtiis" className="bg-slate-950 text-white">Celtiis</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">
+                                        N° Expéditeur
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        placeholder="Ex: 0707070707"
+                                        value={senderPhone}
+                                        onChange={(e) => setSenderPhone(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/5 text-xs text-slate-300 font-bold italic focus:border-purple-500/50 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Capture d'écran du paiement</label>
                                 <input 
                                     type="file" 
                                     accept="image/*"
                                     onChange={handleFileChange}
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/5 text-xs text-slate-400 font-bold italic focus:border-purple-500/50 outline-none"
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/5 text-xs text-slate-400 font-bold italic focus:border-purple-500/50 outline-none file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-purple-600/20 file:text-purple-400 hover:file:bg-purple-600/30"
                                 />
                             </div>
                         </div>
@@ -113,7 +179,7 @@ export default function ExtensionButton({ loanId, isExtended, status, hasOverdue
                             </button>
                             <button
                                 onClick={handleSubmitExtension}
-                                disabled={submitting || !file}
+                                disabled={submitting || !file || !transactionId || !operator || !senderPhone}
                                 className={`flex-2 px-8 py-4 rounded-2xl bg-purple-600 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 italic disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
                                 {submitting ? 'Envoi...' : 'Confirmer'}

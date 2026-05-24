@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { CheckmarkOutline } from '@carbon/icons-react'
 import RepaymentForm from './repayment-form'
+import CopyablePhone from './CopyablePhone'
 
 export default async function RepaymentPage({
     searchParams
@@ -61,6 +62,7 @@ export default async function RepaymentPage({
     const { calculateLoanDebt } = require('@/utils/loan-utils')
     const { totalDebt: remainingBalance, fee } = calculateLoanDebt(loan as any)
     const dueDate = loan.due_date ? new Date(loan.due_date).toLocaleDateString() : 'Non définie'
+    const isOverdue = loan.status === 'overdue'
 
     return (
         <div className="py-12 md:py-24 page-transition">
@@ -74,19 +76,22 @@ export default async function RepaymentPage({
                 </div>
 
                 <div className="max-w-xl mx-auto mb-12">
-                    <div className="glass-panel p-8 bg-slate-900/50 border-slate-800 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
+                    <div className={`glass-panel p-8 border relative overflow-hidden ${isOverdue ? 'bg-red-900/20 border-red-500/30' : 'bg-slate-900/50 border-slate-800'}`}>
+                        {isOverdue && (
+                            <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-center text-[10px] font-black uppercase tracking-[0.3em] py-2 animate-pulse">
+                                ⚠️ Paiement en retard — Régularisez immédiatement
+                            </div>
+                        )}
+                        <div className={`flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 ${isOverdue ? 'mt-8' : ''}`}>
                             <div className="space-y-1 text-center md:text-left">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Ce qu&apos;il reste à payer</p>
                                 <p className="text-4xl font-black text-white italic tracking-tighter">
                                     {(remainingBalance || 0).toLocaleString('fr-FR')} <span className="text-xs not-italic text-slate-600">FCFA</span>
                                 </p>
                             </div>
-                            <div className="px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-center">
+                            <div className={`px-6 py-3 rounded-2xl text-center ${isOverdue ? 'bg-red-500/20 border border-red-500/40' : 'bg-red-500/10 border border-red-500/20'}`}>
                                 <p className="text-[8px] font-black text-red-500/50 uppercase tracking-widest mb-1">Dernier délai</p>
-                                <p className="text-sm font-black text-red-500 uppercase italic tracking-widest">{dueDate}</p>
+                                <p className={`text-sm font-black uppercase italic tracking-widest ${isOverdue ? 'text-red-400 animate-pulse' : 'text-red-500'}`}>{dueDate}</p>
                             </div>
                         </div>
 
@@ -97,25 +102,20 @@ export default async function RepaymentPage({
                     </div>
                 </div>
 
+                {/* Numéros avec boutons "Copier" */}
                 <div className="max-w-xl mx-auto mb-12">
                     <div className="glass-panel p-6 bg-slate-900/50 border-slate-800">
-                        <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                             Envoyez l&apos;argent sur un de ces numéros
                         </h3>
+                        <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic mb-4">
+                            Montant exact à envoyer : <span className="text-emerald-500">{(remainingBalance || 0).toLocaleString('fr-FR')} FCFA</span>
+                        </p>
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">MTN Dépôt</span>
-                                <span className="text-sm font-black text-white tracking-widest">{phoneMTN}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">CELTICS</span>
-                                <span className="text-sm font-black text-white tracking-widest">{phoneCELTIIS}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">MOOV</span>
-                                <span className="text-sm font-black text-white tracking-widest">{phoneMOOV}</span>
-                            </div>
+                            <CopyablePhone label="MTN Dépôt" phone={phoneMTN} />
+                            <CopyablePhone label="CELTIIS" phone={phoneCELTIIS} />
+                            <CopyablePhone label="MOOV" phone={phoneMOOV} />
                         </div>
                     </div>
                 </div>

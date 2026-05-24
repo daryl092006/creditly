@@ -15,6 +15,12 @@ export async function updateUserRoles(userId: string, roles: Array<'client' | 'a
     return { success: true }
 }
 
+export async function updateShareholdersConfig(config: any[]) {
+    await requireAdminRole(['owner'])
+    const { updateSystemSetting } = await import('@/app/admin/settings/actions')
+    return await updateSystemSetting('shareholders_config', config)
+}
+
 /**
  * Simple Account Deletion: Wipes public.users and auth.users
  * Does NOT blacklist the email.

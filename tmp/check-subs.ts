@@ -1,5 +1,5 @@
 
-import { createAdminClient } from './utils/supabase/server'
+import { createAdminClient } from '../utils/supabase/server'
 
 async function checkSubSchema() {
     const supabase = await createAdminClient()

@@ -1,6 +1,6 @@
 'use client'
 
-import { Upload, CheckmarkOutline, Warning } from '@carbon/icons-react'
+import { Upload, CheckmarkOutline, Warning, Copy, CheckmarkFilled } from '@carbon/icons-react'
 import { useState, useTransition } from 'react'
 import { submitRepayment } from '../actions'
 import { useRouter } from 'next/navigation'
@@ -10,11 +10,32 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
     const router = useRouter()
     const [file, setFile] = useState<File | null>(null)
     const [amount, setAmount] = useState('')
+    const [transactionId, setTransactionId] = useState('')
+    const [operator, setOperator] = useState('')
+    const [senderPhone, setSenderPhone] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 
     const handleAction = async () => {
         setError(null)
+
+        if (!transactionId || transactionId.trim().length < 4) {
+            setError('Veuillez saisir votre ID de transaction Mobile Money (visible sur votre reçu).')
+            document.getElementById('transactionId')?.focus()
+            return
+        }
+
+        if (!operator) {
+            setError('Veuillez sélectionner l\'opérateur Mobile Money utilisé.')
+            document.getElementById('operator')?.focus()
+            return
+        }
+
+        if (!senderPhone || senderPhone.trim().length < 8) {
+            setError('Veuillez saisir le numéro de téléphone de l\'expéditeur.')
+            document.getElementById('senderPhone')?.focus()
+            return
+        }
 
         if (!amount || Number(amount) <= 0) {
             setError('Veuillez saisir le montant que vous avez envoyé.')
@@ -41,6 +62,9 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         formData.append('loanId', loanId)
         formData.append('amount', amount)
         formData.append('proof', compressedFile)
+        formData.append('transactionReference', transactionId.trim())
+        formData.append('operator', operator)
+        formData.append('senderPhone', senderPhone.trim())
 
         startTransition(async () => {
             const result = await submitRepayment(formData)
@@ -56,9 +80,12 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         <div className="glass-panel p-10 max-w-xl mx-auto bg-slate-900/50 border-slate-800 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-600/10 transition-colors"></div>
 
-            <h2 className="text-3xl font-black mb-8 text-white uppercase italic tracking-tighter text-left">
+            <h2 className="text-3xl font-black mb-2 text-white uppercase italic tracking-tighter text-left">
                 Envoyer mon <span className="premium-gradient-text uppercase">reçu.</span>
             </h2>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic mb-8">
+                Tous les champs sont obligatoires pour valider votre paiement.
+            </p>
 
             {error && (
                 <div className="mb-8 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-widest italic animate-shake text-left">
@@ -68,6 +95,63 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
             )}
 
             <div className="space-y-8 text-left">
+
+                {/* Transaction ID — champ critique anti-fraude */}
+                <div className="space-y-3">
+                    <label htmlFor="transactionId" className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-1 italic flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        ID de Transaction Mobile Money <span className="text-slate-600">(Obligatoire)</span>
+                    </label>
+                    <input
+                        id="transactionId"
+                        type="text"
+                        placeholder="Ex: CI-9923-8812 ou MP2026051X..."
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                        className="w-full px-6 py-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-white text-base font-bold italic focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all placeholder:text-slate-700 tracking-wider"
+                    />
+                    <p className="text-[9px] font-bold text-slate-700 ml-1 italic">
+                        Cet identifiant unique est visible sur votre reçu de transaction Mobile Money. Il permet de vérifier et sécuriser votre paiement.
+                    </p>
+                </div>
+
+                {/* Opérateur & Téléphone expéditeur */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                        <label htmlFor="operator" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                            Opérateur Mobile Money <span className="text-slate-600">(Obligatoire)</span>
+                        </label>
+                        <select
+                            id="operator"
+                            value={operator}
+                            onChange={(e) => setOperator(e.target.value)}
+                            className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-slate-950 text-white text-base font-bold italic focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all cursor-pointer"
+                        >
+                            <option value="" disabled className="bg-slate-950 text-slate-700">Choisir un opérateur</option>
+                            <option value="MTN" className="bg-slate-950 text-white">MTN Mobile Money</option>
+                            <option value="Moov" className="bg-slate-950 text-white">Moov Money</option>
+                            <option value="Celtiis" className="bg-slate-950 text-white">Celtiis Cash</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label htmlFor="senderPhone" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                            Numéro Expéditeur <span className="text-slate-600">(Obligatoire)</span>
+                        </label>
+                        <input
+                            id="senderPhone"
+                            type="tel"
+                            placeholder="Ex: 0707070707"
+                            value={senderPhone}
+                            onChange={(e) => setSenderPhone(e.target.value)}
+                            className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-slate-950 text-white text-base font-bold italic focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all placeholder:text-slate-800 tracking-wider"
+                        />
+                    </div>
+                </div>
+
+                {/* Montant */}
                 <div className="space-y-3">
                     <label htmlFor="amount" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Somme envoyée (FCFA)</label>
                     <div className="relative group/input">
@@ -82,8 +166,12 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                         />
                         <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-700 font-black text-xs uppercase tracking-widest group-focus-within/input:text-emerald-500 transition-colors italic">FCFA</div>
                     </div>
+                    <p className="text-[9px] font-bold text-slate-700 ml-1 italic">
+                        Reste à payer : <span className="text-emerald-500">{remainingBalance.toLocaleString('fr-FR')} FCFA</span>
+                    </p>
                 </div>
 
+                {/* Upload reçu */}
                 <div className="space-y-3">
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic">Photo du reçu (Capture d&apos;écran)</label>
                     <div className="relative group/file">
@@ -91,6 +179,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                             type="file"
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                             accept=".jpg,.jpeg,.png,.pdf"
+                            capture="environment"
                             onChange={(e) => {
                                 const files = e.target.files
                                 if (files && files[0]) setFile(files[0])
@@ -108,8 +197,8 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                             ) : (
                                 <>
                                     <Upload size={40} className="text-slate-700 group-hover:text-blue-500 mb-4 transition-transform group-hover:scale-110" />
-                                    <span className="text-[10px] font-black text-slate-600 group-hover:text-white uppercase tracking-[0.3em] transition-colors italic">Choisir la photo</span>
-                                    <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo</span>
+                                    <span className="text-[10px] font-black text-slate-600 group-hover:text-white uppercase tracking-[0.3em] transition-colors italic">Choisir la photo / Prendre en photo</span>
+                                    <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — JPG, PNG, PDF</span>
                                 </>
                             )}
                         </div>
@@ -118,7 +207,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
 
                 <ActionButton
                     onClick={handleAction}
-                    disabled={!file || !amount}
+                    disabled={!file || !amount || !transactionId || !operator || !senderPhone}
                     loading={isPending}
                     loadingText="Envoi en cours..."
                     className="w-full py-6 text-sm bg-emerald-600 border-emerald-500 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-[0.98] group/btn"

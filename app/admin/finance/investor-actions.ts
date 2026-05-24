@@ -13,7 +13,7 @@ export async function recordInvestorTransaction(name: string, type: 'withdrawal'
     const { data: { user } } = await supabase.auth.getUser()
     const { getShareholdersConfig, getShareholderByEmail } = await import('@/utils/finance-utils')
     const shareholders = await getShareholdersConfig(supabaseAdmin)
-    
+
     // VERIFICATION: L'utilisateur ne peut agir que sur son PROPRE compte
     const { data: dbUser } = await supabaseAdmin.from('users').select('id, email, roles').eq('id', user?.id).single()
     const userEmail = dbUser?.email || user?.email || ''
@@ -33,7 +33,7 @@ export async function recordInvestorTransaction(name: string, type: 'withdrawal'
             amount: type === 'withdrawal' ? -Math.abs(amount) : Math.abs(amount),
             date: new Date().toISOString(),
             status: type === 'withdrawal' ? 'pending' : 'approved',
-            description: repayDebt 
+            description: repayDebt
                 ? '[REPAY_DEBT] Retrait dividendes pour remboursement dette personnelle'
                 : (type === 'withdrawal' ? 'Demande de retrait dividendes' : 'Remise en caisse / Réinvestissement')
         })
@@ -42,7 +42,7 @@ export async function recordInvestorTransaction(name: string, type: 'withdrawal'
         console.error("Erreur Base de Données:", error)
         return { error: "Erreur lors de l'enregistrement." }
     }
-    
+
     revalidatePath('/admin/super')
     revalidatePath('/admin/finance')
     return { success: true }
@@ -61,7 +61,7 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
         // --- LOGIQUE DE REMBOURSEMENT AU MOMENT DE L'APPROBATION ---
         // Trouver l'utilisateur par son email
         const { data: shareholderUser } = await supabaseAdmin.from('users').select('id').eq('email', tx.shareholder_email).single()
-        
+
         if (shareholderUser) {
             const { data: oldestLoan } = await supabaseAdmin
                 .from('prets')
@@ -75,7 +75,7 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
             if (oldestLoan) {
                 const { calculateLoanDebt } = await import('@/utils/loan-utils')
                 const { totalDebt } = calculateLoanDebt(oldestLoan)
-                
+
                 const amountToApply = Math.min(Math.abs(tx.amount), totalDebt)
 
                 // Enregistrer le remboursement
@@ -98,6 +98,12 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
                 }).eq('id', oldestLoan.id)
             }
         }
+    }
+
+    // --- NOUVEAU : RECALCUL AUTOMATIQUE DES PARTS SI INVESTISSEMENT/RETRAIT ---
+    if (status === 'approved' && (tx.type === 'investment' || (tx.type === 'withdrawal' && !tx.description?.startsWith('[REPAY_DEBT]')))) {
+        const { syncShareholdersShares } = await import('@/utils/finance-utils')
+        await syncShareholdersShares(supabaseAdmin, tx.shareholder_name, tx.amount, tx.type)
     }
 
     const { error } = await supabaseAdmin

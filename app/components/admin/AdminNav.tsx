@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Logout, UserMultiple, List, Close } from '@carbon/icons-react'
 import { Logo } from '@/app/components/ui/Logo'
 
-type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | null
+type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | 'support_n1' | null
 
 export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
     const pathname = usePathname()
@@ -14,20 +14,21 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
     const isAdminMaster = userRoles.includes('superadmin') || userRoles.includes('owner')
 
     const allLinks = [
-        { name: 'Dashboard', href: '/admin/super', roles: ['superadmin', 'admin_comptable'] },
+        { name: 'Dashboard', href: '/admin/super', roles: ['superadmin', 'admin_comptable', 'owner'] },
+        { name: 'Finance', href: '/admin/finance', roles: ['admin_comptable', 'superadmin', 'owner'] },
+        { name: 'Utilisateurs', href: '/admin/super/users', roles: ['superadmin', 'owner', 'admin_comptable', 'support_n1'] },
+        { name: 'Dépôts (Config)', href: '/admin/settings', roles: ['owner'] },
+        { name: 'Abonnements', href: '/admin/super/subscriptions', roles: ['superadmin', 'admin_comptable', 'owner'] },
+        { name: 'Support', href: '/admin/support', roles: ['support_n1', 'superadmin', 'owner'] },
         { name: 'KYC', href: '/admin/kyc', roles: ['admin_kyc', 'superadmin'] },
         { name: 'Prêts', href: '/admin/loans', roles: ['admin_loan', 'superadmin', 'admin_comptable'] },
         { name: 'Remb.', href: '/admin/repayments', roles: ['admin_repayment', 'superadmin', 'admin_comptable'] },
-        { name: 'Finance', href: '/admin/finance', roles: ['admin_comptable', 'superadmin', 'owner'] },
-        { name: 'Abonnements', href: '/admin/super/subscriptions', roles: ['superadmin', 'admin_comptable'] },
-        { name: 'Utilisateurs', href: '/admin/super/users', roles: ['superadmin', 'owner', 'admin_comptable'] },
-        { name: 'Dépôts (Config)', href: '/admin/settings', roles: ['owner'] },
         { name: 'Mes Prêts (Staff)', href: '/admin/my-loans', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] },
-        { name: 'Mon Profil', href: '/admin/profile', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] }
+        { name: 'Mon Profil', href: '/admin/profile', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] },
+        { name: 'Espace Client', href: '/client/dashboard', roles: ['client'] }
     ]
 
     const links = allLinks.filter(link => {
-        if (userRoles.includes('owner')) return true
         return userRoles.some(role => link.roles.includes(role as any))
     })
 

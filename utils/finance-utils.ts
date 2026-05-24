@@ -10,10 +10,45 @@ export const DEFAULT_SHAREHOLDERS = [
     { email: 'hllawani0@gmail.com', share: 0.885, color: '#3b82f6', name: 'Habib' }
 ]
 
+export async function getPlatformCapital(supabase: any) {
+    const { data } = await supabase.from('system_settings').select('value').eq('key', 'total_platform_capital').maybeSingle()
+    return Number(data?.value) || 2000000
+}
+
+export async function syncShareholdersShares(supabase: any, shareholderName: string, amount: number, type: 'investment' | 'withdrawal') {
+    // 1. Get Current Config & Capital
+    const shareholders = await getShareholdersConfig(supabase)
+    const baseCapital = await getPlatformCapital(supabase)
+
+    // 2. Calculate New Total Capital
+    // Investment increases capital, Withdrawal decreases it
+    const change = type === 'investment' ? Math.abs(amount) : -Math.abs(amount)
+    const newTotalCapital = baseCapital + change
+
+    // 3. Recalculate each share based on the capital value
+    const updatedShareholders = shareholders.map((s: any) => {
+        const isTarget = s.name.trim().toLowerCase() === shareholderName.trim().toLowerCase()
+        const myIndividualCapital = (s.share * baseCapital) + (isTarget ? change : 0)
+        const newShare = newTotalCapital > 0 ? (myIndividualCapital / newTotalCapital) : s.share
+        return {
+            ...s,
+            share: Number(newShare.toFixed(6)) // Round to 6 decimals
+        }
+    })
+
+    // 4. Persist back to DB
+    await Promise.all([
+        supabase.from('system_settings').upsert({ key: 'shareholders_config', value: updatedShareholders, updated_at: new Date().toISOString() }),
+        supabase.from('system_settings').upsert({ key: 'total_platform_capital', value: newTotalCapital.toString(), updated_at: new Date().toISOString() })
+    ])
+
+    return { newTotalCapital, updatedShareholders }
+}
+
 export async function getShareholdersConfig(supabase: any) {
     const { data } = await supabase.from('system_settings').select('value').eq('key', 'shareholders_config').maybeSingle()
     if (!data?.value) return DEFAULT_SHAREHOLDERS
-    
+
     let config = data.value
     // If it's a string (which can happen with some updates), parse it
     if (typeof config === 'string') {
@@ -24,7 +59,7 @@ export async function getShareholdersConfig(supabase: any) {
             return DEFAULT_SHAREHOLDERS
         }
     }
-    
+
     return Array.isArray(config) ? config : DEFAULT_SHAREHOLDERS
 }
 
@@ -32,7 +67,7 @@ export async function calculateProfitToShare(supabase: any) {
     // 1. REVENUS RÉELS (DÉJÀ ENCAISSÉS)
     // On récupère les abonnements, mais on devra filtrer ceux dont le client a un prêt actif
     const { data: sPost } = await supabase.from('user_subscriptions').select('user_id, plan:abonnements(price)').in('status', ['active', 'expired']).gte('created_at', DISTRIBUTION_START_DATE)
-    
+
     // Récupération des IDs des clients ayant des prêts non soldés (active, overdue)
     const { data: activeLoanUsers } = await supabase.from('prets').select('user_id').in('status', ['active', 'overdue'])
     const lockedUserIds = new Set(activeLoanUsers?.map((l: any) => l.user_id) || [])
@@ -49,7 +84,7 @@ export async function calculateProfitToShare(supabase: any) {
     const commsTotal = cPost?.reduce((acc: number, c: any) => acc + Number(c.amount), 0) || 0
 
     const { data: lPaid } = await supabase.from('prets').select('*').eq('status', 'paid').gte('updated_at', DISTRIBUTION_START_DATE)
-    
+
     let feesRealized = 0; let extRealized = 0; let penRealized = 0
     lPaid?.forEach((l: any) => {
         feesRealized += (Number(l.service_fee) || 500)
@@ -61,7 +96,7 @@ export async function calculateProfitToShare(supabase: any) {
 
     // 2. REVENUS PRÉVISIONNELS / THÉORIQUES (TOUT CE QUI EST ENTRÉ OU VA ENTRER)
     const { data: lActive } = await supabase.from('prets').select('*').in('status', ['active', 'overdue']).gte('created_at', DISTRIBUTION_START_DATE)
-    
+
     let feesPotential = 0; let extPotential = 0; let penPotential = 0
     lActive?.forEach((l: any) => {
         feesPotential += (Number(l.service_fee) || 500)
@@ -72,8 +107,8 @@ export async function calculateProfitToShare(supabase: any) {
     // Le théorique inclut TOUS les abonnements et TOUS les frais (payés + potentiels)
     const theoreticalProfit = totalSubsPotential + feesRealized + extRealized + penRealized + feesPotential + extPotential + penPotential - commsTotal
 
-    return { 
-        realizedProfit, 
+    return {
+        realizedProfit,
         theoreticalProfit,
         breakdown: {
             subs: totalSubsPotential,
@@ -90,11 +125,11 @@ export async function calculateProfitToShare(supabase: any) {
 export function getShareholderByEmail(email: string, roles: string[] = [], shareholders: any[] = DEFAULT_SHAREHOLDERS) {
     const match = shareholders.find(s => s.email.toLowerCase() === email.toLowerCase())
     if (match) return match
-    
+
     // Fallback for Habib (Owner)
     if (roles.includes('owner')) {
         return shareholders.find(s => s.name === 'Habib') || shareholders.find(s => s.share >= 0.5)
     }
-    
+
     return null
 }

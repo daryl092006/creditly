@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+export const dynamic = 'force-dynamic'
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, Identification, RequestQuote, Receipt } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, Identification, RequestQuote, Receipt, CheckmarkFilled, Rocket } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
 import AdminEmailControl from '@/app/components/admin/AdminEmailControl'
+import { InternalControlPanel } from './InternalControlPanel'
+import { checkPlatformLiquidity, evaluateUserRisk } from '@/utils/risk-engine'
 
 import { calculateProfitToShare, getShareholderByEmail, getShareholdersConfig } from '@/utils/finance-utils'
 import InvestorSection from '../finance/InvestorSection'
@@ -64,7 +67,10 @@ export default async function SuperAdminPage({
         { data: pendingWithdrawals, error: errWith },
         { data: notificationData },
         { data: transactionsResult },
-        { data: allWithGlobal }
+        { data: allWithGlobal },
+        platformLiquidity,
+        { data: auditLogs },
+        { data: riskUsers, error: riskUserError }
     ] = await Promise.all([
         supabase.from('user_subscriptions').select('*, plan:abonnements(price)').in('status', ['active', 'expired']).gte('created_at', startDate).lte('created_at', endDate),
         supabase.from('remboursements').select('*, loan:prets(amount, amount_paid, service_fee, created_at, status, due_date)').eq('status', 'verified').gte('created_at', startDate).lte('created_at', endDate),
@@ -77,18 +83,49 @@ export default async function SuperAdminPage({
         checkGlobalQuotasStatus(month, year),
         supabase.from('abonnements').select('id, name, max_loan_amount'),
         supabase.from('users').select('id, nom, prenom, email, roles').overlaps('roles', ['admin_kyc', 'admin_loan', 'admin_repayment', 'admin_comptable', 'superadmin', 'owner']),
-        supabase.from('kyc_submissions').select('admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null),
-        supabase.from('prets').select('admin_id, status, created_at').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null),
+        supabase.from('kyc_submissions').select('created_at, reviewed_at, admin_id, status').gte('reviewed_at', startDate).lte('reviewed_at', endDate).not('admin_id', 'is', null),
+        supabase.from('prets').select('created_at, admin_decision_date, admin_id, status').gte('admin_decision_date', startDate).lte('admin_decision_date', endDate).not('admin_id', 'is', null),
         supabase.from('remboursements').select('admin_id, status').gte('validated_at', startDate).lte('validated_at', endDate).not('admin_id', 'is', null),
         supabase.from('admin_commissions').select('admin_id, amount, loan:loan_id(status), type'),
         supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5),
         supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
-        supabase.from('admin_withdrawals').select('amount').eq('status', 'approved')
+        supabase.from('admin_withdrawals').select('amount').eq('status', 'approved'),
+        checkPlatformLiquidity(),
+        supabaseAdmin.from('audit_logs').select('*, actor:actor_user_id(nom, prenom, email)').order('created_at', { ascending: false }).limit(20),
+        supabaseAdmin.from('users').select('risk_class, fraud_suspicion_level')
     ]);
 
+    const riskUsersData = (riskUsers as any) || []
+    console.log("RISK USERS DATA FETCHED:", riskUsersData?.length, "ERROR if any:", riskUserError)
+
+    // --- RISK & FRAUD ANALYTICS ---
+    const fraudSuspicionCount = riskUsersData.filter((u: any) => {
+        if (!u.fraud_suspicion_level) return false;
+        if (typeof u.fraud_suspicion_level === 'string') return u.fraud_suspicion_level !== 'NONE';
+        return u.fraud_suspicion_level > 0;
+    }).length
+
+    const getRiskClass = (u: any) => (u.risk_class || 'Standard').toUpperCase()
+
+    const riskDistribution = [
+        { label: 'Elite', count: riskUsersData.filter((u: any) => getRiskClass(u) === 'ELITE').length, color: '#10b981' },
+        { label: 'Fiable', count: riskUsersData.filter((u: any) => getRiskClass(u) === 'FIABLE').length, color: '#3b82f6' },
+        { label: 'Standard', count: riskUsersData.filter((u: any) => getRiskClass(u) === 'STANDARD').length, color: '#6b7280' },
+        { label: 'A surveiller', count: riskUsersData.filter((u: any) => getRiskClass(u) === 'A SURVEILLER').length, color: '#f59e0b' },
+        { label: 'Risqué', count: riskUsersData.filter((u: any) => getRiskClass(u) === 'RISQUE' || getRiskClass(u) === 'RISQUÉ').length, color: '#ef4444' }
+    ]
+
+    const riskStats = {
+        exposureRate: (platformLiquidity as any)?.exposureRate || 0,
+        decisionStatus: (platformLiquidity as any)?.decisionStatus || 'NORMAL',
+        fraudSuspicionCount,
+        riskDistribution,
+        recentAuditLogs: auditLogs || []
+    }
+
     const ledgerTransactions = (transactionsResult as any) || []
-    
+
     // NOUVEAU : Intégration des flux associés dans la trésorerie globale
     const totalInvestorWithdrawals = ledgerTransactions.filter((t: any) => t.type === 'withdrawal' && t.status === 'approved').reduce((acc: number, t: any) => acc + Math.abs(Number(t.amount)), 0)
     const totalInvestorInvestments = ledgerTransactions.filter((t: any) => t.type === 'investment' && t.status === 'approved').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
@@ -97,11 +134,11 @@ export default async function SuperAdminPage({
 
     const { realizedProfit: totalProfitEarned, theoreticalProfit, breakdown } = await calculateProfitToShare(supabaseAdmin)
     const shareholders = await getShareholdersConfig(supabaseAdmin)
-    
+
     // CALCUL DE LA LIQUIDITÉ RÉELLE (Pour éviter les 603k fantômes)
     const INITIAL_TOTAL_CAPITAL = 2000000
     const capitalInCirculation = (allActiveLoans || []).reduce((acc: number, loan) => acc + Math.max(0, Number(loan.amount) - Number(loan.amount_paid)), 0)
-    
+
     // Le capital disponible augmente avec les réinvestissements ("Remises")
     const totalCashInCaisse = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) + totalProfitEarned - totalWithdrawals - capitalInCirculation)
     const maxCapitalAllowedInHand = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) - capitalInCirculation)
@@ -115,16 +152,16 @@ export default async function SuperAdminPage({
     const shareholdersWithCapital = shareholders.map(s => {
         const baseCapital = INITIAL_TOTAL_CAPITAL * s.share;
         const myInvestments = ledgerTransactions
-            ?.filter((t: any) => 
-                (t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()) && 
-                t.type === 'investment' && 
+            ?.filter((t: any) =>
+                (t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()) &&
+                t.type === 'investment' &&
                 t.status === 'approved'
             )
             .reduce((acc: number, t: any) => acc + Math.abs(Number(t.amount)), 0) || 0;
-            
+
         return { ...s, currentCapital: baseCapital + myInvestments };
     });
-    
+
     const totalCurrentCapital = shareholdersWithCapital.reduce((acc: number, s: any) => acc + s.currentCapital, 0);
 
     const enrichedShareholders = shareholdersWithCapital.map(s => {
@@ -133,7 +170,7 @@ export default async function SuperAdminPage({
         const myComms = totalCommissions?.filter((c: any) => c.admin_id === adminId) || []
         const realizedComms = myComms.filter((c: any) => c.loan?.status === 'paid' || c.type === 'repayment_reward')
         const totalComms = realizedComms.reduce((acc: number, c: any) => acc + Number(c.amount), 0)
-        
+
         // Dette
         const myLoans = allActiveLoans?.filter(l => idToEmail[l.user_id] === s.email?.toLowerCase()) || []
         const myDebt = myLoans.reduce((acc: number, l: any) => {
@@ -141,15 +178,15 @@ export default async function SuperAdminPage({
             return acc + totalDebt
         }, 0)
 
-        const myTransactions = ledgerTransactions.filter((t: any) => 
+        const myTransactions = ledgerTransactions.filter((t: any) =>
             t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()
         )
         const approvedTransactions = myTransactions.filter((t: any) => t.status === 'approved')
         const totalAdjustments = approvedTransactions.reduce((acc: number, t: any) => acc + Number(t.amount), 0)
-        
-        return { 
-            ...s, 
-            realizedComms: totalComms, 
+
+        return {
+            ...s,
+            realizedComms: totalComms,
             totalDebt: myDebt,
             share: dynamicShare,
             originalShare: s.share,
@@ -219,6 +256,26 @@ export default async function SuperAdminPage({
         }
     }).sort((a: any, b: any) => b.totalActions - a.totalActions)
 
+    // --- SLA & PERFORMANCE KPIs ---
+    // KYC SLA (in hours)
+    const kycSLA = kycData?.filter(k => (k as any).reviewed_at && k.created_at).map(k => {
+        const diff = new Date((k as any).reviewed_at).getTime() - new Date(k.created_at).getTime()
+        return diff / (1000 * 60 * 60)
+    }) || []
+    const avgKycSLA = kycSLA.length > 0 ? kycSLA.reduce((a, b) => a + b, 0) / kycSLA.length : 0
+
+    // LOAN SLA (in hours)
+    const loanSLA = loanData?.filter(l => (l as any).admin_decision_date && l.created_at).map(l => {
+        const diff = new Date((l as any).admin_decision_date).getTime() - new Date(l.created_at).getTime()
+        return diff / (1000 * 60 * 60)
+    }) || []
+    const avgLoanSLA = loanSLA.length > 0 ? loanSLA.reduce((a, b) => a + b, 0) / loanSLA.length : 0
+
+    // Repayment Rate
+    const totalDueGlobal = (allActiveLoans || []).reduce((acc: number, l: any) => acc + calculateLoanDebt(l as any).totalDebt, 0) + (allPaidLoans || []).reduce((acc: number, l: any) => acc + Number(l.amount) + Number(l.service_fee), 0)
+    const totalPaidGlobal = (allActiveLoans || []).reduce((acc: number, l: any) => acc + Number(l.amount_paid), 0) + (allPaidLoans || []).reduce((acc: number, l: any) => acc + Number(l.amount_paid), 0)
+    const globalRepaymentRate = totalDueGlobal > 0 ? (totalPaidGlobal / totalDueGlobal) * 100 : 100
+
     // --- PERSONAL PROFIT SHARING LOGIC (DRY VERSION) ---
     const { data: { user } } = await supabase.auth.getUser()
     const currentEmail = allUsers.find(a => a.id === user?.id)?.email || user?.email || ''
@@ -236,6 +293,7 @@ export default async function SuperAdminPage({
             adjustments: myEnriched.balance - Math.floor(totalProfitEarned * myEnriched.share) - myEnriched.realizedComms
         }
     }
+
 
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">
@@ -334,6 +392,42 @@ export default async function SuperAdminPage({
                     ))}
                 </div>
 
+                {/* Operational Performance Section */}
+                <div className="mb-12">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                <CheckmarkFilled size={24} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">Taux de Remboursement</p>
+                                <p className="text-3xl font-black text-white italic tracking-tighter">{globalRepaymentRate.toFixed(1)}%</p>
+                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Santé globale du portefeuille</p>
+                            </div>
+                        </div>
+                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <Time size={24} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">SLA Moyen KYC</p>
+                                <p className="text-3xl font-black text-white italic tracking-tighter">{avgKycSLA.toFixed(1)}h</p>
+                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Délai de traitement des identités</p>
+                            </div>
+                        </div>
+                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                                <Rocket size={24} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">SLA Approbation Prêt</p>
+                                <p className="text-3xl font-black text-white italic tracking-tighter">{avgLoanSLA.toFixed(1)}h</p>
+                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Réactivité sur demandes de fonds</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-12">
                         <section>
@@ -365,8 +459,8 @@ export default async function SuperAdminPage({
                         </section>
 
                         <section className="pt-12">
-                            <InvestorSection 
-                                shareholders={enrichedShareholders} 
+                            <InvestorSection
+                                shareholders={enrichedShareholders}
                                 totalProfitToShare={totalProfitEarned}
                                 ledger={ledgerTransactions}
                                 currentUserEmail={currentEmail}
@@ -459,6 +553,8 @@ export default async function SuperAdminPage({
                                 ))}
                             </div>
                         </section>
+
+                        <InternalControlPanel stats={riskStats} />
                     </div>
                 </div>
             </div>

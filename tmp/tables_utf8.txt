@@ -1,0 +1,12 @@
+--- VÉRIFICATION DES TABLES SUPABASE ---
+✅ Table OK: users
+✅ Table OK: prets
+✅ Table OK: remboursements
+✅ Table OK: kyc_submissions
+✅ Table OK: audit_logs
+✅ Table OK: risk_scores
+✅ Table OK: risk_decisions
+✅ Table OK: platform_liquidity_snapshots
+✅ Table OK: loan_extensions
+✅ Table OK: provisions
+✅ Table OK: agent_performance

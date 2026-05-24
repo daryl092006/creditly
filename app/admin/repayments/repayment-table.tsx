@@ -5,6 +5,7 @@ import { updateRepaymentStatus, getSignedProofUrl, deleteRepayment } from '../ac
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 import { useRouter } from 'next/navigation'
+import DoubleValidationModal from '@/app/components/admin/DoubleValidationModal'
 
 export default function AdminRepaymentTable({
     rows
@@ -22,15 +23,32 @@ export default function AdminRepaymentTable({
         date: string;
         status: string;
         whatsapp?: string;
+        requires_double_validation?: boolean;
+        first_validated_by?: string;
         admin: { name: string; role: string; whatsapp?: string } | null
     }>
 }) {
     const [loading, setLoading] = useState<string | null>(null)
     const [preview, setPreview] = useState<{ url: string, type: 'image' | 'pdf' } | null>(null)
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: 'verified' | 'rejected' } | null>(null)
+    const [doubleConfirm, setDoubleConfirm] = useState<{ id: string, admin_first?: string } | null>(null)
+    const [doubleConfirmProofUrl, setDoubleConfirmProofUrl] = useState<string | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, user: string, status: string } | null>(null)
     const [errorAction, setErrorAction] = useState<{ title: string, message: string } | null>(null)
     const router = useRouter()
+
+    const startValidation = async (id: string, status: 'verified' | 'rejected') => {
+        const row = rows.find(r => r.id === id)
+        if (status === 'verified' && row && row.amount_declared >= 50000) {
+            setLoading(id)
+            const res = await getSignedProofUrl(row.proof_url, 'repayment-proofs')
+            setDoubleConfirmProofUrl(res.url || null)
+            setDoubleConfirm({ id, admin_first: row.first_validated_by })
+            setLoading(null)
+        } else {
+            setConfirmAction({ id, status })
+        }
+    }
 
     const handleAction = async () => {
         if (!confirmAction) return
@@ -108,16 +126,16 @@ export default function AdminRepaymentTable({
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                     <div className="space-y-2">
-                                         <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                         {row.proof_url?.includes('extension_') && (
-                                             <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
-                                                 <div className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"></div>
-                                                 Prolongation (+5j)
-                                             </div>
-                                         )}
-                                     </div>
-                                 </td>
+                                    <div className="space-y-2">
+                                        <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
+                                        {row.proof_url?.includes('extension_') && (
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
+                                                <div className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"></div>
+                                                Prolongation (+5j)
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-8 py-6">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-2">Total : {row.loan_initial_total.toLocaleString('fr-FR')} F</p>
@@ -189,14 +207,14 @@ export default function AdminRepaymentTable({
                                         {row.status === 'pending' ? (
                                             <>
                                                 <button
-                                                    onClick={() => setConfirmAction({ id: row.id, status: 'verified' })}
+                                                    onClick={() => startValidation(row.id, 'verified')}
                                                     disabled={loading === row.id}
                                                     className="h-10 px-6 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2"
                                                 >
                                                     Valider
                                                 </button>
                                                 <button
-                                                    onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })}
+                                                    onClick={() => startValidation(row.id, 'rejected')}
                                                     disabled={loading === row.id}
                                                     className="h-10 px-6 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 border border-transparent transition-all active:scale-95 flex items-center gap-2"
                                                 >
@@ -292,10 +310,10 @@ export default function AdminRepaymentTable({
                         <div className="flex gap-3 pt-6 border-t border-white/5">
                             {row.status === 'pending' ? (
                                 <>
-                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'verified' })} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">
+                                    <button onClick={() => startValidation(row.id, 'verified')} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">
                                         Valider
                                     </button>
-                                    <button onClick={() => setConfirmAction({ id: row.id, status: 'rejected' })} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
+                                    <button onClick={() => startValidation(row.id, 'rejected')} className="w-16 h-16 bg-slate-800 text-red-500 rounded-2xl border border-white/5 flex items-center justify-center">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </>
@@ -355,6 +373,27 @@ export default function AdminRepaymentTable({
                 isLoading={loading === deleteConfirm?.id}
             />
 
+            {/* Double Validation Modal */}
+            {doubleConfirm && (
+                <DoubleValidationModal
+                    isOpen={!!doubleConfirm}
+                    onClose={() => setDoubleConfirm(null)}
+                    isLoading={!!loading}
+                    proofUrl={doubleConfirmProofUrl}
+                    repayment={rows.find(r => r.id === doubleConfirm.id)!}
+                    onConfirm={async (status) => {
+                        setLoading(doubleConfirm.id)
+                        const result = await updateRepaymentStatus(doubleConfirm.id, status)
+                        if (result?.error) {
+                            setErrorAction({ title: "Erreur", message: result.error })
+                        } else {
+                            setDoubleConfirm(null)
+                            window.location.reload()
+                        }
+                        setLoading(null)
+                    }}
+                />
+            )}
             {/* Error Feedback Modal */}
             <ConfirmModal
                 isOpen={!!errorAction}

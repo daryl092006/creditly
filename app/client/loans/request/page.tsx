@@ -153,7 +153,7 @@ export default async function LoanRequestPage() {
 
 
 
-    // Fetch data for scoring and display (userData already fetched at line 16)
+    // Fetch data for scoring and display
     const { data: rawSettings } = await supabase
         .from('system_settings')
         .select('key, value')
@@ -166,35 +166,106 @@ export default async function LoanRequestPage() {
         Celtiis: settingsMap['repayment_phone_celtiis'] || '+229 01 44 14 00 67'
     }
 
-    // 6. Automated Analysis & Scoring (Admin Insight Only)
-    const { calculateUserScore } = await import('@/utils/scoring-utils')
+    // 6. Score dynamique & plafond de crédit personnalisé
+    let riskReport: any = null
+    let dynamicLimit = remainingAmount // Fallback sur le plafond plan par défaut
+    let riskBlockReason: string | null = null
+
+    try {
+        const { createAdminClient: createAdmin } = await import('@/utils/supabase/server')
+        const adminSupa = await createAdmin()
+        const { calculateAndSyncUserRisk, calculateDynamicLoanLimit } = await import('@/utils/scoring-engine')
+
+        riskReport = await calculateAndSyncUserRisk(user.id, adminSupa as any)
+
+        if (riskReport.isBlocked) {
+            riskBlockReason = riskReport.blockReason
+        } else {
+            const limitReport = await calculateDynamicLoanLimit(
+                user.id,
+                planData.max_loan_amount,
+                sub?.id,
+                adminSupa as any
+            )
+            // Plafond dynamique = min(plafond plan restant, plafond scoring)
+            dynamicLimit = Math.min(remainingAmount, limitReport.dynamicLimit)
+        }
+    } catch (e: any) {
+        console.error('Scoring Engine (page) warning:', e.message)
+        // Non-bloquant : on utilise le plafond plan par défaut
+    }
+
+    // Bloquer la page si le score décide d'un blocage absolu
+    if (riskBlockReason) {
+        return (
+            <div className="p-12 text-center glass-panel bg-slate-900/50 border-slate-800 max-w-2xl mx-auto my-12 animate-fade-in relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                <div className="w-20 h-20 bg-red-500/10 text-red-500 border border-red-500/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+                    <CloseFilled size={40} />
+                </div>
+                <h1 className="text-4xl font-black mb-4 text-white uppercase italic tracking-tighter">Accès <span className="text-red-500">bloqué.</span></h1>
+                <p className="mb-4 text-slate-400 font-bold italic leading-relaxed">{riskBlockReason}</p>
+                {riskReport && (
+                    <div className="mb-8 p-4 rounded-xl bg-slate-950 border border-white/5 inline-block text-left">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Score de confiance</div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-3xl font-black italic" style={{ color: riskReport.riskColor }}>{riskReport.score}</div>
+                            <div>
+                                <div className="text-xs font-black text-white">{riskReport.riskLabel}</div>
+                                <div className="text-[10px] text-slate-500">/ 100 points</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <Link href="/client/dashboard">
+                    <button className="premium-button bg-slate-800 border-white/5 active:scale-95 px-10">
+                        <ArrowLeft size={16} />
+                        Retour au Dashboard
+                    </button>
+                </Link>
+            </div>
+        )
+    }
+
+    // Scoring display pour l'affichage UI (version légère)
+    const { calculateUserScore } = await import('@/utils/scoring-engine')
     const { data: allUserLoans } = await supabase.from('prets').select('*').eq('user_id', user.id)
     const analysis = calculateUserScore(allUserLoans || [], userData?.created_at || now, !!sub)
 
     const dueDateRaw = new Date(Date.now() + (planData.repayment_delay_days || 7) * 24 * 60 * 60 * 1000)
 
-    // Vérifier si le frais de dossier a déjà été facturé sur cette période d'abonnement
-
-
     return (
         <div className="p-8 max-w-4xl mx-auto space-y-8">
             <h1 className="text-center text-3xl font-bold premium-gradient-text uppercase italic tracking-tighter">Demander un prêt</h1>
 
+            {/* Alerte si plafond dynamique < plafond plan */}
+            {dynamicLimit < remainingAmount && dynamicLimit > 0 && (
+                <div className="glass-panel p-4 bg-amber-500/5 border-amber-500/20 rounded-2xl flex items-start gap-3">
+                    <Information size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="text-xs font-black text-amber-400 uppercase tracking-wider mb-1">Plafond personnalisé actif</p>
+                        <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                            Votre plafond dynamique est de <span className="text-white">{dynamicLimit.toLocaleString('fr-FR')} FCFA</span> (Score: <span style={{ color: riskReport?.riskColor }} className="font-black">{riskReport?.score || analysis.score}/100</span>).
+                            Remboursez régulièrement pour augmenter votre capacité d&apos;emprunt.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex items-center justify-between group hover:border-blue-500/20 transition-all">
                     <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Somme encore possible</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Plafond disponible</p>
                         <p className="text-2xl font-black text-white italic tracking-tighter">
-                            {remainingAmount.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
+                            {dynamicLimit.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span>
                         </p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] font-bold text-slate-600 uppercase">Limite: {planData.max_loan_amount.toLocaleString('fr-FR')}</p>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase">Max plan: {planData.max_loan_amount.toLocaleString('fr-FR')}</p>
                         <div className="h-1 w-24 bg-slate-800 rounded-full mt-2 overflow-hidden">
                             <div
-                                className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${(currentCumulativeDebt / (planData.max_loan_amount || 1)) * 100}%` }}
+                                className="h-full bg-blue-500 rounded-full transition-all"
+                                style={{ width: `${Math.min(100, (currentCumulativeDebt / (planData.max_loan_amount || 1)) * 100)}%` }}
                             ></div>
                         </div>
                     </div>
@@ -213,12 +284,31 @@ export default async function LoanRequestPage() {
                 </div>
             </div>
 
+            {/* Score de confiance visible pour le client */}
+            {riskReport && (
+                <div className="glass-panel p-4 bg-slate-900/50 border-slate-800 flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl italic border flex-shrink-0"
+                        style={{ backgroundColor: `${riskReport.riskColor}15`, color: riskReport.riskColor, borderColor: `${riskReport.riskColor}30` }}>
+                        {riskReport.score}
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-xs font-black uppercase tracking-widest" style={{ color: riskReport.riskColor }}>{riskReport.riskLabel}</p>
+                        <p className="text-[10px] text-slate-500 font-bold mt-0.5">Score de confiance Creditly — Taux remboursement: {riskReport.repaymentRate}%</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase">Risque défaut</p>
+                        <p className="text-sm font-black text-white">{riskReport.defaultRisk}%</p>
+                    </div>
+                </div>
+            )}
+
             <LoanRequestForm
                 subscription={{ ...sub, plan: planData }}
                 userData={userData || { nom: '', prenom: '' }}
                 repaymentPhones={repaymentPhones}
                 dueDateRaw={dueDateRaw}
                 applicableServiceFee={applicableServiceFee}
+                dynamicMaxAmount={dynamicLimit}
             />
 
         </div>
