@@ -43,7 +43,10 @@ export function calculateLoanDebt(loan: LoanData, penaltyRatePerDay: number = 0.
 
         if (today > dueDate) {
             const diffTime = today.getTime() - dueDate.getTime();
-            daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            daysLate = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+            // Correction demandée : Commencer à compter à partir du lendemain (soit -1 jour de retard facturé)
+            if (daysLate > 0) daysLate -= 1;
 
             if (daysLate > 0 && new Date(loan.created_at) >= new Date('2026-04-02')) {
                 // Calculation: 1% of the remaining base debt per day (Rule for dossiers since April 2nd, 2026)

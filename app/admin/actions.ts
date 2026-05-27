@@ -942,7 +942,7 @@ export async function createDirectRepayment(formData: FormData) {
     }
 
     // 2. Calculate Surplus before creating repayment
-    const { data: loan } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at').eq('id', loanId).single()
+    const { data: loan } = await supabase.from('prets').select('amount, amount_paid, service_fee, created_at, status, due_date, extension_fee, payout_name').eq('id', loanId).single()
     if (!loan) return { error: "Prêt introuvable." }
 
     // Validation du montant (Calcul incluant pénalités)

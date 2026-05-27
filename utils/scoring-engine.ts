@@ -176,9 +176,10 @@ export async function calculateAndSyncUserRisk(
     // =========================================================
     // CALCUL RATIO D'ENDETTEMENT
     // =========================================================
+    const { calculateLoanDebt } = await import('@/utils/loan-utils');
     const activeDebtAmount = activeLoans.reduce((sum: number, l: any) => {
-        const fees = Number(l.service_fee || 0) + Number(l.extension_fee || 0);
-        return sum + Math.max(0, Number(l.amount) + fees - Number(l.amount_paid || 0));
+        const { totalDebt } = calculateLoanDebt(l as any);
+        return sum + totalDebt;
     }, 0);
 
     const maxPlanAmount = (activeSub as any)?.plan?.max_loan_amount || 0;

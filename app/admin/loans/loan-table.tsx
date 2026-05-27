@@ -42,6 +42,9 @@ interface LoanRow {
     whatsapp?: string;
     admin: { name: string; role: string; whatsapp?: string } | null;
     repayment_delay_days: number;
+    late_penalties?: number;
+    total_due?: number;
+    days_late?: number;
 }
 
 interface AdminLoanTableProps {
@@ -227,8 +230,19 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-1">Total : {row.amount ? (row.amount + (row.service_fee || 0)).toLocaleString('fr-FR') : '0'} FCFA</p>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">{(row.amount || 0).toLocaleString('fr-FR')} Capital + {(row.service_fee || 0).toLocaleString('fr-FR')} Frais</p>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[10px] font-black text-white italic tracking-tighter uppercase mb-1">
+                                            Total : {row.total_due ? row.total_due.toLocaleString('fr-FR') : (row.amount + (row.service_fee || 0)).toLocaleString('fr-FR')} FCFA
+                                        </p>
+                                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">
+                                            {(row.amount || 0).toLocaleString('fr-FR')} Cap. + {(row.service_fee || 0).toLocaleString('fr-FR')} Frais
+                                        </p>
+                                        {row.late_penalties! > 0 && (
+                                            <p className="text-[8px] font-black text-red-500 uppercase tracking-tight animate-pulse">
+                                                + {row.late_penalties?.toLocaleString('fr-FR')} Pénalités ({row.days_late}j)
+                                            </p>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">
@@ -375,7 +389,14 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant à rembourser</p>
-                                <p className="font-black text-white text-2xl tracking-tighter italic leading-none">{(row.amount + (row.service_fee || 0)).toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600 tracking-normal uppercase">FCFA</span></p>
+                                <p className="font-black text-white text-2xl tracking-tighter italic leading-none">
+                                    {row.total_due ? row.total_due.toLocaleString('fr-FR') : (row.amount + (row.service_fee || 0)).toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600 tracking-normal uppercase">FCFA</span>
+                                </p>
+                                {row.late_penalties! > 0 && (
+                                    <p className="text-[9px] font-black text-red-500 uppercase italic">
+                                        Inclut {row.late_penalties?.toLocaleString('fr-FR')} F de pénalités ({row.days_late}j)
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Réception ({row.payout_network})</p>
@@ -532,8 +553,18 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                         )}
                                         <div className="flex justify-between items-center bg-blue-50 p-3 rounded-xl border border-blue-100">
                                             <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Total à Rembourser</span>
-                                            <span className="text-xl font-black text-slate-900 italic tracking-tighter">{(viewWaiver.amount + (viewWaiver.service_fee || 0)).toLocaleString('fr-FR')} FCFA</span>
+                                            <span className="text-xl font-black text-slate-900 italic tracking-tighter">
+                                                {viewWaiver.status === 'overdue' && viewWaiver.total_due
+                                                    ? viewWaiver.total_due.toLocaleString('fr-FR')
+                                                    : (viewWaiver.amount + (viewWaiver.service_fee || 0)).toLocaleString('fr-FR')
+                                                } FCFA
+                                            </span>
                                         </div>
+                                        {viewWaiver.late_penalties! > 0 && (
+                                            <p className="text-[9px] font-bold text-red-600 italic text-right px-2">
+                                                (Dont {viewWaiver.late_penalties?.toLocaleString('fr-FR')} FCFA de pénalités de retard)
+                                            </p>
+                                        )}
                                         {viewWaiver.service_fee! >= 500 && (
                                             <p className="text-[10px] text-slate-500 leading-relaxed italic border-l-2 border-red-500/50 pl-2">
                                                 "Tout versement supérieur à ce montant sera considéré comme une pénalité de traitement non-remboursable."

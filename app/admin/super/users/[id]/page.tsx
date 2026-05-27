@@ -98,13 +98,10 @@ export default async function UserDetailsPage({ params }: { params: Promise<{ id
     const residenceUrl = (!isSupport && kyc?.proof_of_residence_url) ? (await getSignedProofUrl(kyc.proof_of_residence_url, 'kyc-documents')).url : null
 
     // Calculate Debt
-    const activeLoans = loans.filter(l => ['active', 'overdue'].includes(l.status))
-    const totalDebt = activeLoans.reduce((acc, l) => {
-        const fee = Number(l.service_fee) || (new Date(l.created_at) >= new Date('2026-03-09') ? 500 : 0);
-        const amount = Number(l.amount) || 0;
-        const paid = Number(l.amount_paid) || 0;
-        return acc + (amount + fee - paid);
-    }, 0);
+    const { calculateLoanDebt } = await import('@/utils/loan-utils')
+    const totalDebt = loans
+        .filter(l => ['active', 'overdue'].includes(l.status))
+        .reduce((acc, l) => acc + calculateLoanDebt(l as any).totalDebt, 0);
 
     const activeSub = subs.find(s => s.status === 'active');
 

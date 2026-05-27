@@ -4,6 +4,7 @@ import React, { useState, useTransition, useEffect } from 'react'
 import { createDirectRepayment, searchUsersWithNameOrEmail, getActiveLoansForUser } from '../actions'
 import { Upload, CheckmarkOutline, Warning, Search, User, Money, Calendar } from '@carbon/icons-react'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { calculateLoanDebt } from '@/utils/loan-utils'
 
 interface UserMatch {
     id: string;
@@ -16,8 +17,12 @@ interface LoanMatch {
     id: string;
     amount: number;
     amount_paid: number;
+    service_fee?: number | null;
+    extension_fee?: number;
     created_at: string;
     due_date: string;
+    status: string;
+    payout_name?: string | null;
     plan?: { name: string };
 }
 
@@ -225,11 +230,17 @@ export default function AdminDirectRepaymentModal({
                                             <div className="text-right">
                                                 <p className="text-sm font-black text-white italic">
                                                     {(() => {
-                                                        const fee = Number((loan as any).service_fee) || (new Date(loan.created_at) >= new Date('2026-03-09') ? 500 : 0);
-                                                        return (Number(loan.amount) + fee - Number(loan.amount_paid)).toLocaleString('fr-FR');
+                                                        const { totalDebt } = calculateLoanDebt(loan as any);
+                                                        return totalDebt.toLocaleString('fr-FR');
                                                     })()} F
                                                 </p>
                                                 <p className="text-[8px] font-black text-blue-300 opacity-50 uppercase tracking-tight">Reste à payer</p>
+                                                {(() => {
+                                                    const { latePenalties } = calculateLoanDebt(loan as any);
+                                                    return latePenalties > 0 && (
+                                                        <p className="text-[7px] font-black text-red-400 uppercase tracking-tighter animate-pulse">+ {latePenalties.toLocaleString('fr-FR')} de pénalités</p>
+                                                    );
+                                                })()}
                                             </div>
                                         </button>
                                     )) : (
