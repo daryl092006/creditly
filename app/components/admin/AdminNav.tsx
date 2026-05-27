@@ -8,21 +8,27 @@ import { Logo } from '@/app/components/ui/Logo'
 
 type UserRole = 'client' | 'admin_kyc' | 'admin_loan' | 'admin_repayment' | 'superadmin' | 'admin_comptable' | 'owner' | 'support_n1' | null
 
-export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
+export default function AdminNav({
+    userRoles,
+    notificationCounts = { kyc: 0, loans: 0, repayments: 0, withdrawals: 0 }
+}: {
+    userRoles: UserRole[];
+    notificationCounts?: { kyc: number; loans: number; repayments: number; withdrawals: number }
+}) {
     const pathname = usePathname()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const isAdminMaster = userRoles.includes('superadmin') || userRoles.includes('owner')
 
     const allLinks = [
-        { name: 'Dashboard', href: '/admin/super', roles: ['superadmin', 'admin_comptable', 'owner'] },
+        { name: 'Dashboard', href: '/admin/super', roles: ['superadmin', 'admin_comptable', 'owner'], badge: notificationCounts.withdrawals },
         { name: 'Finance', href: '/admin/finance', roles: ['admin_comptable', 'superadmin', 'owner'] },
         { name: 'Utilisateurs', href: '/admin/super/users', roles: ['superadmin', 'owner', 'admin_comptable', 'support_n1'] },
         { name: 'Dépôts (Config)', href: '/admin/settings', roles: ['owner'] },
         { name: 'Abonnements', href: '/admin/super/subscriptions', roles: ['superadmin', 'admin_comptable', 'owner'] },
         { name: 'Support', href: '/admin/support', roles: ['support_n1', 'superadmin', 'owner'] },
-        { name: 'KYC', href: '/admin/kyc', roles: ['admin_kyc', 'superadmin'] },
-        { name: 'Prêts', href: '/admin/loans', roles: ['admin_loan', 'superadmin', 'admin_comptable'] },
-        { name: 'Remb.', href: '/admin/repayments', roles: ['admin_repayment', 'superadmin', 'admin_comptable'] },
+        { name: 'KYC', href: '/admin/kyc', roles: ['admin_kyc', 'superadmin'], badge: notificationCounts.kyc },
+        { name: 'Prêts', href: '/admin/loans', roles: ['admin_loan', 'superadmin', 'admin_comptable'], badge: notificationCounts.loans },
+        { name: 'Remb.', href: '/admin/repayments', roles: ['admin_repayment', 'superadmin', 'admin_comptable'], badge: notificationCounts.repayments },
         { name: 'Mes Prêts (Staff)', href: '/admin/my-loans', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] },
         { name: 'Mon Profil', href: '/admin/profile', roles: ['admin_kyc', 'admin_loan', 'admin_repayment', 'superadmin', 'admin_comptable'] },
         { name: 'Espace Client', href: '/client/dashboard', roles: ['client'] }
@@ -46,9 +52,14 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pathname === link.href ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                    className={`relative px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pathname === link.href ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                                 >
                                     {link.name}
+                                    {link.badge !== undefined && link.badge > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-black text-white shadow-lg shadow-red-500/40 animate-pulse">
+                                            {link.badge}
+                                        </span>
+                                    )}
                                 </Link>
                             ))}
                         </div>
@@ -91,7 +102,14 @@ export default function AdminNav({ userRoles }: { userRoles: UserRole[] }) {
                                 onClick={() => setIsMenuOpen(false)}
                                 className={`w-full p-8 rounded-[2.5rem] flex items-center justify-between transition-all active:scale-95 ${pathname === link.href ? 'bg-blue-600 text-white shadow-3xl shadow-blue-500/50' : 'bg-slate-900/50 border border-white/5 text-slate-100'}`}
                             >
-                                <span className="text-xl font-black uppercase tracking-tighter italic">{link.name}</span>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xl font-black uppercase tracking-tighter italic">{link.name}</span>
+                                    {link.badge !== undefined && link.badge > 0 && (
+                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-lg shadow-red-500/40 animate-pulse">
+                                            {link.badge}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className={`w-4 h-4 rounded-full ${pathname === link.href ? 'bg-white shadow-[0_0_20px_white] animate-pulse' : 'bg-slate-800'}`}></div>
                             </Link>
                         ))}

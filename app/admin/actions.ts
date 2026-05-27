@@ -956,6 +956,10 @@ export async function createDirectRepayment(formData: FormData) {
     const currentPaid = Number(loan.amount_paid) || 0
     let surplusGenerated = Math.max(0, numAmount - totalDebt)
 
+    // 3. Double Validation check for large amounts
+    const isLargeAmount = numAmount >= 50000
+    const finalStatus = isLargeAmount ? 'pending' : 'verified'
+
     const { data: repayment, error: repError } = await supabase
         .from('remboursements')
         .insert({
@@ -963,27 +967,31 @@ export async function createDirectRepayment(formData: FormData) {
             user_id: userId,
             amount_declared: numAmount,
             proof_url: 'direct_admin_repayment',
-            status: 'verified',
+            status: finalStatus,
             admin_id: uId,
-            validated_at: new Date().toISOString(),
-            surplus_amount: surplusGenerated
+            validated_at: finalStatus === 'verified' ? new Date().toISOString() : null,
+            surplus_amount: finalStatus === 'verified' ? surplusGenerated : 0,
+            requires_double_validation: isLargeAmount,
+            first_validated_by: isLargeAmount ? uId : null
         })
         .select()
         .single()
 
     if (repError) return { error: getUserFriendlyErrorMessage(repError) }
 
-    // 3. Update Balance
-    const newTotalPaid = currentPaid + numAmount
-    const isFullyPaid = numAmount >= totalDebt
+    // 4. Update Balance (ONLY if verified)
+    if (finalStatus === 'verified') {
+        const newTotalPaid = currentPaid + numAmount
+        const isFullyPaid = numAmount >= totalDebt
 
-    await supabase
-        .from('prets')
-        .update({
-            amount_paid: newTotalPaid,
-            ...(isFullyPaid ? { status: 'paid' } : {})
-        })
-        .eq('id', loanId)
+        await supabase
+            .from('prets')
+            .update({
+                amount_paid: newTotalPaid,
+                ...(isFullyPaid ? { status: 'paid' } : {})
+            })
+            .eq('id', loanId)
+    }
 
     // Note: On ne crédite plus le solde surplus de l'utilisateur ici non plus (considéré comme pénalité).
 
