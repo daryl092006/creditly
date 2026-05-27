@@ -78,24 +78,24 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
 
                 const amountToApply = Math.min(Math.abs(tx.amount), totalDebt)
 
-                // Enregistrer le remboursement
+                // IMPORTANT : On ne marque PAS comme 'verified' directement.
+                // Le remboursement passe en 'pending' avec double validation imposée.
+                // Un AUTRE owner devra valider dans l'onglet Remboursements.
+                const { data: supabaseUser } = await supabaseAdmin.auth.getUser()
+                const approvingAdminId = supabaseUser?.user?.id
+
                 await supabaseAdmin.from('remboursements').insert({
                     loan_id: oldestLoan.id,
                     user_id: shareholderUser.id,
                     amount_declared: amountToApply,
                     proof_url: 'investor_payout_repayment',
-                    status: 'verified',
-                    admin_id: (await supabaseAdmin.auth.getUser()).data.user?.id, // Admin qui approuve
-                    validated_at: new Date().toISOString(),
-                    description: `Remboursement validé via dividendes (${tx.shareholder_name})`
+                    status: 'pending',
+                    requires_double_validation: true,
+                    first_validated_by: approvingAdminId,
+                    admin_id: approvingAdminId,
+                    description: `Remboursement via dividendes — en attente de 2ème validation (${tx.shareholder_name})`
                 })
-
-                // Mettre à jour le prêt
-                const isFullyPaid = (Number(oldestLoan.amount_paid || 0) + amountToApply) >= totalDebt
-                await supabaseAdmin.from('prets').update({
-                    amount_paid: Number(oldestLoan.amount_paid || 0) + amountToApply,
-                    status: isFullyPaid ? 'paid' : oldestLoan.status
-                }).eq('id', oldestLoan.id)
+                // Note: Le prêt sera mis à jour par updateRepaymentStatus lors de la 2ème validation
             }
         }
     }

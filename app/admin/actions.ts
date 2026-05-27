@@ -385,9 +385,32 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
         return { error: "Ce remboursement a déjà été traité (validé ou rejeté)." }
     }
 
-    // ── DOUBLE VALIDATION pour les remboursements >= 50 000 FCFA ───────────────
-    if (status === 'verified' && Number(repayment.amount_declared) >= 50000) {
+    // Vérifier si c'est un prêt Staff/Admin (exige double validation indépendamment du montant)
+    const { data: relatedLoan } = await supabase
+        .from('prets')
+        .select('service_fee, payout_name, user_id')
+        .eq('id', repayment.loan_id)
+        .single()
+
+    const isStaffLoan = relatedLoan && (
+        relatedLoan.service_fee === 0 ||
+        relatedLoan.payout_name?.toLowerCase().includes('staff')
+    )
+
+    // Vérifier si l'admin valide son PROPRE remboursement
+    const isSelfRepayment = relatedLoan?.user_id === adminId
+
+    // ── DOUBLE VALIDATION : prêts >= 50 000 FCFA OU prêts staff/admin ───────────────
+    const needsDoubleValidation = status === 'verified' && (
+        Number(repayment.amount_declared) >= 50000 || isStaffLoan
+    )
+
+    if (needsDoubleValidation) {
         if (!repayment.first_validated_by) {
+            // Bloquer si l'admin tente de valider son propre prêt staff en premier
+            if (isSelfRepayment) {
+                return { error: "❌ Vous ne pouvez pas valider le remboursement de votre propre prêt. Un autre owner doit effectuer la validation." }
+            }
             // Première validation : enregistrer l'admin et attendre la seconde
             await supabase.from('remboursements').update({
                 first_validated_by: adminId,
@@ -398,7 +421,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             return {
                 success: false,
                 requiresSecondValidation: true,
-                message: `✅ Première validation enregistrée. Ce remboursement de ${Number(repayment.amount_declared).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur avant d'être activé.`
+                message: `✅ Première validation enregistrée. Ce remboursement${isStaffLoan ? ' (Prêt Staff)' : ''} de ${Number(repayment.amount_declared).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur.`
             }
         } else if (repayment.first_validated_by === adminId) {
             return { error: "Vous avez déjà effectué la première validation. Un autre administrateur doit effectuer la seconde validation." }
@@ -447,6 +470,8 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             // SÉCURITÉ : On laisse l'admin valider même si ça dépasse (gestion des surplus et arrondis)
 
             const newTotalPaid = currentPaid + amountVerified
+            // IMPORTANT: totalDebt de calculateLoanDebt est le RESTANT (principal+fee-paid)
+            // isFullyPaid = le paiement couvre-t-il tout le restant ?
             const isFullyPaid = !isExtensionRequest && (amountVerified >= totalDebt)
 
             // Préparation des mises à jour du prêt
