@@ -16,19 +16,21 @@ export default async function AdminLayout({
         { count: pendingKyc },
         { count: pendingLoans },
         { count: pendingReps },
-        { count: pendingWithdrawals }
+        { count: pendingWithdrawals },
+        { count: pendingInvestorTxs }
     ] = await Promise.all([
         supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('prets').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('remboursements').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('admin_withdrawals').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+        supabase.from('admin_withdrawals').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('investor_transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending')
     ])
 
     const notificationCounts = {
         kyc: pendingKyc || 0,
         loans: pendingLoans || 0,
         repayments: pendingReps || 0,
-        withdrawals: pendingWithdrawals || 0
+        withdrawals: (pendingWithdrawals || 0) + (pendingInvestorTxs || 0)
     }
 
     return (

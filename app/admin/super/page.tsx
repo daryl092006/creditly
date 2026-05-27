@@ -67,6 +67,7 @@ export default async function SuperAdminPage({
         { data: pendingWithdrawals, error: errWith },
         { data: notificationData },
         { data: transactionsResult },
+        { count: pendingInvestorTransactions },
         { data: allWithGlobal },
         platformLiquidity,
         { data: auditLogs },
@@ -90,6 +91,7 @@ export default async function SuperAdminPage({
         supabase.from('admin_withdrawals').select('*, admin:admin_id(nom, prenom, email, roles)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5),
         supabaseAdmin.from('investor_transactions').select('*').order('date', { ascending: false }),
+        supabaseAdmin.from('investor_transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('admin_withdrawals').select('amount').eq('status', 'approved'),
         checkPlatformLiquidity(),
         supabaseAdmin.from('audit_logs').select('*, actor:actor_user_id(nom, prenom, email)').order('created_at', { ascending: false }).limit(20),
@@ -278,7 +280,9 @@ export default async function SuperAdminPage({
 
     // --- PERSONAL PROFIT SHARING LOGIC (DRY VERSION) ---
     const { data: { user } } = await supabase.auth.getUser()
-    const currentEmail = allUsers.find(a => a.id === user?.id)?.email || user?.email || ''
+    const currentUser = (admins || []).find(a => a.id === user?.id)
+    const currentEmail = currentUser?.email || user?.email || ''
+    const currentUserRoles = currentUser?.roles || []
 
     let myShareStats = null
     const myEnriched = enrichedShareholders.find(s => s.email?.toLowerCase() === currentEmail.toLowerCase())
@@ -440,6 +444,7 @@ export default async function SuperAdminPage({
                                     { label: 'KYC à valider', count: pendingKyc, href: '/admin/kyc', color: 'bg-amber-500' },
                                     { label: 'Prêts en attente', count: pendingLoans, href: '/admin/loans', color: 'bg-blue-600' },
                                     { label: 'Paiements Subscriptions', count: pendingSubs, href: '/admin/super/subscriptions', color: 'bg-emerald-600' },
+                                    { label: 'Transactions Associés', count: pendingInvestorTransactions, href: '/admin/super#investors', color: 'bg-orange-500' },
                                     { label: 'Remboursements', count: pendingRepayments, href: '/admin/repayments', color: 'bg-purple-600' }
                                 ].map((item, i) => (
                                     <Link key={i} href={item.href} className="glass-panel p-6 flex items-center justify-between group bg-slate-900/50 border-slate-800 hover:border-white/10 transition-all">
@@ -458,13 +463,14 @@ export default async function SuperAdminPage({
                             <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
                         </section>
 
-                        <section className="pt-12">
+                        <section id="investors" className="pt-12">
                             <InvestorSection
                                 shareholders={enrichedShareholders}
                                 totalProfitToShare={totalProfitEarned}
                                 ledger={ledgerTransactions}
                                 currentUserEmail={currentEmail}
                                 profitBreakdown={breakdown}
+                                showAll={currentUserRoles.includes('superadmin') || currentUserRoles.includes('owner')}
                             />
                         </section>
 
