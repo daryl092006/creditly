@@ -52,3 +52,30 @@ export async function getSettingValue(key: string, defaultValue: string = ''): P
     if (error || !data) return defaultValue
     return data.value
 }
+
+export async function getGlobalQuotas() {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase.from('global_quotas').select('*, plan:abonnements(name, max_loan_amount)')
+    if (error) return []
+    return data
+}
+
+export async function updateGlobalQuota(planId: string, limit: number) {
+    const { role } = await requireAdminRole(['owner'])
+    if (role !== 'owner') return { error: "Accès strictement réservé au Propriétaire." }
+
+    const supabase = await createAdminClient()
+    const { error } = await supabase
+        .from('global_quotas')
+        .update({ monthly_limit: limit })
+        .eq('plan_id', planId)
+
+    if (error) {
+        console.error("Quota update error:", error)
+        return { error: "Erreur lors de la mise à jour du quota." }
+    }
+
+    revalidatePath('/admin/super')
+    revalidatePath('/admin/settings/quotas')
+    return { success: true }
+}

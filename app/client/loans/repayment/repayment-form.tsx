@@ -88,9 +88,21 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
             </p>
 
             {error && (
-                <div className="mb-8 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-widest italic animate-shake text-left">
-                    <Warning size={24} />
-                    {error}
+                <div className="mb-8 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex flex-col gap-4 animate-shake text-left">
+                    <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest italic">
+                        <Warning size={24} />
+                        {error}
+                    </div>
+                    <div className="pt-3 border-t border-red-500/10 flex justify-between items-center">
+                        <p className="text-[8px] font-bold text-red-500/60 uppercase italic tracking-widest leading-none">Un problème ?</p>
+                        <a
+                            href="https://wa.me/2290153324490?text=Bonjour, j'ai un problème avec mon remboursement sur Creditly."
+                            target="_blank"
+                            className="bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter italic transition-all flex items-center gap-2 border border-red-500/20"
+                        >
+                            Contacter le Support
+                        </a>
+                    </div>
                 </div>
             )}
 

@@ -1,24 +1,28 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Add, Subtract, Wallet, Time, ArrowUpRight, ArrowDownRight, Information } from '@carbon/icons-react'
+import { Add, Subtract, Wallet, Time, ArrowUpRight, ArrowDownRight, Information, Close, CheckmarkFilled } from '@carbon/icons-react'
 import { InvestorTransactionModal } from './InvestorTransactionModal'
 import { recordInvestorTransaction } from './investor-actions'
 
-export default function InvestorSection({ 
-    shareholders, 
+export default function InvestorSection({
+    shareholders,
     totalProfitToShare,
     ledger,
     currentUserEmail,
     profitBreakdown,
-    showAll
-}: { 
-    shareholders: any[]; 
+    showAll,
+    hideValidation = false,
+    compact = false
+}: {
+    shareholders: any[];
     totalProfitToShare: number;
     ledger: any[];
     currentUserEmail: string;
     profitBreakdown?: any;
     showAll?: boolean;
+    hideValidation?: boolean;
+    compact?: boolean;
 }) {
     const [selectedName, setSelectedName] = useState<string | null>(null)
 
@@ -58,15 +62,103 @@ export default function InvestorSection({
         })
 
     return (
-        <div className="space-y-12">
-            {/* En-tête de section simplifié pour la confidentialité */}
-            <div className="space-y-2 text-center md:text-left pt-8 border-t border-white/5">
-                <p className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.5em] italic">{showAll ? 'Répartition des Associés' : 'Mon Compte Associé'}</p>
-                <h3 className="text-4xl md:text-5xl font-black text-white italic tracking-tighter uppercase leading-none">{showAll ? 'Investissements de chacun.' : 'Gestion de mes Parts.'}</h3>
-                <p className="text-xs text-slate-500 font-bold italic tracking-tight uppercase">{showAll ? 'Vue globale de la distribution des bénéfices' : 'Historique personnel de mes dividendes'}</p>
-            </div>
+        <div className="space-y-8">
+            {/* En-tête de section */}
+            {!compact && (
+                <div className="space-y-2 text-center md:text-left pt-8 border-t border-white/5">
+                    <p className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.5em] italic">{showAll ? 'Répartition des Associés' : 'Mon Compte Associé'}</p>
+                    <h3 className="text-4xl md:text-5xl font-black text-white italic tracking-tighter uppercase leading-none">{showAll ? 'Investissements de chacun.' : 'Gestion de mes Parts.'}</h3>
+                    <p className="text-xs text-slate-500 font-bold italic tracking-tight uppercase">{showAll ? 'Vue globale de la distribution des bénéfices' : 'Historique personnel de mes dividendes'}</p>
+                </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* ─── FILE D'ATTENTE DES VALIDATIONS (PREMIUM DESIGN) ─── */}
+            {showAll && !hideValidation && ledger.filter(t => t.status === 'pending').length > 0 && (
+                <div className="relative group/panel">
+                    {/* Glowing background effect */}
+                    <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 rounded-[2rem] blur-2xl opacity-20 group-hover/panel:opacity-30 transition-opacity" />
+
+                    <div className="relative glass-panel bg-slate-900/40 border-white/5 overflow-hidden backdrop-blur-3xl">
+                        <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-5">
+                                <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                                    <Time size={24} className="text-amber-500 animate-pulse" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] italic">Centre d'Approbation</p>
+                                    <h4 className="text-2xl font-black text-white italic tracking-tighter uppercase whitespace-nowrap">
+                                        Actions en attente <span className="text-slate-500 ml-2 not-italic font-medium">({ledger.filter(t => t.status === 'pending').length})</span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="divide-y divide-white/5">
+                            {ledger.filter(t => t.status === 'pending').map((t: any) => (
+                                <div key={t.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 px-10 py-8 hover:bg-white/[0.02] transition-all">
+                                    <div className="flex items-start gap-6">
+                                        <div className={`p-4 rounded-2xl shrink-0 ${t.type === 'withdrawal' ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+                                            {t.type === 'withdrawal' ? <ArrowUpRight size={24} className="text-red-500" /> : <ArrowDownRight size={24} className="text-emerald-500" />}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <h5 className="text-xl font-black text-white italic tracking-tight">{t.shareholder_name}</h5>
+                                                <span className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-[0.2em] italic border ${t.type === 'withdrawal' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                    {t.type === 'withdrawal' ? 'Retrait' : 'Investissement'}
+                                                </span>
+                                            </div>
+                                            <p className="text-base font-bold text-slate-400 italic leading-tight">
+                                                {t.description || 'Opération sur capital'}
+                                            </p>
+                                            <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 italic">
+                                                <span>{t.date ? new Date(t.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-800" />
+                                                <span className="font-mono opacity-50">ID: {t.id.slice(0, 8)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-6 w-full lg:w-auto">
+                                        <div className="text-right hidden sm:block mr-4">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic mb-1">Montant</p>
+                                            <p className={`text-3xl font-black italic tracking-tighter ${t.type === 'withdrawal' ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                {Math.abs(Number(t.amount)).toLocaleString('fr-FR')} <span className="text-sm opacity-50 not-italic">F</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm(`Rejeter cette opération de ${Math.abs(Number(t.amount)).toLocaleString('fr-FR')} F ?`)) return
+                                                    const { updateInvestorTransactionStatus } = await import('./investor-actions')
+                                                    await updateInvestorTransactionStatus(t.id, 'rejected')
+                                                }}
+                                                className="w-14 h-14 rounded-2xl flex items-center justify-center bg-slate-800 text-slate-400 border border-white/5 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all active:scale-90"
+                                                title="Rejeter"
+                                            >
+                                                <Close size={24} />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm(`Approuver cette opération de ${Math.abs(Number(t.amount)).toLocaleString('fr-FR')} F ?`)) return
+                                                    const { updateInvestorTransactionStatus } = await import('./investor-actions')
+                                                    await updateInvestorTransactionStatus(t.id, 'approved')
+                                                }}
+                                                className="h-14 px-8 rounded-2xl bg-emerald-500 text-slate-950 flex items-center gap-3 font-black text-xs uppercase tracking-widest hover:bg-white hover:scale-105 transition-all shadow-xl shadow-emerald-500/20"
+                                            >
+                                                <CheckmarkFilled size={20} />
+                                                Approuver
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {shareholdersWithBalance.map((s, i) => (
                     <div key={i} className="glass-panel p-8 bg-slate-900/50 border-slate-800 hover:border-white/10 transition-all relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-[60px] -mr-12 -mt-12 opacity-20" style={{ backgroundColor: s.color }}></div>
@@ -114,7 +206,7 @@ export default function InvestorSection({
 
                                 <div className="grid grid-cols-2 gap-2">
                                     {s.email?.toLowerCase() === currentUserEmail.toLowerCase() ? (
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedName(s.name)}
                                             className="h-10 bg-white/5 border border-white/5 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition-all text-white text-[9px] font-black uppercase tracking-widest"
                                         >
@@ -154,7 +246,7 @@ export default function InvestorSection({
                                                 <span className="text-[10px] font-black text-white italic">Bénéfice Net Retirable</span>
                                                 <span className="text-[10px] font-black text-emerald-500 italic">
                                                     {(profitBreakdown.subsRealized + profitBreakdown.feesRealized + profitBreakdown.penaltiesRealized - profitBreakdown.commissions).toLocaleString('fr-FR')} F
-                                                 </span>
+                                                </span>
                                             </div>
                                             <div className="pt-1 flex justify-between items-center italic">
                                                 <span className="text-[8px] font-bold text-slate-500 tracking-tighter">Ma Part Dividende ({(s.share * 100).toFixed(3)}%)</span>
@@ -196,11 +288,10 @@ export default function InvestorSection({
                                                         {t.type === 'withdrawal' ? 'RETRAIT DASH' : 'REMise CAISSE'}
                                                     </span>
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded border italic uppercase tracking-widest ${
-                                                            t.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded border italic uppercase tracking-widest ${t.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                                                             t.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                            'bg-red-500/10 text-red-400 border-red-500/20'
-                                                        }`}>
+                                                                'bg-red-500/10 text-red-400 border-red-500/20'
+                                                            }`}>
                                                             {t.status || 'approved'}
                                                         </span>
                                                         <span className="text-[9px] font-black text-white italic tracking-tighter">
@@ -212,7 +303,7 @@ export default function InvestorSection({
                                                     <span>{t.date ? new Date(t.date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'Date inconnue'}</span>
                                                     {showAll && t.status === 'pending' && (
                                                         <div className="flex gap-2">
-                                                            <button 
+                                                            <button
                                                                 onClick={async () => {
                                                                     const { updateInvestorTransactionStatus } = await import('./investor-actions')
                                                                     await updateInvestorTransactionStatus(t.id, 'rejected')
@@ -221,7 +312,7 @@ export default function InvestorSection({
                                                             >
                                                                 Rejeter
                                                             </button>
-                                                            <button 
+                                                            <button
                                                                 onClick={async () => {
                                                                     const { updateInvestorTransactionStatus } = await import('./investor-actions')
                                                                     await updateInvestorTransactionStatus(t.id, 'approved')
@@ -244,13 +335,13 @@ export default function InvestorSection({
                 ))}
             </div>
 
-            <InvestorTransactionModal 
+            <InvestorTransactionModal
                 isOpen={!!selectedName}
                 onClose={() => setSelectedName(null)}
                 name={selectedName || ''}
                 debt={shareholdersWithBalance.find(s => s.name === selectedName)?.totalDebt || 0}
                 onSuccess={handleTransaction}
             />
-        </div>
+        </div >
     )
 }

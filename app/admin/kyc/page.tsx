@@ -2,29 +2,53 @@ import { createClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import AdminKycClientTable from './kyc-table'
 import { CheckmarkFilled, CloseFilled } from '@carbon/icons-react'
+import AdminTableFilters from '@/app/components/admin/AdminTableFilters'
 
-export default async function AdminKycPage() {
+export default async function AdminKycPage({
+    searchParams
+}: {
+    searchParams: Promise<{ q?: string; status?: string; page?: string }>
+}) {
+    const params = await searchParams
+    const queryStr = params.q || ''
+    const statusFilter = params.status || 'pending'
+    const page = parseInt(params.page || '1')
+    const pageSize = 25
+
     // Security Check
     await requireAdminRole(['admin_kyc', 'superadmin', 'admin_comptable', 'owner'])
 
     const supabase = await createClient()
 
-    // 1. Fetch Pending Submissions (For Action)
-    const { data: submissions } = await supabase
+    // Build KYC Query
+    let kycQuery = supabase
         .from('kyc_submissions')
-        .select(`*, user:user_id(id, email, nom, prenom, whatsapp, telephone, birth_date, profession, guarantor_nom, guarantor_prenom, guarantor_whatsapp)`)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
+        .select(`*, user:user_id(id, email, nom, prenom, whatsapp, telephone, birth_date, profession, guarantor_nom, guarantor_prenom, guarantor_whatsapp)`, { count: 'exact' })
 
-    // 2. Fetch History (Read-Only: Approved/Rejected)
+    if (statusFilter !== 'all') {
+        kycQuery = kycQuery.eq('status', statusFilter)
+    }
+
+    if (queryStr) {
+        kycQuery = kycQuery.or(`user_id.ilike.%${queryStr}%,id.ilike.%${queryStr}%`)
+    }
+
+    kycQuery = kycQuery.order('created_at', { ascending: false })
+
+    // Pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data: submissions, count } = await kycQuery.range(from, to)
+
+    // Separate fetch for History (we might want to keep the "Recent History" section as is, or remove it)
     const { data: history } = await supabase
         .from('kyc_submissions')
         .select(`*, user:user_id(id, email, nom, prenom, whatsapp, telephone), admin:admin_id(email, nom, prenom, roles, whatsapp)`)
         .in('status', ['approved', 'rejected'])
         .order('reviewed_at', { ascending: false })
-        .limit(50) // Limit history for performance
+        .limit(10)
 
-    const pendingRows = (submissions || []).map(sub => ({
+    const submissionRows = (submissions || []).map(sub => ({
         id: sub.id,
         user_id: sub.user_id,
         email: sub.user?.email,
@@ -51,16 +75,25 @@ export default async function AdminKycPage() {
                 </div>
 
                 <div className="space-y-16">
-                    {/* Pending Section */}
+                    <AdminTableFilters
+                        placeholder="Chercher par nom, email ou ID..."
+                        statusOptions={[
+                            { label: 'En attente', value: 'pending' },
+                            { label: 'Approuvés', value: 'approved' },
+                            { label: 'Rejetés', value: 'rejected' }
+                        ]}
+                    />
+
+                    {/* Main Submissions Section */}
                     <section>
                         <h2 className="text-xl font-black text-white uppercase italic tracking-widest mb-6 flex items-center gap-3">
                             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            Dossiers en Attente ({pendingRows.length})
+                            Dossiers {statusFilter === 'pending' ? 'en Attente' : statusFilter === 'approved' ? 'Approuvés' : 'Rejetés'} ({count || 0})
                         </h2>
-                        {pendingRows.length === 0 ? (
-                            <div className="glass-panel p-12 text-center text-slate-500 font-bold italic text-sm">Aucun dossier en attente</div>
+                        {submissionRows.length === 0 ? (
+                            <div className="glass-panel p-12 text-center text-slate-500 font-bold italic text-sm">Aucun dossier trouvé</div>
                         ) : (
-                            <AdminKycClientTable submissions={pendingRows} />
+                            <AdminKycClientTable submissions={submissionRows as any} />
                         )}
                     </section>
 

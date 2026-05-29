@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function AdminKycClientTable({ submissions }: {
     submissions: Array<{
@@ -108,8 +109,10 @@ export default function AdminKycClientTable({ submissions }: {
                         {submissions.map((sub) => (
                             <tr key={sub.id} className="hover:bg-white/5 transition-colors group">
                                 <td className="px-8 py-6 max-w-sm">
-                                    <p className="text-white text-lg tracking-tight font-black">{sub.name}</p>
-                                    <p className="text-slate-500 text-xs font-bold leading-tight mb-3">{sub.email}</p>
+                                    <Link href={`/admin/super/users/${sub.user_id}`} className="group/name block">
+                                        <p className="text-white text-lg tracking-tight font-black group-hover/name:text-blue-400 transition-colors uppercase italic">{sub.name}</p>
+                                        <p className="text-slate-500 text-xs font-bold leading-tight mb-3 group-hover/name:text-slate-400 transition-colors lowercase">{sub.email}</p>
+                                    </Link>
                                     <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/5 mt-2">
                                         <p className="text-[8px] font-black uppercase tracking-widest text-blue-500 mb-1">Détails de Vérification</p>
                                         <p className="text-[10px] text-slate-400">Né(e): <span className="font-bold text-white">{sub.birth_date ? new Date(sub.birth_date).toLocaleDateString() : 'N/A'}</span> - Prof: <span className="font-bold text-white">{sub.profession || 'N/A'}</span></p>
@@ -248,21 +251,21 @@ export default function AdminKycClientTable({ submissions }: {
                 {confirmAction?.status === 'rejected' && (
                     <div className="w-full mt-4 space-y-3">
                         <div className="flex flex-wrap gap-2 mb-2">
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setRejectionReason("Le nom/prénom sur votre profil ne correspond pas à la pièce d'identité. Veuillez le modifier dans 'Mes Informations'.")}
                                 className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-red-500/20 transition-colors text-left"
                             >
                                 Nom non compatible
                             </button>
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setRejectionReason("La pièce d'identité est floue, coupée ou illisible. Veuillez fournir une photo plus nette.")}
                                 className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-amber-500/20 transition-colors text-left"
                             >
                                 Pièce illisible
                             </button>
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setRejectionReason("Le selfie ne permet pas de vous identifier formellement avec votre pièce d'identité.")}
                                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[9px] font-black uppercase tracking-widest rounded-lg border border-slate-700 transition-colors text-left"

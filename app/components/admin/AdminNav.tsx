@@ -24,6 +24,7 @@ export default function AdminNav({
         { name: 'Finance', href: '/admin/finance', roles: ['admin_comptable', 'superadmin', 'owner'] },
         { name: 'Utilisateurs', href: '/admin/super/users', roles: ['superadmin', 'owner', 'admin_comptable', 'support_n1'] },
         { name: 'Dépôts (Config)', href: '/admin/settings', roles: ['owner'] },
+        { name: 'Offres (Config)', href: '/admin/super/offers', roles: ['superadmin', 'owner'] },
         { name: 'Abonnements', href: '/admin/super/subscriptions', roles: ['superadmin', 'admin_comptable', 'owner'] },
         { name: 'Support', href: '/admin/support', roles: ['support_n1', 'superadmin', 'owner'] },
         { name: 'KYC', href: '/admin/kyc', roles: ['admin_kyc', 'superadmin'], badge: notificationCounts.kyc },

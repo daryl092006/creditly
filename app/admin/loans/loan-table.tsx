@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { updateLoanStatus } from '../actions'
+import { updateLoanStatus, getSignedProofUrl } from '../actions'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { useRouter } from 'next/navigation'
-import { Printer, Download, Warning } from '@carbon/icons-react'
+import { Printer, Download, Warning, CheckmarkFilled, CloseFilled, DocumentView, Email } from '@carbon/icons-react'
+import Link from 'next/link'
+import AdminTableFilters from '@/app/components/admin/AdminTableFilters'
 import { LoanPDFDocument } from '@/app/client/loans/request/loan-pdf'
 import { pdf } from '@react-pdf/renderer'
 import { numberToFrench } from '@/utils/formatters'
@@ -30,6 +32,7 @@ interface LoanRow {
     date: string;
     due_date?: string;
     status: string;
+    risk_class?: string;
     payout_phone?: string;
     payout_name?: string;
     payout_network?: string;
@@ -169,6 +172,22 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
 
     return (
         <div className="relative">
+            <AdminTableFilters
+                placeholder="Chercher un prêt, nom ou ID..."
+                statusOptions={[
+                    { label: 'En attente', value: 'pending' },
+                    { label: 'Actifs', value: 'active' },
+                    { label: 'Payés', value: 'paid' },
+                    { label: 'Retards', value: 'overdue' },
+                    { label: 'Rejetés', value: 'rejected' }
+                ]}
+                sortOptions={[
+                    { label: 'Plus récents', value: 'newest' },
+                    { label: 'Plus anciens', value: 'oldest' },
+                    { label: 'Montant (Décroissant)', value: 'amount_desc' }
+                ]}
+            />
+
             {/* Desktop Table View */}
             <div className="overflow-x-auto hidden xl:block">
                 <table className="w-full text-left border-collapse">
@@ -190,10 +209,17 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1">
-                                            <p className="font-black text-white leading-tight italic">{row.user.split('(')[0]}</p>
-                                            <p className="text-[10px] font-bold text-slate-500 tracking-tight lowercase mb-2">{row.user.split('(')[1]?.replace(')', '')}</p>
+                                            <Link href={`/admin/super/users/${row.profile?.id}`} className="group/name">
+                                                <p className="font-black text-white italic tracking-tight group-hover/name:text-blue-400 transition-colors">{row.user.split('(')[0]}</p>
+                                                <p className="text-[10px] font-bold text-slate-600 group-hover/name:text-slate-400 transition-colors uppercase tabular-nums">{row.user.split('(')[1]?.replace(')', '')}</p>
+                                            </Link>
 
                                             <div className="flex flex-wrap gap-2 mt-2">
+                                                {row.risk_class && (
+                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${row.risk_class === 'A' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                        Risque {row.risk_class}
+                                                    </span>
+                                                )}
                                                 {row.waiver_signed_at ? (
                                                     <>
                                                         <button

@@ -451,6 +451,7 @@ export default async function FinanceAuditPage({
                     currentUserEmail={userEmail}
                     profitBreakdown={breakdown}
                     showAll={isOwner}
+                    hideValidation={true}
                 />
 
                 {/* JOURNAL DES FLUX FLAMBANT NEUF */}

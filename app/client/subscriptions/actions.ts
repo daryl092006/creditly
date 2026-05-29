@@ -31,6 +31,38 @@ export async function subscribeToPlan(formData: FormData) {
 
     const adminSupabase = await createAdminClient()
 
+    // ─── VÉRIFICATION D'ÉLIGIBILITÉ AU PLAN (P0 — Sécurité critique) ───
+    const { getUserLoanEligibility } = await import('@/utils/eligibility')
+    const eligibility = await getUserLoanEligibility(user.id)
+    const planEligibility = eligibility.plans.find(p => p.planId === planId)
+
+    if (!planEligibility) {
+        return { error: "Ce plan n'existe pas ou n'est plus disponible." }
+    }
+
+    if (!planEligibility.available) {
+        // Log de tentative bloquée
+        try {
+            await adminSupabase.from('audit_logs').insert({
+                action: 'SUBSCRIPTION_BLOCKED',
+                actor_user_id: user.id,
+                target_type: 'subscription_plan',
+                target_id: planId,
+                details: {
+                    reason: planEligibility.lockReason,
+                    userLimit: eligibility.realMaxLoanAmount,
+                    planLimit: planEligibility.planMaxAmount,
+                    riskClass: eligibility.riskClass,
+                    kycStatus: eligibility.kycStatus
+                }
+            })
+        } catch (_) { /* non-bloquant */ }
+
+        return {
+            error: `Ce plan n'est pas disponible pour votre profil actuel. Votre paiement n'a pas été initié.\n\n${planEligibility.lockDetail || planEligibility.lockReason}`
+        }
+    }
+
     // Verify Global Quotas
     const quotasStatus = await checkGlobalQuotasStatus()
     if (quotasStatus[planId]?.reached) {

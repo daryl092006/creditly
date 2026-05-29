@@ -24,6 +24,63 @@ export default async function PaymentPage({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/client/dashboard')
 
+    // ─── VÉRIF ÉLIGIBILITÉ (protection anti manipulation URL) ───
+    const { getUserLoanEligibility } = await import('@/utils/eligibility')
+    const eligibility = await getUserLoanEligibility(user.id)
+    const planEligibility = eligibility.plans.find(p => p.planId === planId)
+
+    if (!planEligibility?.available) {
+        return (
+            <div className="min-h-screen flex items-center justify-center py-24">
+                <div className="main-container max-w-2xl text-center space-y-8">
+                    <div className="w-20 h-20 rounded-3xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center mx-auto">
+                        <Locked size={40} />
+                    </div>
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-black text-white italic tracking-tighter uppercase">Plan non disponible</h1>
+                        <p className="text-slate-400 font-bold italic text-lg leading-relaxed">
+                            Ce plan n&apos;est pas disponible pour votre profil actuel.<br />
+                            Votre paiement n&apos;a pas été initié.
+                        </p>
+                        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1">Votre limite actuelle</p>
+                                    <p className="text-2xl font-black text-white italic">{eligibility.realMaxLoanAmount.toLocaleString('fr-FR')} <span className="text-xs">FCFA</span></p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                                    <p className="text-[9px] font-black text-red-400 uppercase tracking-wider mb-1">Limite requise</p>
+                                    <p className="text-2xl font-black text-red-400 italic">{planEligibility?.planMaxAmount?.toLocaleString('fr-FR') ?? '—'} <span className="text-xs">FCFA</span></p>
+                                </div>
+                            </div>
+                            {eligibility.blockingReasons.length > 0 && (
+                                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-wider mb-2">Cause(s) du blocage</p>
+                                    <ul className="space-y-1">
+                                        {eligibility.blockingReasons.map((r, i) => (
+                                            <li key={i} className="text-[10px] font-bold text-slate-300 italic">• {r}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap justify-center gap-3 pt-4">
+                            <Link href="/client/kyc" className="px-6 py-3 rounded-2xl bg-blue-600/10 text-blue-400 border border-blue-500/20 text-xs font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
+                                Finaliser mon KYC
+                            </Link>
+                            <Link href="/client/support?subject=réévaluation" className="px-6 py-3 rounded-2xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
+                                Demander une réévaluation
+                            </Link>
+                            <Link href="/client/subscriptions" className="px-6 py-3 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
+                                Retour aux plans
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     const { data: activeLoans } = await supabase
         .from('prets')
         .select('id')

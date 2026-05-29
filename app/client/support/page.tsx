@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Chat, Help, ChevronRight, Add, Time, Warning } from '@carbon/icons-react';
+import NewTicketForm from './NewTicketForm';
 
 export default async function ClientSupportDashboard() {
     const supabase = await createClient();
@@ -25,9 +26,7 @@ export default async function ClientSupportDashboard() {
                             Consultez vos demandes en cours ou ouvrez un nouvel incident technique.
                         </p>
                     </div>
-                    <button className="premium-button px-10 grayscale opacity-50 cursor-not-allowed">
-                        <Add size={20} /> Nouveau Ticket
-                    </button>
+                    <NewTicketForm />
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

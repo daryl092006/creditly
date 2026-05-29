@@ -7,6 +7,7 @@ import { Identification, Camera, ArrowRight, ArrowLeft, CheckmarkFilled, Warning
 import { ActionButton } from '@/app/components/ui/ActionButton'
 import { compressImage } from '@/utils/image-compression'
 import { submitKyc } from './actions'
+import { SupportableError } from '@/app/components/ui/SupportableError'
 
 export default function KYCFormClient({ missingFields }: { missingFields: string[] }) {
     const router = useRouter()
@@ -160,9 +161,17 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                     {/* Form Submission */}
                     <div className="glass-panel p-10 md:p-16 text-left bg-slate-900/50 border-slate-800">
                         {error && (
-                            <div className="mb-10 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-3xl flex items-center gap-4 text-xs font-black uppercase tracking-widest animate-shake">
-                                <Warning size={24} />
-                                {error}
+                            <div className="mb-10 italic animate-shake">
+                                <SupportableError
+                                    title="Echec de soumission KYC"
+                                    message={error}
+                                    priority="medium"
+                                    category="Problème de vérification KYC"
+                                    context={{
+                                        page: 'Vérification KYC',
+                                        action: 'SUBMIT_KYC_DOSSIER'
+                                    }}
+                                />
                             </div>
                         )}
 

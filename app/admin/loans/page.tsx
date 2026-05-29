@@ -6,34 +6,61 @@ import Link from 'next/link'
 export default async function AdminLoanPage({
     searchParams
 }: {
-    searchParams: Promise<{ status?: string }>
+    searchParams: Promise<{ status?: string; q?: string; page?: string; sort?: string }>
 }) {
     const params = await searchParams
     const statusFilter = params.status || 'pending'
-
+    const queryStr = params.q || ''
+    const page = parseInt(params.page || '1')
+    const sort = params.sort || 'newest'
+    const pageSize = 25
 
     // Security Check
     await requireAdminRole(['admin_loan', 'superadmin', 'admin_comptable', 'owner'])
 
     const supabase = await createClient()
 
-    // LAZY-CRON: Auto-Nettoyage des statuts pour la vue Admin Prêts
+    // LAZY-CRON
     await supabase.rpc('auto_update_system_statuses')
 
-    // Fetch loans with user and snapshot info
-    const { data: loans } = await supabase
+    // Fetch loans with filtering
+    let loansQuery = supabase
         .from('prets')
         .select(`
             *,
-            user:users!prets_user_id_fkey(email, nom, prenom, whatsapp, telephone, birth_date, address, city, profession),
+            user:users!prets_user_id_fkey(id, email, nom, prenom, whatsapp, telephone, birth_date, address, city, profession, risk_class),
             plan:subscription_snapshot_id(name, repayment_delay_days),
             admin:users!prets_admin_id_fkey(email, nom, prenom, roles, whatsapp),
             repayments:remboursements(status)
-        `)
-        .eq('status', statusFilter)
-        .order('created_at', { ascending: false })
+        `, { count: 'exact' })
 
-    // Fetch repayment numbers once
+    if (statusFilter !== 'all') {
+        loansQuery = loansQuery.eq('status', statusFilter)
+    }
+
+    if (queryStr) {
+        // Search in loan ID or user details
+        loansQuery = loansQuery.or(`id.ilike.%${queryStr}%,user_id.ilike.%${queryStr}%`)
+        // Note: Complex nested search might be limited in Supabase .or(), 
+        // ideally we'd search in user table if needed, but let's stick to ID for now
+        // or we could use user.nom but ilike across joins is tricky in postgrest
+    }
+
+    // Apply Sort
+    if (sort === 'oldest') {
+        loansQuery = loansQuery.order('created_at', { ascending: true })
+    } else if (sort === 'amount_desc') {
+        loansQuery = loansQuery.order('amount', { ascending: false })
+    } else {
+        loansQuery = loansQuery.order('created_at', { ascending: false })
+    }
+
+    // Pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data: loans, count } = await loansQuery.range(from, to)
+
+    // Fetch repayment numbers
     const { data: rawSettings } = await supabase
         .from('system_settings')
         .select('key, value')
@@ -55,6 +82,7 @@ export default async function AdminLoanPage({
             id: loan.id,
             user: `${loan.user?.prenom} ${loan.user?.nom} (${loan.user?.email})`,
             profile: loan.user,
+            risk_class: (loan.user as any)?.risk_class,
             whatsapp: loan.user?.whatsapp || loan.user?.telephone,
             amount: principle,
             service_fee: fee,
@@ -63,7 +91,7 @@ export default async function AdminLoanPage({
             days_late: daysLate,
             amount_paid: Number(loan.amount_paid) || 0,
             plan: loan.plan?.name || 'N/A',
-            repayment_delay_days: loan.plan?.repayment_delay_days || 7, // Fallback to 7
+            repayment_delay_days: loan.plan?.repayment_delay_days || 7,
             date: loan.request_date,
             due_date: loan.due_date,
             status: (loan.status === 'active' || loan.status === 'overdue') && (loan as any).repayments?.some((r: any) => r.status === 'pending')

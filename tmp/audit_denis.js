@@ -1,30 +1,32 @@
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
+import { createClient } from './utils/supabase/server'
+import { calculateLoanDebt } from './utils/loan-utils'
 
-const supabaseUrl = 'https://dbunwqgfakqcazjkyagd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRidW53cWdmYWtxY2F6amt5YWdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzE3NjY1MywiZXhwIjoyMDgyNzUyNjUzfQ.YlwBx17nJtnRz1cftDwA8gybVE7kzucIs55ivrxNuEA';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function checkDenisLoans() {
-    const denisId = '02407183-6552-4b79-abea-b7066cb475e8';
+async function checkDenis() {
+    const supabase = await createClient()
     
-    // 1. Get Loans
-    const { data: loans } = await supabase
-        .from('prets')
-        .select('*')
-        .eq('user_id', denisId);
+    // 1. Find Denis
+    const { data: denis } = await supabase.from('users').select('id').ilike('email', '%denisgangnito9%').maybeSingle()
+    if (!denis) {
+        console.log("Denis non trouvé")
+        return
+    }
     
-    // 2. Get Repayments to verify
-    const { data: reps } = await supabase
-        .from('remboursements')
-        .select('*')
-        .eq('user_id', denisId)
-        .order('created_at', { ascending: false });
-
-    console.log('Loans:', loans?.length);
-    console.log('Repayments:', reps?.length);
+    console.log(`Denis ID: ${denis.id}`)
     
-    fs.writeFileSync('d:/creditly/tmp/denis_audit.json', JSON.stringify({ loans, reps }, null, 2));
+    // 2. Check his loans
+    const { data: loans } = await supabase.from('prets').select('*').eq('user_id', denis.id)
+    console.log(`\nPRÊTS DE DENIS:`)
+    loans?.forEach(l => {
+        const stats = calculateLoanDebt(l as any)
+        console.log(`ID: ${l.id} | Status: ${l.status} | Total Due: ${stats.totalDebt} | Paid: ${l.amount_paid}`)
+    })
+    
+    // 3. Check repayments he validated
+    const { data: validated } = await supabase.from('remboursements').select('*, user:user_id(prenom, nom)').eq('admin_id', denis.id).order('created_at', { ascending: false }).limit(5)
+    console.log(`\nREMBOURSEMENTS VALIDÉS PAR DENIS:`)
+    validated?.forEach(r => {
+        console.log(`Remb: ${r.id} | User: ${(r.user as any)?.prenom} | Amount: ${r.amount_declared} | Status: ${r.status}`)
+    })
 }
 
-checkDenisLoans();
+checkDenis()

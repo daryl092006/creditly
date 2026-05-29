@@ -469,15 +469,18 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 
             // SÉCURITÉ : On laisse l'admin valider même si ça dépasse (gestion des surplus et arrondis)
 
-            const newTotalPaid = currentPaid + amountVerified
-            // IMPORTANT: totalDebt de calculateLoanDebt est le RESTANT (principal+fee-paid)
-            // isFullyPaid = le paiement couvre-t-il tout le restant ?
-            const isFullyPaid = !isExtensionRequest && (amountVerified >= totalDebt)
+            const amountToApply = Math.max(0, amountVerified)
+            const newTotalPaid = Number(loan.amount_paid || 0) + amountToApply
 
-            // Préparation des mises à jour du prêt
+            // Calcul de la dette restante RÉELLE avant application
+            const { totalDebt: remainingDebtBefore } = calculateLoanDebt(loan as any)
+
+            // Le prêt est soldé si le montant versé couvre ou dépasse la dette totale restante
+            const isFullyPaid = !isExtensionRequest && (amountToApply >= (remainingDebtBefore - 50)) // Marge de 50 FCFA pour arrondis
+
             const loanUpdates: any = {
                 amount_paid: newTotalPaid,
-                ...(isFullyPaid ? { status: 'paid' } : {})
+                ...(isFullyPaid ? { status: 'paid', closed_at: new Date().toISOString(), updated_at: new Date().toISOString() } : { updated_at: new Date().toISOString() })
             }
 
             // LOGIQUE SPÉCIFIQUE EXTENSION
@@ -500,7 +503,12 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     .eq('id', repayment.loan_id),
                 supabase
                     .from('remboursements')
-                    .update({ surplus_amount: isExtensionRequest ? 0 : Math.max(0, amountVerified - totalDebt) })
+                    .update({
+                        status: status, // On met à jour le statut ICI aussi
+                        admin_id: adminId,
+                        validated_at: new Date().toISOString(),
+                        surplus_amount: isExtensionRequest ? 0 : Math.max(0, amountToApply - remainingDebtBefore)
+                    })
                     .eq('id', repaymentId)
             ])
 

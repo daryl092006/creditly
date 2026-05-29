@@ -3,30 +3,48 @@ import { requireAdminRole } from '@/utils/admin-security'
 import AdminRepaymentTable from './repayment-table'
 import AdminCreateRepaymentWrapper from './AdminCreateRepaymentWrapper'
 import Link from 'next/link'
+import AdminTableFilters from '@/app/components/admin/AdminTableFilters'
 
 export default async function AdminRepaymentPage({
     searchParams
 }: {
-    searchParams: Promise<{ status?: string }>
+    searchParams: Promise<{ status?: string; q?: string; page?: string }>
 }) {
     const params = await searchParams
     const statusFilter = params.status || 'pending'
+    const queryStr = params.q || ''
+    const page = parseInt(params.page || '1')
+    const pageSize = 25
 
     // Security Check
     const { role } = await requireAdminRole(['admin_repayment', 'superadmin', 'admin_comptable'])
 
     const supabase = await createClient()
 
-    const { data: repayments } = await supabase
+    // Build Query
+    let repQuery = supabase
         .from('remboursements')
         .select(`
             *,
-            loan:prets(amount, amount_paid, service_fee, created_at, status, due_date),
-            user:users!remboursements_user_id_fkey(email, nom, prenom, whatsapp, telephone),
+            loan:prets(id, amount, amount_paid, service_fee, created_at, status, due_date),
+            user:users!remboursements_user_id_fkey(id, email, nom, prenom, whatsapp, telephone),
             admin:users!remboursements_admin_id_fkey(email, nom, prenom, roles, whatsapp)
-        `)
-        .eq('status', statusFilter)
-        .order('created_at', { ascending: false })
+        `, { count: 'exact' })
+
+    if (statusFilter !== 'all') {
+        repQuery = repQuery.eq('status', statusFilter)
+    }
+
+    if (queryStr) {
+        repQuery = repQuery.or(`id.ilike.%${queryStr}%,loan_id.ilike.%${queryStr}%,user_id.ilike.%${queryStr}%`)
+    }
+
+    repQuery = repQuery.order('created_at', { ascending: false })
+
+    // Pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data: repayments, count } = await repQuery.range(from, to)
 
     const { calculateLoanDebt } = await import('@/utils/loan-utils')
 
@@ -66,26 +84,28 @@ export default async function AdminRepaymentPage({
 
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                         <AdminCreateRepaymentWrapper isAdmin={true} />
-                        <div className="flex bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 backdrop-blur-xl">
-                            {[
-                                { label: 'En attente', val: 'pending' },
-                                { label: 'Validés', val: 'verified' },
-                                { label: 'Rejetés', val: 'rejected' }
-                            ].map(tab => (
-                                <Link
-                                    key={tab.val}
-                                    href={`/admin/repayments?status=${tab.val}`}
-                                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${statusFilter === tab.val ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                                >
-                                    {tab.label}
-                                </Link>
-                            ))}
-                        </div>
                     </div>
                 </div>
 
-                <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800">
-                    <AdminRepaymentTable rows={rows} />
+                <div className="space-y-8">
+                    <AdminTableFilters
+                        placeholder="Chercher par transaction, nom ou ID..."
+                        statusOptions={[
+                            { label: 'En attente', value: 'pending' },
+                            { label: 'Validés', value: 'verified' },
+                            { label: 'Rejetés', value: 'rejected' }
+                        ]}
+                    />
+
+                    <div className="glass-panel overflow-hidden bg-slate-900/50 border-slate-800 shadow-2xl">
+                        <AdminRepaymentTable rows={rows as any} />
+                    </div>
+
+                    {count && count > pageSize && (
+                        <div className="p-4 text-center text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
+                            Nombre total de remboursements : {count}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

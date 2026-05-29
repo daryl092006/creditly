@@ -8,7 +8,7 @@ export default async function SettingsPage() {
     const settings = await getSystemSettings()
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-12">
+        <div className="p-8 max-w-4xl mx-auto space-y-12 animate-fade-in">
             <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-blue-600/10 text-blue-500 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-inner">
                     <Settings size={32} />

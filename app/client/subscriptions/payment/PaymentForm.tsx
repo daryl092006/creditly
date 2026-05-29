@@ -6,6 +6,7 @@ import { subscribeToPlan } from '../actions'
 import { useRouter } from 'next/navigation'
 
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { SupportableError } from '@/app/components/ui/SupportableError'
 
 export default function SubscriptionPaymentForm({ planId, planPrice }: { planId: string; planPrice: number }) {
     const router = useRouter()
@@ -56,9 +57,19 @@ export default function SubscriptionPaymentForm({ planId, planPrice }: { planId:
             </h2>
 
             {error && (
-                <div className="mb-8 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-widest italic animate-shake text-left">
-                    <Warning size={24} />
-                    {error}
+                <div className="mb-8 italic animate-shake">
+                    <SupportableError
+                        title="Paiement non finalisé"
+                        message={error}
+                        priority="urgent"
+                        category="Problème de paiement"
+                        context={{
+                            page: 'Paiement Abonnement',
+                            action: 'SUBMIT_PAYMENT_PROOF',
+                            planId: planId,
+                            planLimit: 0 // Will be handled by the server side enrichment if needed
+                        }}
+                    />
                 </div>
             )}
 

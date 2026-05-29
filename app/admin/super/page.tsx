@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient, createAdminClient } from '@/utils/supabase/server'
 import { requireAdminRole } from '@/utils/admin-security'
 import Link from 'next/link'
-import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, Identification, RequestQuote, Receipt, CheckmarkFilled, Rocket } from '@carbon/icons-react'
+import { Currency, Document, ChevronRight, Filter, Time, Wallet, UserMultiple, Identification, RequestQuote, Receipt, CheckmarkFilled, Rocket, Warning } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
 import { AdminWithdrawalsManagement } from './WithdrawalManagement'
 import { DashboardFilters } from './DashboardFilters'
@@ -302,18 +302,22 @@ export default async function SuperAdminPage({
     return (
         <div className="py-10 md:py-16 animate-fade-in min-h-screen">
             <div className="admin-container">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-8">
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                            <span className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                <Currency size={24} />
+                            <span className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 animate-pulse">
+                                <Rocket size={24} />
                             </span>
                             <h1 className="text-4xl md:text-5xl font-black premium-gradient-text tracking-tight uppercase italic">Control Center</h1>
                         </div>
-                        <p className="text-slate-500 font-bold italic leading-relaxed">Intelligence financière et monitoring opérationnel</p>
+                        <p className="text-slate-500 font-bold italic leading-relaxed">Intelligence financière & Flux opérationnels</p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-widest italic">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Système Nominal
+                        </div>
                         <Link href="/admin/finance" className="px-5 py-2.5 rounded-2xl bg-blue-600/10 text-blue-500 text-[10px] font-black uppercase tracking-widest border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all italic">
                             Audit Comptable
                         </Link>
@@ -321,149 +325,75 @@ export default async function SuperAdminPage({
                     </div>
                 </header>
 
-                {/* SHAREHOLDER PERSONAL PROFIT PILL */}
-                {myShareStats && (
-                    <div className="mb-12 animate-slide-up">
-                        <div className="glass-panel p-1 border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-900/20 rounded-[2.5rem] overflow-hidden">
-                            <div className="flex flex-col lg:flex-row items-center justify-between gap-8 p-8 sm:p-10">
-                                <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 rounded-[2rem] flex items-center justify-center text-3xl font-black text-white italic shadow-2xl relative group" style={{ backgroundColor: myShareStats.color }}>
-                                        <div className="absolute inset-0 bg-white/20 rounded-[2rem] scale-0 group-hover:scale-100 transition-transform duration-500"></div>
-                                        {myShareStats.name.charAt(0)}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-3xl font-black text-white italic tracking-tighter uppercase">{myShareStats.name}</h3>
-                                            <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-[9px] font-black uppercase tracking-widest border border-blue-500/20">Associé {myShareStats.sharePercent}%</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 font-bold italic uppercase tracking-tight">Mon solde de bénéfices en temps réel</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row items-center gap-8">
-                                    <div className="text-center sm:text-right">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Gains Théoriques</p>
-                                        <p className="text-2xl font-black text-slate-300 italic tracking-tighter">{myShareStats.theoreticalGain.toLocaleString('fr-FR')} F</p>
-                                    </div>
-                                    <div className="h-10 w-px bg-white/5 hidden sm:block"></div>
-                                    <div className="text-center sm:text-right group cursor-help relative">
-                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Vision Horizon</p>
-                                        <p className="text-2xl font-black text-blue-500 italic tracking-tighter leading-none">
-                                            {myShareStats.forecastedBalance.toLocaleString('fr-FR')} F
-                                        </p>
-                                        <div className="absolute top-full right-0 mt-3 w-48 p-4 bg-slate-900 border border-white/10 rounded-2xl text-[9px] text-slate-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl italic leading-relaxed">
-                                            Si 100% des prêts actifs sont remboursés avec leurs frais et pénalités.
-                                        </div>
-                                    </div>
-                                    <div className="h-10 w-px bg-white/5 hidden sm:block"></div>
-                                    <div className="text-center sm:text-right">
-                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1 italic">Solde Retirable</p>
-                                        <p className="text-5xl font-black text-emerald-400 italic tracking-tighter leading-none">
-                                            {myShareStats.availableBalance.toLocaleString('fr-FR')} <span className="text-lg opacity-50 not-italic">F</span>
-                                        </p>
-                                    </div>
-                                    <Link href="/admin/finance">
-                                        <button className="h-16 px-8 rounded-3xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-600/20 flex items-center gap-3 italic">
-                                            <Wallet size={20} /> Détails & Retrait
-                                        </button>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
+                {/* ─── PHASE 1: FINANCIAL CLARITY (Actionable) ─── */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
                     {[
-                        { label: 'Revenue Période', value: monthlyRevenue + monthlyFeesRevenue, color: 'text-emerald-400', sub: `Subs + ${monthlyFeesRevenue.toLocaleString('fr-FR')} F frais`, icon: <Currency size={20} /> },
-                        { label: 'Admin Gain (Total)', value: totalFeesCollected, color: 'text-blue-400', sub: 'Sur dossiers remboursés', icon: <Time size={20} /> },
-                        { label: 'Vol. Pénalités (Période)', value: periodPenaltiesCollected, color: 'text-blue-400', sub: 'Encaissé pendant la période', icon: <Wallet size={20} /> },
-                        { label: 'Pénalités Latentes', value: currentActivePenalties, color: 'text-amber-400', sub: 'En attente (Dossiers retard)', icon: <Time size={20} /> },
-                        { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'À récupérer sur prêts actifs', icon: <Document size={20} /> }
+                        { label: 'Revenue Période', value: monthlyRevenue + monthlyFeesRevenue, color: 'text-emerald-400', sub: `Subs + ${monthlyFeesRevenue.toLocaleString('fr-FR')} F`, icon: <Currency size={18} />, href: '/admin/super/subscriptions' },
+                        { label: 'Admin Gain', value: totalFeesCollected, color: 'text-blue-400', sub: 'Sur dossiers payés', icon: <Time size={18} />, href: '/admin/finance' },
+                        { label: 'Vol. Pénalités', value: periodPenaltiesCollected, color: 'text-blue-400', sub: 'Encaissé (Flux)', icon: <Wallet size={18} />, href: '/admin/repayments?status=verified' },
+                        { label: 'Pénalités Latentes', value: currentActivePenalties, color: 'text-amber-400', sub: 'Retards actifs', icon: <Time size={18} />, href: '/admin/loans?status=overdue' },
+                        { label: 'Dette Totale', value: totalRemainingToRecover, color: 'text-red-400', sub: 'Encours global', icon: <Document size={18} />, href: '/admin/loans?status=active' }
                     ].map((kpi, i) => (
-                        <div key={i} className="glass-panel p-6 bg-slate-900/50 border-slate-800 flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-xl">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="text-slate-500 group-hover:text-blue-500 transition-colors">{kpi.icon}</div>
-                                <div className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
+                        <Link key={i} href={kpi.href} className="relative group/kpi block h-full">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 rounded-2xl blur opacity-0 group-hover/kpi:opacity-100 transition-all duration-500" />
+                            <div className="relative glass-panel p-5 bg-slate-900/40 border-slate-800/50 flex flex-col justify-between hover:border-blue-500/40 hover:bg-slate-900/60 transition-all shadow-lg h-full overflow-hidden group/box">
+                                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover/kpi:opacity-100 transition-all translate-x-2 group-hover/kpi:translate-x-0">
+                                    <ChevronRight size={16} className="text-blue-500" />
+                                </div>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="text-slate-500 group-hover/kpi:text-blue-400 transition-colors">{kpi.icon}</div>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${i === 4 ? 'bg-red-500 animate-pulse' : 'bg-blue-600/50'}`}></div>
+                                </div>
+                                <div>
+                                    <h2 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{kpi.label}</h2>
+                                    <p className={`text-xl font-black tracking-tighter italic ${kpi.color}`}>
+                                        {kpi.value.toLocaleString('fr-FR')} <span className="text-[8px] uppercase ml-0.5 not-italic">F</span>
+                                    </p>
+                                    <p className="text-[7px] font-bold text-slate-600 mt-1 italic uppercase truncate group-hover/box:text-slate-400 transition-colors">{kpi.sub}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{kpi.label}</h2>
-                                <p className={`text-2xl font-black tracking-tighter italic ${kpi.color}`}>
-                                    {kpi.value.toLocaleString('fr-FR')} <span className="text-[10px] uppercase ml-1 not-italic">F</span>
-                                </p>
-                            </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
 
-                {/* Operational Performance Section */}
-                <div className="mb-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                <CheckmarkFilled size={24} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">Taux de Remboursement</p>
-                                <p className="text-3xl font-black text-white italic tracking-tighter">{globalRepaymentRate.toFixed(1)}%</p>
-                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Santé globale du portefeuille</p>
-                            </div>
-                        </div>
-                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
-                            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                <Time size={24} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">SLA Moyen KYC</p>
-                                <p className="text-3xl font-black text-white italic tracking-tighter">{avgKycSLA.toFixed(1)}h</p>
-                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Délai de traitement des identités</p>
-                            </div>
-                        </div>
-                        <div className="glass-panel p-6 bg-slate-900/50 border-white/5 flex items-center gap-6">
-                            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                                <Rocket size={24} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-2 italic">SLA Approbation Prêt</p>
-                                <p className="text-3xl font-black text-white italic tracking-tighter">{avgLoanSLA.toFixed(1)}h</p>
-                                <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 italic">Réactivité sur demandes de fonds</p>
-                            </div>
+                {/* ─── PHASE 2: ADMIN HUB (Always Accessible) ─── */}
+                <section className="mb-14 relative group animate-slide-up">
+                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-blue-600/5 rounded-[3rem] blur-3xl opacity-50" />
+                    <div className="relative glass-panel p-2 bg-slate-950/40 border-white/5 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden">
+                        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-white/5">
+                            {[
+                                { label: 'KYC', count: pendingKyc, href: '/admin/kyc', icon: <Identification size={24} />, color: 'from-amber-500/20 to-orange-500/10', iconColor: 'text-amber-500', desc: 'Identités' },
+                                { label: 'Prêts', count: pendingLoans, href: '/admin/loans', icon: <RequestQuote size={24} />, color: 'from-blue-500/20 to-indigo-500/10', iconColor: 'text-blue-500', desc: 'Demandes' },
+                                { label: 'Subs', count: pendingSubs, href: '/admin/super/subscriptions', icon: <Currency size={24} />, color: 'from-emerald-500/20 to-teal-500/10', iconColor: 'text-emerald-500', desc: 'Abonnements' },
+                                { label: 'Remb.', count: pendingRepayments, href: '/admin/repayments', icon: <Receipt size={24} />, color: 'from-purple-500/20 to-pink-500/10', iconColor: 'text-purple-500', desc: 'Transactions' },
+                                { label: 'Users', count: null, href: '/admin/users', icon: <UserMultiple size={24} />, color: 'from-slate-500/20 to-slate-400/10', iconColor: 'text-slate-400', desc: 'Base Clients' }
+                            ].map((item, i) => (
+                                <Link key={i} href={item.href} className="flex-1 group/hub px-8 py-10 hover:bg-white/[0.02] transition-all relative overflow-hidden">
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover/hub:opacity-100 transition-opacity duration-500`} />
+                                    <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+                                        <div className={`w-14 h-14 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center ${item.iconColor} shadow-2xl group-hover/hub:scale-110 group-hover/hub:-translate-y-1 transition-all duration-300`}>
+                                            {item.icon}
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="text-sm font-black text-white italic uppercase tracking-tighter leading-none">{item.label}</h4>
+                                            <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none">{item.desc}</p>
+                                        </div>
+                                        {item.count !== null && (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`w-1.5 h-1.5 rounded-full ${(item.count || 0) > 0 ? 'bg-orange-500 animate-pulse' : 'bg-slate-800'}`} />
+                                                <span className={`text-[10px] font-black italic ${(item.count || 0) > 0 ? 'text-white' : 'text-slate-700'}`}>
+                                                    {(item.count || 0)} <span className="text-[8px] uppercase font-bold ml-0.5">En cours</span>
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Link>
+                            ))}
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <div className="lg:col-span-2 space-y-12">
-                        <section>
-                            <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3 mb-6">
-                                <span className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center text-xs font-black shadow-inner">!</span>
-                                Urgences Systèmes
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {[
-                                    { label: 'KYC à valider', count: pendingKyc, href: '/admin/kyc', color: 'bg-amber-500' },
-                                    { label: 'Prêts en attente', count: pendingLoans, href: '/admin/loans', color: 'bg-blue-600' },
-                                    { label: 'Paiements Subscriptions', count: pendingSubs, href: '/admin/super/subscriptions', color: 'bg-emerald-600' },
-                                    { label: 'Transactions Associés', count: pendingInvestorTransactions, href: '/admin/super#investors', color: 'bg-orange-500' },
-                                    { label: 'Remboursements', count: pendingRepayments, href: '/admin/repayments', color: 'bg-purple-600' }
-                                ].map((item, i) => (
-                                    <Link key={i} href={item.href} className="glass-panel p-6 flex items-center justify-between group bg-slate-900/50 border-slate-800 hover:border-white/10 transition-all">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-black text-white italic uppercase tracking-tight">{item.label}</p>
-                                        </div>
-                                        <div className={`w-12 h-12 ${(item.count || 0) > 0 ? item.color + '/10 text-' + item.color.split('-')[1] + '-500 border border-' + item.color.split('-')[1] + '-500/20 shadow-[0_0_20px_rgba(0,0,0,0.3)]' : 'bg-slate-950 border border-white/5 text-slate-700'} rounded-2xl flex items-center justify-center font-black transition-transform group-hover:scale-110`}>
-                                            {item.count}
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section>
-                            <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
-                        </section>
-
-                        <section id="investors" className="pt-12">
+                    {((pendingInvestorTransactions || 0) > 0 || (pendingWithdrawals?.length || 0) > 0) && (
+                        <div className="mt-8 relative glass-panel p-8 bg-slate-950/20 border-white/5 rounded-[2.5rem] space-y-10">
                             <InvestorSection
                                 shareholders={enrichedShareholders}
                                 totalProfitToShare={totalProfitEarned}
@@ -471,89 +401,102 @@ export default async function SuperAdminPage({
                                 currentUserEmail={currentEmail}
                                 profitBreakdown={breakdown}
                                 showAll={currentUserRoles.includes('superadmin') || currentUserRoles.includes('owner')}
+                                compact={true}
                             />
-                        </section>
+                            <AdminWithdrawalsManagement initialWithdrawals={pendingWithdrawals || []} />
+                        </div>
+                    )}
+                </section>
 
-                        <section>
-                            <AdminEmailControl stats={{ lastReminders: notificationData || [] }} />
-                        </section>
-
-                        <section>
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-xs font-black shadow-inner">Q</span>
-                                    Santé des Quotas
-                                </h3>
-                                <Link href="/admin/super/offers" className="px-4 py-2 rounded-xl bg-slate-800 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-white/5 hover:bg-slate-700 hover:text-white transition-all italic">
-                                    Modifier les Offres & Quotas
-                                </Link>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {quotasArray.map((quota, i) => (
-                                    <div key={i} className="glass-panel p-6 bg-slate-900/50 border-slate-800">
-                                        <div className="flex justify-between items-end mb-4">
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{quota.label}</p>
-                                                <p className="text-lg font-black text-white italic tracking-tighter uppercase">{quota.value} / {quota.limit}</p>
-                                                <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${quota.status === 'danger' ? 'text-red-500' : 'text-slate-500'}`}>
-                                                    {quota.remaining <= 0 ? 'COMPLET' : `Encore ${quota.remaining} libre(s)`}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className={`text-xl font-black italic ${quota.status === 'danger' ? 'text-red-500' : quota.status === 'warning' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                    {Math.round(quota.percent || 0)}%
-                                                </p>
-                                                <Link href={`/admin/super/subscriptions?plan=${quota.label}`} className="text-[7px] font-black text-blue-500 hover:text-white uppercase tracking-[0.2em] transition-all underline decoration-blue-500/30">
-                                                    Voir Liste
-                                                </Link>
-                                            </div>
-                                        </div>
-                                        <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
-                                            <div className={`h-full transition-all duration-1000 ${quota.status === 'danger' ? 'bg-red-500' : quota.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${quota.percent}%` }} />
-                                        </div>
+                {/* ─── PHASE 3: OPERATIONNEL & SIDEBAR ─── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    <div className="lg:col-span-2 space-y-10">
+                        {/* SLA Metrics Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                                { label: 'Taux Remboursement', value: `${globalRepaymentRate.toFixed(1)}%`, icon: <CheckmarkFilled />, color: 'emerald', href: '/admin/repayments' },
+                                { label: 'SLA KYC Moy.', value: `${avgKycSLA.toFixed(1)}h`, icon: <Time />, color: 'blue', href: '/admin/kyc' },
+                                { label: 'SLA Prêts Moy.', value: `${avgLoanSLA.toFixed(1)}h`, icon: <Rocket />, color: 'purple', href: '/admin/loans' }
+                            ].map((stat, i) => (
+                                <Link key={i} href={stat.href} className="glass-panel p-6 bg-slate-900/40 border-white/5 flex items-center gap-5 hover:border-blue-500/20 hover:bg-slate-900/60 transition-all group/stat">
+                                    <div className={`w-12 h-12 rounded-xl bg-${stat.color}-500/10 text-${stat.color}-500 flex items-center justify-center group-hover/stat:scale-110 transition-transform`}>
+                                        {stat.icon}
                                     </div>
-                                ))}
-                            </div>
-                        </section>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5 italic">{stat.label}</p>
+                                        <p className="text-2xl font-black text-white italic tracking-tighter">{stat.value}</p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* Quotas & Alertes side by side */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <Link href="/admin/super/offers" className="glass-panel p-6 bg-slate-900/40 border-slate-800 space-y-5 hover:border-emerald-500/30 transition-all group/quotas cursor-pointer block">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-sm font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
+                                        <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-[10px] font-black italic">Q</span>
+                                        Quotas
+                                    </h3>
+                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest opacity-0 group-hover/quotas:opacity-100 transition-all">Gérer →</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {quotasArray.map((quota, i) => (
+                                        <div key={i} className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-[10px] font-black text-slate-400 italic">{quota.label}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black text-slate-500">{quota.value}/{quota.limit}</span>
+                                                    <span className={`text-[10px] font-black italic ${quota.status === 'danger' ? 'text-red-500' : quota.status === 'warning' ? 'text-amber-400' : 'text-emerald-500'}`}>
+                                                        {Math.round(quota.percent || 0)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-1000 ${quota.status === 'danger' ? 'bg-red-500' : quota.status === 'warning' ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                                                    style={{ width: `${Math.min(quota.percent, 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {quotasArray.length === 0 && <p className="text-[10px] text-slate-600 italic">Aucun quota configuré.</p>}
+                                </div>
+                            </Link>
+
+                            <section className="glass-panel p-6 bg-slate-900/40 border-slate-800 space-y-5">
+                                <h3 className="text-sm font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
+                                    <span className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-[10px] font-black italic">@</span>
+                                    Alertes Email
+                                </h3>
+                                <AdminEmailControl stats={{ lastReminders: notificationData || [] }} />
+                            </section>
+                        </div>
                     </div>
 
+                    {/* ─── SIDEBAR: LEADERBOARD & CONTRÔLE ─── */}
                     <div className="space-y-8">
-                        <section>
-                            <h3 className="text-xl font-black text-white tracking-tighter uppercase italic flex items-center gap-3 mb-6">
-                                <span className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-xs font-black shadow-inner">P</span>
-                                Activité des Admins
+                        {/* Admin Leaderboard */}
+                        <section className="glass-panel p-6 bg-slate-900/40 border-slate-800 space-y-5">
+                            <h3 className="text-sm font-black text-white tracking-tighter uppercase italic flex items-center gap-3">
+                                <span className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-[10px] font-black italic">P</span>
+                                Activité Admins
                             </h3>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {adminPerformance.map((admin: any, i: number) => (
-                                    <div key={i} className="glass-panel p-4 bg-slate-900/50 border-slate-800 group hover:border-white/10 transition-all">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center text-xs font-black text-blue-500 shadow-inner">
-                                                    {(admin.prenom || '')[0]}{(admin.nom || '')[0]}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-black text-white italic uppercase tracking-tight">{admin.prenom} {admin.nom}</p>
-                                                    <p className="text-[9px] font-black text-slate-700 tracking-widest italic">{admin.roles?.[0]?.replace('admin_', '')}</p>
-                                                </div>
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-[9px] font-black text-blue-500 uppercase italic">
+                                                {(admin.prenom || '')[0]}{(admin.nom || '')[0]}
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-lg font-black italic tracking-tighter leading-none text-white">{admin.totalActions}</p>
-                                                <p className="text-[8px] font-black text-slate-700 uppercase tracking-widest italic">Actions Période</p>
+                                            <div>
+                                                <p className="text-xs font-black text-white italic uppercase">{admin.prenom}</p>
+                                                <p className="text-[8px] font-bold text-slate-600 tracking-wider italic">{admin.roles?.[0]?.replace('admin_', '')}</p>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
-                                            <div className="text-center">
-                                                <p className="text-xs font-black text-white italic">{admin.details.kycCount}</p>
-                                                <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest">KYC</p>
-                                            </div>
-                                            <div className="text-center border-x border-white/5">
-                                                <p className="text-xs font-black text-white italic">{admin.details.loanApprovedCount}</p>
-                                                <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Prêts</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-xs font-black text-white italic">{admin.details.repaymentCount}</p>
-                                                <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Remb.</p>
-                                            </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base font-black italic text-white">{admin.totalActions}</span>
+                                            <span className="text-[7px] font-bold text-slate-600 uppercase">act.</span>
                                         </div>
                                     </div>
                                 ))}
@@ -563,6 +506,28 @@ export default async function SuperAdminPage({
                         <InternalControlPanel stats={riskStats} />
                     </div>
                 </div>
+
+                {/* ─── PHASE 4: ÉQUIPE ASSOCIÉS (FULL WIDTH) ─── */}
+                <section className="space-y-6 pt-4">
+                    <div className="flex items-center gap-4">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                        <h3 className="text-sm font-black text-white tracking-tighter uppercase italic flex items-center gap-3 whitespace-nowrap">
+                            <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-[10px] font-black italic">€</span>
+                            Équipe Associés
+                        </h3>
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                    </div>
+                    <InvestorSection
+                        shareholders={enrichedShareholders}
+                        totalProfitToShare={totalProfitEarned}
+                        ledger={ledgerTransactions}
+                        currentUserEmail={currentEmail}
+                        profitBreakdown={breakdown}
+                        showAll={currentUserRoles.includes('superadmin') || currentUserRoles.includes('owner')}
+                        compact={true}
+                        hideValidation={true}
+                    />
+                </section>
             </div>
         </div>
     )

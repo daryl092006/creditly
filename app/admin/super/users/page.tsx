@@ -6,16 +6,50 @@ import { requireAdminRole } from '@/utils/admin-security'
 import { calculateLoanDebt } from '@/utils/loan-utils'
 import { getShareholdersConfig } from '@/utils/finance-utils'
 
-export default async function UserManagementPage() {
+export default async function UserManagementPage({
+    searchParams
+}: {
+    searchParams: Promise<{ q?: string; status?: string; page?: string; sort?: string }>
+}) {
+    const params = await searchParams
+    const queryStr = params.q || ''
+    const statusFilter = params.status || 'all'
+    const page = parseInt(params.page || '1')
+    const sort = params.sort || 'newest'
+    const pageSize = 25
+
     const { roles: currentUserRoles } = await requireAdminRole(['superadmin', 'owner', 'admin_comptable', 'support_n1'])
     const isSupport = currentUserRoles.includes('support_n1') && !currentUserRoles.includes('superadmin') && !currentUserRoles.includes('owner') && !currentUserRoles.includes('admin_comptable');
 
     const supabase = await createClient()
 
-    const { data: users, error } = await supabase
+    // Build Users Query
+    let usersQuery = supabase
         .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .select('*', { count: 'exact' })
+
+    // Apply Filters
+    if (queryStr) {
+        usersQuery = usersQuery.or(`email.ilike.%${queryStr}%,nom.ilike.%${queryStr}%,prenom.ilike.%${queryStr}%,id.ilike.%${queryStr}%`)
+    }
+
+    if (statusFilter === 'active') {
+        usersQuery = usersQuery.eq('is_account_active', true)
+    } else if (statusFilter === 'inactive') {
+        usersQuery = usersQuery.eq('is_account_active', false)
+    }
+
+    // Apply Sort
+    if (sort === 'oldest') {
+        usersQuery = usersQuery.order('created_at', { ascending: true })
+    } else {
+        usersQuery = usersQuery.order('created_at', { ascending: false })
+    }
+
+    // Apply Pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data: users, count } = await usersQuery.range(from, to)
 
     const { data: activeLoans } = await supabase
         .from('prets')
@@ -38,7 +72,8 @@ export default async function UserManagementPage() {
         roles: u.roles || [],
         is_active: u.is_account_active,
         has_active_loans: userDebts.has(u.id) && userDebts.get(u.id)! > 0,
-        debt: userDebts.get(u.id) || 0
+        debt: userDebts.get(u.id) || 0,
+        risk_class: u.risk_class
     })) || []
 
     return (
@@ -59,7 +94,7 @@ export default async function UserManagementPage() {
                     <div className="flex gap-4">
                         <div className="px-6 py-3 bg-slate-900/50 border border-white/5 rounded-2xl">
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1 italic">Membres</p>
-                            <p className="text-white font-black text-xl italic leading-none">{rows.length}</p>
+                            <p className="text-white font-black text-xl italic leading-none">{count || 0}</p>
                         </div>
 
                         <Link href="/admin/super/users/active-loans" className="px-6 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all group">

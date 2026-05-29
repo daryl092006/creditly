@@ -5,9 +5,10 @@ import { updateUserRoles, deleteUserAccount, blacklistUserAccount, updateShareho
 import { TrashCan, User, CheckmarkFilled, Misuse, InformationFilled, ChevronDown, Rocket, ChartPie, UserAvatar } from '@carbon/icons-react'
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import Link from 'next/link'
+import AdminTableFilters from '@/app/components/admin/AdminTableFilters'
 
 export default function UserManagementTable({ rows, currentUserRoles, initialShareholders }: {
-    rows: Array<{ id: string; name: string; email: string; is_active: boolean; roles: string[]; whatsapp?: string; has_active_loans?: boolean; debt?: number }>,
+    rows: Array<{ id: string; name: string; email: string; is_active: boolean; roles: string[]; whatsapp?: string; has_active_loans?: boolean; debt?: number; risk_class?: string }>,
     currentUserRoles: string[],
     initialShareholders?: any[]
 }) {
@@ -146,6 +147,19 @@ export default function UserManagementTable({ rows, currentUserRoles, initialSha
 
     return (
         <div className="relative">
+            <AdminTableFilters
+                placeholder="Chercher par nom, email ou ID..."
+                statusOptions={[
+                    { label: 'Actifs', value: 'active' },
+                    { label: 'Inactifs', value: 'inactive' }
+                ]}
+                sortOptions={[
+                    { label: 'Plus récents', value: 'newest' },
+                    { label: 'Plus anciens', value: 'oldest' },
+                    { label: 'Dette (Décroissant)', value: 'debt_desc' }
+                ]}
+            />
+
             {/* Desktop Table View */}
             <div className="overflow-x-auto hidden md:block">
                 <table className="w-full text-left">
@@ -167,12 +181,23 @@ export default function UserManagementTable({ rows, currentUserRoles, initialSha
                                             <User size={20} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-black text-white italic tracking-tight">{row.name}</p>
-                                            <div className="flex items-center gap-2 mt-1">
+                                            <Link href={`/admin/super/users/${row.id}`} className="group/name">
+                                                <p className="font-black text-white italic tracking-tight group-hover/name:text-blue-400 transition-colors">{row.name}</p>
+                                                <p className="text-[10px] font-bold text-slate-600 group-hover/name:text-slate-400 transition-colors uppercase tabular-nums">{row.email}</p>
+                                            </Link>
+                                            <div className="flex items-center gap-2 mt-2">
                                                 <span className={`w-1.5 h-1.5 rounded-full ${row.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></span>
                                                 <span className={`text-[8px] font-black uppercase tracking-widest ${row.is_active ? 'text-emerald-500' : 'text-slate-600'}`}>
                                                     {row.is_active ? 'Compte Actif' : 'En attente'}
                                                 </span>
+                                                {row.risk_class && (
+                                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${row.risk_class.toUpperCase() === 'ELITE' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                        row.risk_class.toUpperCase() === 'STANDARD' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
+                                                            'bg-red-500/10 text-red-500 border-red-500/20'
+                                                        }`}>
+                                                        {row.risk_class}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

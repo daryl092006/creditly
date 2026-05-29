@@ -1,12 +1,12 @@
 import { createClient } from '@/utils/supabase/server'
 import SubscribeButton from './SubscribeButton'
 import Link from 'next/link'
-import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt, Calendar } from '@carbon/icons-react'
+import { ArrowLeft, CheckmarkOutline, Star, Rocket, Flash, Misuse, WarningAlt, Calendar, Locked } from '@carbon/icons-react'
 import { checkGlobalQuotasStatus } from '@/utils/quotas-server'
+import { getUserLoanEligibility } from '@/utils/eligibility'
 
 export default async function SubscriptionsPage() {
     const supabase = await createClient()
-    // Lazy update of system statuses
     await supabase.rpc('auto_update_system_statuses')
 
     const { data: plans } = await supabase.from('abonnements').select('*').order('price')
@@ -15,7 +15,6 @@ export default async function SubscriptionsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: allSubsRaw } = user ? await supabase.from('user_subscriptions').select('*, plan:abonnements(*)').eq('user_id', user.id).order('created_at', { ascending: false }) : { data: [] }
 
-    // Expert Check: Override plan data with original snapshots if they exist so the user sees exactly what they paid for
     const allSubs = (allSubsRaw || []).map((sub: any) => ({
         ...sub,
         plan: {
@@ -31,30 +30,27 @@ export default async function SubscriptionsPage() {
     }))
 
     const { data: activeLoans } = user ? await supabase.from('prets').select('id').eq('user_id', user.id).in('status', ['active', 'overdue']) : { data: null }
-
-    const hasUnpaidLoans = activeLoans ? activeLoans.length > 0 : false;
+    const hasUnpaidLoans = activeLoans ? activeLoans.length > 0 : false
 
     const now = new Date().toISOString()
     const activeSub = allSubs?.find((s: any) => s.status === 'active' && s.end_date && s.end_date > now)
 
-    // Check if the current active subscription is exhausted (benefits used up)
-    let isExhausted = false;
+    let isExhausted = false
     if (activeSub && user) {
         const { data: loansTakenData } = await supabase
             .from('prets')
             .select('amount, created_at')
             .eq('user_id', user.id)
             .gte('created_at', activeSub.start_date)
-            .in('status', ['approved', 'active', 'paid', 'overdue']);
+            .in('status', ['approved', 'active', 'paid', 'overdue'])
 
-        const loansCount = loansTakenData?.length || 0;
-        const totalAmountTaken = loansTakenData?.reduce((acc, l) => acc + Number(l.amount), 0) || 0;
-
-        const maxLoans = activeSub.snapshot_max_loans_per_month || activeSub.plan?.max_loans_per_month || 1;
-        const maxAmount = activeSub.snapshot_max_loan_amount || activeSub.plan?.max_loan_amount || 0;
+        const loansCount = loansTakenData?.length || 0
+        const totalAmountTaken = loansTakenData?.reduce((acc, l) => acc + Number(l.amount), 0) || 0
+        const maxLoans = activeSub.snapshot_max_loans_per_month || activeSub.plan?.max_loans_per_month || 1
+        const maxAmount = activeSub.snapshot_max_loan_amount || activeSub.plan?.max_loan_amount || 0
 
         if (loansCount >= maxLoans || (maxAmount > 0 && totalAmountTaken >= maxAmount)) {
-            isExhausted = true;
+            isExhausted = true
         }
     }
 
@@ -63,11 +59,16 @@ export default async function SubscriptionsPage() {
     const rejectedSub = allSubs?.find((s: any) => s.status === 'rejected')
     const cancelledSub = allSubs?.find((s: any) => s.status === 'cancelled')
 
-    // Days remaining on active subscription (for urgency display)
     const activeSubExpiresInDays = activeSub?.end_date
         ? Math.ceil((new Date(activeSub.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         : null
     const activeSubIsExpiring = activeSubExpiresInDays !== null && activeSubExpiresInDays <= 3 && activeSubExpiresInDays > 0
+
+    // ─── ÉLIGIBILITÉ UTILISATEUR (centrale) ───
+    const eligibility = user ? await getUserLoanEligibility(user.id) : null
+    const lockedPlanIds = new Set(
+        eligibility?.plans.filter(p => !p.available).map(p => p.planId) || []
+    )
 
     const getPlanIcon = (name: string) => {
         if (name === 'Platinum') return <Rocket size={32} />
@@ -88,8 +89,22 @@ export default async function SubscriptionsPage() {
                             Mes <br /><span className="premium-gradient-text uppercase">Avantages.</span>
                         </h1>
                         <p className="text-slate-500 font-bold text-lg italic max-w-xl leading-relaxed">
-                            Choisissez un forfait pour pouvoir demander plus d&apos;argent plus vite.
+                            Les plans affichés comme disponibles sont adaptés à votre profil actuel.
                         </p>
+
+                        {/* Bandeau limite réelle si connue */}
+                        {eligibility && (
+                            <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border text-sm font-black italic ${eligibility.realMaxLoanAmount >= 50000
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                    : eligibility.realMaxLoanAmount >= 20000
+                                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                }`}>
+                                <CheckmarkOutline size={18} />
+                                Votre limite actuelle : <span className="ml-1 text-white">{eligibility.realMaxLoanAmount.toLocaleString('fr-FR')} FCFA</span>
+                            </div>
+                        )}
+
                         {!activeSub && (
                             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 animate-fade-in shadow-lg shadow-amber-500/5">
                                 <Star size={20} className="animate-pulse" />
@@ -128,7 +143,6 @@ export default async function SubscriptionsPage() {
                                     <p className="text-[10px] font-bold text-red-400 uppercase italic">
                                         Raison : {rejectedSub.rejection_reason || 'Preuve de paiement non conforme'}
                                     </p>
-                                    <p className="text-[8px] font-black text-slate-500 uppercase italic mt-1 font-mono tracking-widest leading-none">Choisissez un forfait pour reessayer</p>
                                 </div>
                             </div>
                         )}
@@ -144,9 +158,7 @@ export default async function SubscriptionsPage() {
                                     <p className="text-[10px] font-bold text-slate-500 uppercase italic">Expire le {activeSub.end_date ? new Date(activeSub.end_date).toLocaleDateString('fr-FR') : '...'}</p>
                                     {activeSubIsExpiring && (
                                         <p className={`text-[10px] font-black uppercase tracking-widest mt-1 animate-pulse ${activeSubExpiresInDays === 1 ? 'text-red-500' : 'text-amber-400'}`}>
-                                            {activeSubExpiresInDays === 1
-                                                ? '🚨 Expire demain — Renouvelez maintenant !'
-                                                : `⏳ J-${activeSubExpiresInDays} — Pensez à renouveler`}
+                                            {activeSubExpiresInDays === 1 ? '🚨 Expire demain — Renouvelez maintenant !' : `⏳ J-${activeSubExpiresInDays} — Pensez à renouveler`}
                                         </p>
                                     )}
                                 </div>
@@ -181,64 +193,116 @@ export default async function SubscriptionsPage() {
                     </div>
                 </div>
 
+                {/* Avertissement sur les plans bloqués si quelques uns sont verrouillés */}
+                {eligibility && lockedPlanIds.size > 0 && (
+                    <div className="mb-12 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-start gap-4 animate-fade-in">
+                        <WarningAlt size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-xs font-black text-amber-400 uppercase tracking-widest mb-2 italic">Certains plans ne sont pas disponibles pour votre profil actuel</p>
+                            <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
+                                Votre limite actuelle est de <span className="text-white font-black">{eligibility.realMaxLoanAmount.toLocaleString('fr-FR')} FCFA</span>.
+                                Les plans dépassant cette limite sont verrouillés pour éviter que vous payiez un abonnement dont vous ne pouvez pas bénéficier.
+                                {eligibility.blockingReasons.length > 0 && (
+                                    <span className="block mt-2 text-amber-400/70">{eligibility.blockingReasons[0]}</span>
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex flex-wrap justify-center gap-10">
-                    {plans?.map((plan: any) => (
-                        <div key={plan.id} className={`glass-panel p-10 flex flex-col items-center text-center relative overflow-hidden group transition-all duration-700 hover:-translate-y-4 bg-slate-900/50 border-slate-800 w-full max-w-[320px] ${plan.name === 'Platinum' ? 'border-blue-500/30 bg-blue-600/5' : ''}`}>
-                            {plan.name === 'Platinum' && (
-                                <div className="absolute -right-12 top-10 rotate-45 bg-blue-600 text-white text-[8px] font-black px-12 py-1.5 uppercase tracking-[0.4em] z-20 shadow-lg shadow-blue-600/20">PREMIUM</div>
-                            )}
+                    {plans?.map((plan: any) => {
+                        const planElig = eligibility?.plans.find(p => p.planId === plan.id)
+                        const isLocked = !!(planElig && !planElig.available)
 
-                            <div className="mb-12 space-y-6 relative z-10 flex flex-col items-center">
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${plan.id === activeSub?.plan_id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-white border border-white/5 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:scale-110 shadow-xl'}`}>
-                                    {getPlanIcon(plan.name)}
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-1 leading-none">{plan.name}</h3>
-                                    <div className="flex items-baseline justify-center gap-1">
-                                        <span className="text-3xl font-black premium-gradient-text italic tracking-tighter">{(plan.price || 0).toLocaleString('fr-FR')}</span>
-                                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">FCFA / mois</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
-                                {[
-                                    { text: `Crédit ${plan.max_loans_per_month} fois / mois`, icon: <Star size={16} /> },
-                                    { text: `Limite ${(plan.max_loan_amount || 0).toLocaleString('fr-FR')} FCFA`, icon: <Rocket size={16} /> },
-                                    { text: `Délai ${plan.repayment_delay_days} jours après prêt`, icon: <Flash size={16} /> },
-                                    { text: `Accès valide ${plan.duration_days || 30} jours`, icon: <Calendar size={16} /> }
-                                ].map((feature, i) => (
-                                    <div key={i} className="flex items-center justify-center gap-4 group/feat">
-                                        <div className="text-slate-600 group-hover/feat:text-blue-500 transition-colors shrink-0">{feature.icon}</div>
-                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-tight group-hover/feat:text-slate-200 transition-colors italic text-left">{feature.text}</span>
-                                    </div>
-                                ))}
-
-                                {quotasStatus[plan.id]?.reached && (
-                                    <div className="mt-8 px-4 py-5 rounded-2xl bg-red-500/5 border border-red-500/20 text-center animate-fade-in shadow-lg shadow-red-500/5">
-                                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-relaxed italic mb-1">
-                                            ⚠️ OFFRE SATURÉE CE MOIS-CI
-                                        </p>
-                                        <p className="text-[8px] text-slate-400 italic font-bold leading-tight">
-                                            Le quota maximum de clients a été atteint. <br />
-                                            Revenez le <span className="text-white">1er du mois prochain</span> pour souscrire.
-                                        </p>
+                        return (
+                            <div
+                                key={plan.id}
+                                className={`glass-panel p-10 flex flex-col items-center text-center relative overflow-hidden group transition-all duration-700 w-full max-w-[320px] ${isLocked
+                                        ? 'bg-slate-900/30 border-slate-800/30 opacity-80 hover:opacity-100'
+                                        : plan.name === 'Platinum'
+                                            ? 'bg-blue-600/5 border-blue-500/30 hover:-translate-y-4'
+                                            : 'bg-slate-900/50 border-slate-800 hover:-translate-y-4'
+                                    }`}
+                            >
+                                {/* Badge verrouillé */}
+                                {isLocked && (
+                                    <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 z-20">
+                                        <Locked size={10} className="text-slate-500" />
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Verrouillé</span>
                                     </div>
                                 )}
-                            </div>
 
-                            <div className="relative z-10 w-full">
-                                <SubscribeButton
-                                    planId={plan.id}
-                                    disabled={!!pendingSub || (activeSub?.plan_id === plan.id && !isExhausted) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans}
-                                    isModification={!!activeSub && activeSub.plan_id !== plan.id}
-                                    isQuotaFull={!!quotasStatus[plan.id]?.reached}
-                                    hasUnpaidLoans={hasUnpaidLoans}
-                                    isExhausted={isExhausted && activeSub?.plan_id === plan.id}
-                                />
+                                {plan.name === 'Platinum' && !isLocked && (
+                                    <div className="absolute -right-12 top-10 rotate-45 bg-blue-600 text-white text-[8px] font-black px-12 py-1.5 uppercase tracking-[0.4em] z-20 shadow-lg shadow-blue-600/20">PREMIUM</div>
+                                )}
+
+                                <div className="mb-12 space-y-6 relative z-10 flex flex-col items-center">
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${isLocked
+                                            ? 'bg-slate-800 text-slate-600 border border-slate-700'
+                                            : plan.id === activeSub?.plan_id
+                                                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                                                : 'bg-white/5 text-white border border-white/5 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:scale-110 shadow-xl'
+                                        }`}>
+                                        {isLocked ? <Locked size={28} /> : getPlanIcon(plan.name)}
+                                    </div>
+                                    <div>
+                                        <h3 className={`text-2xl font-black uppercase italic tracking-tighter mb-1 leading-none ${isLocked ? 'text-slate-500' : 'text-white'}`}>
+                                            {plan.name}
+                                        </h3>
+                                        <div className="flex items-baseline justify-center gap-1">
+                                            <span className={`text-3xl font-black italic tracking-tighter ${isLocked ? 'text-slate-600' : 'premium-gradient-text'}`}>
+                                                {(plan.price || 0).toLocaleString('fr-FR')}
+                                            </span>
+                                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">FCFA / mois</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6 mb-16 flex-grow relative z-10 w-full">
+                                    {[
+                                        { text: `Crédit ${plan.max_loans_per_month} fois / mois`, icon: <Star size={16} /> },
+                                        { text: `Capacité jusqu'à ${(plan.max_loan_amount || 0).toLocaleString('fr-FR')} FCFA`, icon: <Rocket size={16} /> },
+                                        { text: `Délai ${plan.repayment_delay_days} jours après prêt`, icon: <Flash size={16} /> },
+                                        { text: `Accès valide ${plan.duration_days || 30} jours`, icon: <Calendar size={16} /> }
+                                    ].map((feature, i) => (
+                                        <div key={i} className="flex items-center justify-center gap-4 group/feat">
+                                            <div className={`shrink-0 ${isLocked ? 'text-slate-700' : 'text-slate-600 group-hover/feat:text-blue-500 transition-colors'}`}>{feature.icon}</div>
+                                            <span className={`text-[11px] font-black uppercase tracking-tight italic text-left ${isLocked ? 'text-slate-700' : 'text-slate-400 group-hover/feat:text-slate-200 transition-colors'}`}>
+                                                {feature.text}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {quotasStatus[plan.id]?.reached && !isLocked && (
+                                        <div className="mt-8 px-4 py-5 rounded-2xl bg-red-500/5 border border-red-500/20 text-center animate-fade-in shadow-lg shadow-red-500/5">
+                                            <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-relaxed italic mb-1">⚠️ OFFRE SATURÉE CE MOIS-CI</p>
+                                            <p className="text-[8px] text-slate-400 italic font-bold leading-tight">
+                                                Le quota maximum de clients a été atteint. <br />
+                                                Revenez le <span className="text-white">1er du mois prochain</span> pour souscrire.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="relative z-10 w-full">
+                                    <SubscribeButton
+                                        planId={plan.id}
+                                        disabled={!!pendingSub || (activeSub?.plan_id === plan.id && !isExhausted) || !!quotasStatus[plan.id]?.reached || hasUnpaidLoans || isLocked}
+                                        isModification={!!activeSub && activeSub.plan_id !== plan.id}
+                                        isQuotaFull={!!quotasStatus[plan.id]?.reached}
+                                        hasUnpaidLoans={hasUnpaidLoans}
+                                        isExhausted={isExhausted && activeSub?.plan_id === plan.id}
+                                        isLocked={isLocked}
+                                        lockReason={planElig?.lockReason}
+                                        lockDetail={planElig?.lockDetail}
+                                        userLimit={eligibility?.realMaxLoanAmount}
+                                        planLimit={plan.max_loan_amount}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </div>
         </div>

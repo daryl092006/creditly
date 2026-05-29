@@ -133,6 +133,23 @@ export async function processPaymentProof(
                         original_loan_id: duplicateByHash.loan_id
                     }
                 });
+
+                // NOURRIR LA TABLE fraud_alerts
+                await (supabase.from('fraud_alerts') as any).insert({
+                    user_id: payload.userId,
+                    loan_id: payload.loanId,
+                    repayment_id: null,
+                    alert_type: 'DUPLICATE_PROOF_HASH',
+                    severity: 'HIGH',
+                    reason: `Tentative de soumission d'une preuve de paiement déjà utilisée sur une autre opération (Prêt ID: ${duplicateByHash.loan_id}).`,
+                    reference_used: proofHash.substring(0, 16),
+                    evidence_json: {
+                        attempted_loan_id: payload.loanId,
+                        proof_hash: proofHash,
+                        original_loan_id: duplicateByHash.loan_id,
+                        original_user_id: duplicateByHash.user_id
+                    }
+                });
             } catch (_) { /* Colonnes non migrées, on log seulement */ }
 
             return {
@@ -140,7 +157,7 @@ export async function processPaymentProof(
                 proofHash,
                 requiresDoubleValidation: false,
                 fraudDetected: true,
-                error: 'FRAUD_ATTEMPT: Ce fichier de preuve a déjà été utilisé sur la plateforme. Votre compte a été suspendu pour audit de sécurité.'
+                error: 'SÉCURITÉ : Ce fichier de preuve est déjà indexé sur la plateforme. Votre compte est sous surveillance. En cas d\'erreur, contactez le support via WhatsApp.'
             };
         }
     } catch (e: any) {
@@ -155,15 +172,26 @@ export async function processPaymentProof(
         try {
             const { data: duplicateByRef } = await (supabase
                 .from('payment_transactions') as any)
-                .select('id, user_id')
+                .select('id, user_id, expected_amount')
                 .eq('operator', payload.operator.toUpperCase())
                 .eq('transaction_reference', cleanRef)
                 .maybeSingle();
 
             if (duplicateByRef) {
+                // Cas 1 : Même utilisateur (Doublon ou Retry légitime)
+                if (duplicateByRef.user_id === payload.userId) {
+                    return {
+                        success: false,
+                        proofHash,
+                        requiresDoubleValidation: false,
+                        error: 'Cette référence de transaction a déjà été enregistrée pour votre compte. Si vous venez de soumettre ce paiement, veuillez patienter pendant que nous le vérifions.'
+                    };
+                }
+
+                // Cas 2 : Utilisateur différent (Suspicion de FRAUDE)
                 try {
                     await (supabase.from('users') as any).update({
-                        fraud_suspicion_level: 'HIGH',
+                        fraud_suspicion_level: 2,
                         is_under_review: true
                     }).eq('id', payload.userId);
 
@@ -178,14 +206,31 @@ export async function processPaymentProof(
                             transaction_reference: cleanRef
                         }
                     });
-                } catch (_) { /* Colonnes non migrées, on continue */ }
+
+                    // NOURRIR LA TABLE fraud_alerts
+                    await (supabase.from('fraud_alerts') as any).insert({
+                        user_id: payload.userId,
+                        loan_id: payload.loanId,
+                        alert_type: 'DUPLICATE_TRANSACTION_REF',
+                        severity: 'CRITICAL',
+                        reason: `Référence MoMo ${cleanRef} déjà enregistrée par un autre utilisateur (ID: ${duplicateByRef.user_id}).`,
+                        reference_used: cleanRef,
+                        evidence_json: {
+                            attempted_loan_id: payload.loanId,
+                            operator: payload.operator,
+                            transaction_reference: cleanRef,
+                            original_user_id: duplicateByRef.user_id,
+                            original_amount: duplicateByRef.expected_amount
+                        }
+                    });
+                } catch (_) { /* Continue */ }
 
                 return {
                     success: false,
                     proofHash,
                     requiresDoubleValidation: false,
                     fraudDetected: true,
-                    error: 'FRAUD_ATTEMPT: Cette référence de transaction a déjà été enregistrée. Votre compte a été suspendu.'
+                    error: 'SÉCURITÉ : Cette référence de transaction est déjà enregistrée sur un autre compte. Votre compte est sous surveillance. Contactez le support WhatsApp pour investigation.'
                 };
             }
         } catch (_) {

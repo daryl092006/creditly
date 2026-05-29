@@ -299,12 +299,8 @@ export async function calculateDynamicLoanLimit(
     else if (user.risk_class === 'A SURVEILLER') coeffScore = 0.3;
     else if (user.risk_class === 'RISQUE') coeffScore = 0; // Bloqué
 
-    // 2. Coefficient historique (confiance progressive)
-    const paidCount = paidLoansTotal?.length || 0;
-    let coeffHistory = 0.3; // Premier prêt = sécurité maximale (30%)
-    if (paidCount === 1) coeffHistory = 0.5;
-    else if (paidCount === 2) coeffHistory = 0.7;
-    else if (paidCount >= 3) coeffHistory = 1.0; // Confiance totale après 3 prêts remboursés
+    // 2. Coefficient historique (Supprimé car l'activation du forfait donne droit au plafond complet du score)
+    let coeffHistory = 1.0;
 
     // 3. Calcul du plafond dynamique
     const dynamicLimit = Math.round(planMaxAmount * coeffScore * coeffHistory);

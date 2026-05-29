@@ -45,6 +45,27 @@ export async function assignTicket(ticketId: string) {
 
   await logAuditAction('TICKET_ASSIGNED', ticketId, { ticket_id: ticketId });
   revalidatePath('/admin/support');
+  revalidatePath(`/admin/support/ticket/${ticketId}`);
+}
+
+export async function resolveTicket(ticketId: string) {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('support_tickets')
+    .update({ status: 'resolved', updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+
+  if (error) {
+    console.error('Error resolving ticket:', error);
+    throw new Error('Failed to resolve ticket');
+  }
+
+  await logAuditAction('TICKET_RESOLVED', ticketId, { ticket_id: ticketId });
+  revalidatePath('/admin/support');
+  revalidatePath(`/admin/support/ticket/${ticketId}`);
 }
 
 export async function requestImpersonationSession(targetUserId: string, ticketId: string) {
@@ -54,7 +75,7 @@ export async function requestImpersonationSession(targetUserId: string, ticketId
 
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes validity
-  
+
   const otpCode = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digits OTP
 
   const { data: session, error } = await supabase
@@ -76,9 +97,9 @@ export async function requestImpersonationSession(targetUserId: string, ticketId
 
   await logAuditAction('IMPERSONATION_REQUESTED', targetUserId, { ticket_id: ticketId, session_id: session.id });
   revalidatePath(`/admin/support/ticket/${ticketId}`);
-  
+
   // Dans un cas réel on enverrait l'OTP par SMS / InApp au client ici
-  
+
   return { sessionId: session.id, otp_code: otpCode }; // Retourné pour le démo, en vrai ne pas retourner à l'agent direct sans workflow
 }
 
