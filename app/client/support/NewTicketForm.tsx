@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Add, Send, Close, CheckmarkFilled } from '@carbon/icons-react'
-import { createSupportTicket } from '../actions'
+import { createSupportTicket } from './actions'
 
 const CATEGORIES = [
     'Problème de paiement',
