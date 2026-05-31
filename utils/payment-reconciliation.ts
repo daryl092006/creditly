@@ -115,33 +115,16 @@ export async function processPaymentProof(
             .maybeSingle();
 
         if (duplicateByHash) {
-            // Fraude détectée : même fichier utilisé sur un autre compte ou prêt
+            // INFO : Même fichier utilisé sur un autre compte ou prêt
+            // On ne bloque plus l'utilisateur, on log juste l'alerte pour information
             try {
-                await (supabase.from('users') as any).update({
-                    fraud_suspicion_level: 'HIGH',
-                    is_under_review: true
-                }).eq('id', payload.userId);
-
-                await (supabase.from('audit_logs') as any).insert({
-                    actor_user_id: payload.userId,
-                    action_type: 'FRAUD_DUPLICATE_PROOF_HASH',
-                    target_table: 'remboursements',
-                    target_id: duplicateByHash.id,
-                    new_value_json: {
-                        attempted_loan_id: payload.loanId,
-                        proof_hash: proofHash,
-                        original_loan_id: duplicateByHash.loan_id
-                    }
-                });
-
-                // NOURRIR LA TABLE fraud_alerts
                 await (supabase.from('fraud_alerts') as any).insert({
                     user_id: payload.userId,
                     loan_id: payload.loanId,
                     repayment_id: null,
                     alert_type: 'DUPLICATE_PROOF_HASH',
-                    severity: 'HIGH',
-                    reason: `Tentative de soumission d'une preuve de paiement déjà utilisée sur une autre opération (Prêt ID: ${duplicateByHash.loan_id}).`,
+                    severity: 'LOW',
+                    reason: `Note: Fichier déjà utilisé sur une autre opération (Prêt ID: ${duplicateByHash.loan_id}).`,
                     reference_used: proofHash.substring(0, 16),
                     evidence_json: {
                         attempted_loan_id: payload.loanId,
@@ -150,14 +133,13 @@ export async function processPaymentProof(
                         original_user_id: duplicateByHash.user_id
                     }
                 });
-            } catch (_) { /* Colonnes non migrées, on log seulement */ }
+            } catch (_) { /* Continue */ }
 
+            // On autorise quand même le remboursement pour ne pas bloquer les utilisateurs légitimes
             return {
-                success: false,
+                success: true,
                 proofHash,
-                requiresDoubleValidation: false,
-                fraudDetected: true,
-                error: 'SÉCURITÉ : Ce fichier de preuve est déjà indexé sur la plateforme. Votre compte est sous surveillance. En cas d\'erreur, contactez le support via WhatsApp.'
+                requiresDoubleValidation: payload.declaredAmount >= 50000,
             };
         }
     } catch (e: any) {
@@ -168,7 +150,7 @@ export async function processPaymentProof(
     // ---- 3. CONTRÔLE ANTI-DOUBLON : Référence transaction MoMo ----
     const cleanRef = payload.transactionReference.replace(/\s+/g, '').toUpperCase();
 
-    if (cleanRef && cleanRef.length >= 4) {
+    if (cleanRef && cleanRef.length >= 4 && !cleanRef.startsWith('MANUAL_')) {
         try {
             const { data: duplicateByRef } = await (supabase
                 .from('payment_transactions') as any)
@@ -178,42 +160,14 @@ export async function processPaymentProof(
                 .maybeSingle();
 
             if (duplicateByRef) {
-                // Cas 1 : Même utilisateur (Doublon ou Retry légitime)
-                if (duplicateByRef.user_id === payload.userId) {
-                    return {
-                        success: false,
-                        proofHash,
-                        requiresDoubleValidation: false,
-                        error: 'Cette référence de transaction a déjà été enregistrée pour votre compte. Si vous venez de soumettre ce paiement, veuillez patienter pendant que nous le vérifions.'
-                    };
-                }
-
-                // Cas 2 : Utilisateur différent (Suspicion de FRAUDE)
+                // On ne bloque plus l'utilisateur, on log juste l'alerte pour information
                 try {
-                    await (supabase.from('users') as any).update({
-                        fraud_suspicion_level: 2,
-                        is_under_review: true
-                    }).eq('id', payload.userId);
-
-                    await (supabase.from('audit_logs') as any).insert({
-                        actor_user_id: payload.userId,
-                        action_type: 'FRAUD_DUPLICATE_TRANSACTION_REF',
-                        target_table: 'payment_transactions',
-                        target_id: duplicateByRef.id,
-                        new_value_json: {
-                            attempted_loan_id: payload.loanId,
-                            operator: payload.operator,
-                            transaction_reference: cleanRef
-                        }
-                    });
-
-                    // NOURRIR LA TABLE fraud_alerts
                     await (supabase.from('fraud_alerts') as any).insert({
                         user_id: payload.userId,
                         loan_id: payload.loanId,
                         alert_type: 'DUPLICATE_TRANSACTION_REF',
-                        severity: 'CRITICAL',
-                        reason: `Référence MoMo ${cleanRef} déjà enregistrée par un autre utilisateur (ID: ${duplicateByRef.user_id}).`,
+                        severity: 'INFO',
+                        reason: `Note: Référence MoMo ${cleanRef} déjà enregistrée par un utilisateur (ID: ${duplicateByRef.user_id}).`,
                         reference_used: cleanRef,
                         evidence_json: {
                             attempted_loan_id: payload.loanId,
@@ -225,12 +179,11 @@ export async function processPaymentProof(
                     });
                 } catch (_) { /* Continue */ }
 
+                // On autorise quand même le remboursement
                 return {
-                    success: false,
+                    success: true,
                     proofHash,
-                    requiresDoubleValidation: false,
-                    fraudDetected: true,
-                    error: 'SÉCURITÉ : Cette référence de transaction est déjà enregistrée sur un autre compte. Votre compte est sous surveillance. Contactez le support WhatsApp pour investigation.'
+                    requiresDoubleValidation: payload.declaredAmount >= 50000,
                 };
             }
         } catch (_) {

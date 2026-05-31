@@ -19,12 +19,6 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
     const handleAction = async () => {
         setError(null)
 
-        if (!transactionId || transactionId.trim().length < 4) {
-            setError('Veuillez saisir votre ID de transaction Mobile Money (visible sur votre reçu).')
-            document.getElementById('transactionId')?.focus()
-            return
-        }
-
         if (!operator) {
             setError('Veuillez sélectionner l\'opérateur Mobile Money utilisé.')
             document.getElementById('operator')?.focus()
@@ -62,7 +56,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         formData.append('loanId', loanId)
         formData.append('amount', amount)
         formData.append('proof', compressedFile)
-        formData.append('transactionReference', transactionId.trim())
+        formData.append('transactionReference', (transactionId || '').trim())
         formData.append('operator', operator)
         formData.append('senderPhone', senderPhone.trim())
 
@@ -84,7 +78,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                 Envoyer mon <span className="premium-gradient-text uppercase">reçu.</span>
             </h2>
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic mb-8">
-                Tous les champs sont obligatoires pour valider votre paiement.
+                Certains champs sont optionnels pour faciliter votre remboursement.
             </p>
 
             {error && (
@@ -108,22 +102,22 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
 
             <div className="space-y-8 text-left">
 
-                {/* Transaction ID — champ critique anti-fraude */}
+                {/* Transaction ID — champ désormais optionnel */}
                 <div className="space-y-3">
-                    <label htmlFor="transactionId" className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-1 italic flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                        ID de Transaction Mobile Money <span className="text-slate-600">(Obligatoire)</span>
+                    <label htmlFor="transactionId" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                        ID de Transaction Mobile Money <span className="text-slate-800">(Optionnel)</span>
                     </label>
                     <input
                         id="transactionId"
                         type="text"
-                        placeholder="Ex: CI-9923-8812 ou MP2026051X..."
+                        placeholder="Ex: CI-9923-8812... (Si disponible)"
                         value={transactionId}
                         onChange={(e) => setTransactionId(e.target.value)}
-                        className="w-full px-6 py-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-white text-base font-bold italic focus:border-amber-500/60 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all placeholder:text-slate-700 tracking-wider"
+                        className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-slate-950 text-white text-base font-bold italic focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all placeholder:text-slate-800 tracking-wider"
                     />
-                    <p className="text-[9px] font-bold text-slate-700 ml-1 italic">
-                        Cet identifiant unique est visible sur votre reçu de transaction Mobile Money. Il permet de vérifier et sécuriser votre paiement.
+                    <p className="text-[9px] font-bold text-slate-800 ml-1 italic">
+                        Si vous ne trouvez pas l&apos;ID, vous pouvez laisser ce champ vide. Votre photo de reçu suffit pour la validation.
                     </p>
                 </div>
 
@@ -219,7 +213,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
 
                 <ActionButton
                     onClick={handleAction}
-                    disabled={!file || !amount || !transactionId || !operator || !senderPhone}
+                    disabled={!file || !amount || !operator || !senderPhone}
                     loading={isPending}
                     loadingText="Envoi en cours..."
                     className="w-full py-6 text-sm bg-emerald-600 border-emerald-500 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-[0.98] group/btn"

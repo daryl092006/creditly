@@ -149,8 +149,8 @@ export async function calculateAndSyncUserRisk(
     const rejectedRepaymentsCount = repayments?.filter((r: any) => r.status === 'rejected').length || 0;
     const penaltyIncident = rejectedRepaymentsCount > 0 ? 15 : 0;
 
-    // Suspicion fraude (-50 pts — bloquant)
-    const penaltyFraud = profile.fraud_suspicion_level === 'HIGH' ? 50 : 0;
+    // suspicion fraude (Désactivé selon demande utilisateur)
+    const penaltyFraud = 0;
 
     score = Math.max(0, Math.min(100, score - penaltyOverdue - penaltyExtension - penaltyIncident - penaltyFraud));
 
@@ -193,30 +193,22 @@ export async function calculateAndSyncUserRisk(
         (0.30 * (overdueLoans.length > 0 ? 100 : 0)) +
         (0.20 * Math.min(100, extensionCount * 20)) +
         (0.20 * Math.min(100, debtRatio)) +
-        (0.15 * Math.min(100, rejectedRepaymentsCount * 25)) +
-        (0.15 * (profile.fraud_suspicion_level === 'HIGH' ? 100 : 0));
+        (0.15 * Math.min(100, rejectedRepaymentsCount * 25));
 
     const defaultRisk = Math.min(100, Math.max(0, Math.round(rawDefaultRisk)));
 
     // =========================================================
-    // RÈGLES DE BLOCAGE AUTOMATIQUE
+    // RÈGLES DE BLOCAGE AUTOMATIQUE (Allégées selon demande)
     // =========================================================
     if (!profile.is_account_active) {
         isBlocked = true;
         blockReason = 'Votre compte est inactif. Validation KYC requise avant de pouvoir emprunter.';
-    } else if (profile.fraud_suspicion_level === 'HIGH') {
-        isBlocked = true;
-        blockReason = 'Votre compte est sous investigation pour suspicion d\'anomalie de paiement.';
     } else if (overdueLoans.length > 0) {
         isBlocked = true;
         blockReason = `Vous avez ${overdueLoans.length} prêt(s) en retard de paiement. Régularisez votre situation avant de demander un nouveau prêt.`;
-    } else if (score < 35) {
-        isBlocked = true;
-        blockReason = 'Score de confiance insuffisant. Votre historique de paiements ne permet pas d\'accorder un nouveau prêt pour le moment.';
-    } else if (debtRatio >= 90) {
-        isBlocked = true;
-        blockReason = 'Votre capacité d\'endettement maximale est atteinte. Remboursez vos prêts en cours d\'abord.';
     }
+    // Note: Les blocages liés au score faible, à la suspicion de fraude et au ratio d'endettement 
+    // ont été supprimés pour permettre l'accès au plafond maximal de l'abonnement choisi.
 
     const report: ScoringReport = {
         score,

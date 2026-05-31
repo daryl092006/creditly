@@ -70,14 +70,13 @@ export async function requestLoan(
                 return { error: `🚫 Demande bloquée : ${riskReport.blockReason}` };
             }
 
-            // Calculer le plafond dynamique autorisé
+            // Plafond autorisé par l'abonnement
             const planMax = currentSub?.plan?.max_loan_amount || 0;
-            if (planMax > 0) {
-                const limitReport = await calculateDynamicLoanLimit(user.id, planMax, currentSub?.id, adminSupa as any);
-                if (amount > limitReport.dynamicLimit && limitReport.dynamicLimit > 0) {
-                    return { error: `🚫 Montant refusé : Votre plafond dynamique actuel est de ${limitReport.dynamicLimit.toLocaleString('fr-FR')} FCFA (Score: ${riskReport.score}/100, Classe: ${riskReport.riskLabel}). Augmentez votre score en remboursant régulièrement.` };
-                }
+            if (planMax > 0 && amount > planMax) {
+                return { error: `🚫 Montant refusé : Votre abonnement actuel vous limite à un maximum de ${planMax.toLocaleString('fr-FR')} FCFA.` };
             }
+            // INFO : Le contrôle du plafond dynamique est supprimé selon la demande utilisateur.
+            // On se fie désormais uniquement au plafond de l'abonnement choisi.
 
             // Enregistrer la décision de risque
             await adminSupa.from('risk_decisions').insert({

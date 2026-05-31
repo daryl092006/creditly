@@ -85,8 +85,7 @@ export async function getUserLoanEligibility(userId: string): Promise<UserEligib
     // KYC non validé → réduit la limite de 50%
     if (kycStatus !== 'verified') baseLimit = Math.floor(baseLimit * 0.5)
 
-    // Suspicion de fraude → bloque les gros montants
-    if (hasFraudSuspicion) baseLimit = Math.min(baseLimit, 15000)
+    // INFO : La restriction par suspicion de fraude est supprimée selon la demande utilisateur.
 
     // Restriction active → bloque tout
     if (restrictionActive) baseLimit = 0
@@ -104,10 +103,6 @@ export async function getUserLoanEligibility(userId: string): Promise<UserEligib
     if (hasOverdueDebt) {
         blockingReasons.push('Vous avez un prêt en retard de paiement.')
         recommendedActions.push('Rembourser mon prêt en cours')
-    }
-    if (hasFraudSuspicion) {
-        blockingReasons.push('Votre compte fait l\'objet d\'une vérification de sécurité.')
-        recommendedActions.push('Contacter le support')
     }
     if (restrictionActive) {
         blockingReasons.push('Votre compte est temporairement restreint.')
