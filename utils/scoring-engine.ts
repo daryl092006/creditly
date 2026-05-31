@@ -149,10 +149,8 @@ export async function calculateAndSyncUserRisk(
     const rejectedRepaymentsCount = repayments?.filter((r: any) => r.status === 'rejected').length || 0;
     const penaltyIncident = rejectedRepaymentsCount > 0 ? 15 : 0;
 
-    // suspicion fraude (Désactivé selon demande utilisateur)
-    const penaltyFraud = 0;
 
-    score = Math.max(0, Math.min(100, score - penaltyOverdue - penaltyExtension - penaltyIncident - penaltyFraud));
+    score = Math.max(0, Math.min(100, score - penaltyOverdue - penaltyExtension - penaltyIncident));
 
     // =========================================================
     // CLASSIFICATION DU RISQUE
@@ -187,13 +185,13 @@ export async function calculateAndSyncUserRisk(
 
     // =========================================================
     // CALCUL DU RISQUE DE DÉFAUT (FORMULE PONDÉRÉE)
-    // 30% retard + 20% extensions + 20% ratio dette + 15% reçus rejetés + 15% fraude
+    // 30% retard + 20% extensions + 20% ratio dette + 30% reçus rejetés
     // =========================================================
     const rawDefaultRisk =
         (0.30 * (overdueLoans.length > 0 ? 100 : 0)) +
         (0.20 * Math.min(100, extensionCount * 20)) +
         (0.20 * Math.min(100, debtRatio)) +
-        (0.15 * Math.min(100, rejectedRepaymentsCount * 25));
+        (0.30 * Math.min(100, rejectedRepaymentsCount * 25));
 
     const defaultRisk = Math.min(100, Math.max(0, Math.round(rawDefaultRisk)));
 
@@ -207,7 +205,7 @@ export async function calculateAndSyncUserRisk(
         isBlocked = true;
         blockReason = `Vous avez ${overdueLoans.length} prêt(s) en retard de paiement. Régularisez votre situation avant de demander un nouveau prêt.`;
     }
-    // Note: Les blocages liés au score faible, à la suspicion de fraude et au ratio d'endettement 
+    // Note: Les blocages liés au score faible et au ratio d'endettement 
     // ont été supprimés pour permettre l'accès au plafond maximal de l'abonnement choisi.
 
     const report: ScoringReport = {

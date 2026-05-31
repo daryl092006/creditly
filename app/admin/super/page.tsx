@@ -95,18 +95,12 @@ export default async function SuperAdminPage({
         supabase.from('admin_withdrawals').select('amount').eq('status', 'approved'),
         checkPlatformLiquidity(),
         supabaseAdmin.from('audit_logs').select('*, actor:actor_user_id(nom, prenom, email)').order('created_at', { ascending: false }).limit(20),
-        supabaseAdmin.from('users').select('risk_class, fraud_suspicion_level')
+        supabaseAdmin.from('users').select('risk_class')
     ]);
 
     const riskUsersData = (riskUsers as any) || []
     console.log("RISK USERS DATA FETCHED:", riskUsersData?.length, "ERROR if any:", riskUserError)
 
-    // --- RISK & FRAUD ANALYTICS ---
-    const fraudSuspicionCount = riskUsersData.filter((u: any) => {
-        if (!u.fraud_suspicion_level) return false;
-        if (typeof u.fraud_suspicion_level === 'string') return u.fraud_suspicion_level !== 'NONE';
-        return u.fraud_suspicion_level > 0;
-    }).length
 
     const getRiskClass = (u: any) => (u.risk_class || 'Standard').toUpperCase()
 
@@ -121,7 +115,6 @@ export default async function SuperAdminPage({
     const riskStats = {
         exposureRate: (platformLiquidity as any)?.exposureRate || 0,
         decisionStatus: (platformLiquidity as any)?.decisionStatus || 'NORMAL',
-        fraudSuspicionCount,
         riskDistribution,
         recentAuditLogs: auditLogs || []
     }

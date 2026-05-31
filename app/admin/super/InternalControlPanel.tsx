@@ -8,7 +8,6 @@ import Link from 'next/link'
 interface RiskStats {
     exposureRate: number
     decisionStatus: string
-    fraudSuspicionCount: number
     riskDistribution: { label: string, count: number, color: string }[]
     recentAuditLogs: any[]
 }
@@ -100,23 +99,6 @@ export function InternalControlPanel({ stats }: { stats: RiskStats }) {
                     </p>
                 </div>
 
-                {/* Fraud Alerts */}
-                {stats.fraudSuspicionCount > 0 && (
-                    <Link href="/admin/super/fraud-alerts" className="block group">
-                        <div className="glass-panel p-4 bg-red-500/5 border-red-500/20 border-l-4 border-l-red-500 hover:bg-red-500/10 transition-all group-hover:translate-x-1">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3 text-red-500 mb-1">
-                                    <Warning size={16} />
-                                    <p className="text-[10px] font-black uppercase tracking-widest leading-none">Alertes Fraude</p>
-                                </div>
-                                <ChevronRight size={16} className="text-red-500 opacity-0 group-hover:opacity-100 transition-all" />
-                            </div>
-                            <p className="text-sm font-black text-white italic leading-tight">
-                                {stats.fraudSuspicionCount} utilisateur(s) sous investigation
-                            </p>
-                        </div>
-                    </Link>
-                )}
 
                 {/* Audit Logs Quick View */}
                 <div className="glass-panel p-6 bg-slate-900/30 border-slate-800">

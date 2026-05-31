@@ -10,7 +10,6 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
     const router = useRouter()
     const [file, setFile] = useState<File | null>(null)
     const [amount, setAmount] = useState('')
-    const [transactionId, setTransactionId] = useState('')
     const [operator, setOperator] = useState('')
     const [senderPhone, setSenderPhone] = useState('')
     const [error, setError] = useState<string | null>(null)
@@ -56,7 +55,6 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
         formData.append('loanId', loanId)
         formData.append('amount', amount)
         formData.append('proof', compressedFile)
-        formData.append('transactionReference', (transactionId || '').trim())
         formData.append('operator', operator)
         formData.append('senderPhone', senderPhone.trim())
 
@@ -102,24 +100,6 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
 
             <div className="space-y-8 text-left">
 
-                {/* Transaction ID — champ désormais optionnel */}
-                <div className="space-y-3">
-                    <label htmlFor="transactionId" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 italic flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                        ID de Transaction Mobile Money <span className="text-slate-800">(Optionnel)</span>
-                    </label>
-                    <input
-                        id="transactionId"
-                        type="text"
-                        placeholder="Ex: CI-9923-8812... (Si disponible)"
-                        value={transactionId}
-                        onChange={(e) => setTransactionId(e.target.value)}
-                        className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-slate-950 text-white text-base font-bold italic focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all placeholder:text-slate-800 tracking-wider"
-                    />
-                    <p className="text-[9px] font-bold text-slate-800 ml-1 italic">
-                        Si vous ne trouvez pas l&apos;ID, vous pouvez laisser ce champ vide. Votre photo de reçu suffit pour la validation.
-                    </p>
-                </div>
 
                 {/* Opérateur & Téléphone expéditeur */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

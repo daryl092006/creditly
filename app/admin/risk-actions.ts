@@ -73,13 +73,6 @@ async function computeRealScore(userId: string, supabaseAdmin: any): Promise<{
     const extensionCount = loans?.reduce((acc: number, l: any) => acc + (l.extension_count || 0), 0) || 0
     score -= extensionCount * 3
 
-    let fraudLevel = 0
-    if (typeof user.fraud_suspicion_level === 'string') {
-        if (user.fraud_suspicion_level.toUpperCase() !== 'NONE') fraudLevel = 2 // Penalty arbitrary for "LOW" / "HIGH" 
-    } else if (user.fraud_suspicion_level > 0) {
-        fraudLevel = user.fraud_suspicion_level
-    }
-    score -= fraudLevel * 10
 
     score = Math.max(0, Math.min(100, score))
 

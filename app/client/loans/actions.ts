@@ -205,8 +205,6 @@ export async function submitRepayment(formData: FormData) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
 
-    // Extraire la référence de transaction et l'opérateur depuis le FormData
-    const transactionReference = (formData.get('transactionReference') as string || '').trim();
     const operator = (formData.get('operator') as string || 'MTN').toUpperCase();
 
     try {
@@ -220,7 +218,7 @@ export async function submitRepayment(formData: FormData) {
             loanId,
             declaredAmount: numAmount,
             operator,
-            transactionReference: transactionReference || `MANUAL_${loanId}_${Date.now()}`,
+            transactionReference: `AUTO_${loanId}_${Date.now()}`,
             proofFileBuffer: fileBuffer,
             senderPhone: formData.get('senderPhone') as string || '',
             isExtension
@@ -251,8 +249,8 @@ export async function submitRepayment(formData: FormData) {
                 amount_declared: numAmount,
                 proof_url: uploadData.path,
                 proof_hash: reconciliation.proofHash,
-                transaction_reference: transactionReference || null,
-                transaction_id: transactionReference || null,
+                transaction_reference: null,
+                transaction_id: null,
                 operator: operator || null,
                 requires_double_validation: reconciliation.requiresDoubleValidation,
                 status: 'pending'
