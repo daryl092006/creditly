@@ -259,7 +259,7 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                                                 <div className="w-12 h-12 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mb-3 shadow-xl">
                                                     <CheckmarkFilled size={24} />
                                                 </div>
-                                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] italic">{files.idCard}</span>
+                                                <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — Tous formats acceptés (PDF, JPG, PNG...)</span>
                                             </>
                                         ) : (
                                             <>
@@ -288,7 +288,7 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                                                 <div className="w-12 h-12 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mb-3 shadow-xl">
                                                     <CheckmarkFilled size={24} />
                                                 </div>
-                                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] italic">{files.selfie}</span>
+                                                <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — Tous formats acceptés (PDF, JPG, PNG...)</span>
                                             </>
                                         ) : (
                                             <>
@@ -317,7 +317,7 @@ export default function KYCFormClient({ missingFields }: { missingFields: string
                                                 <div className="w-12 h-12 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mb-3 shadow-xl">
                                                     <CheckmarkFilled size={24} />
                                                 </div>
-                                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] italic">{files.residence}</span>
+                                                <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — Tous formats acceptés (PDF, JPG, PNG...)</span>
                                             </>
                                         ) : (
                                             <>

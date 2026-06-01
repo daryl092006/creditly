@@ -164,8 +164,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                         <input
                             type="file"
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                            accept=".jpg,.jpeg,.png,.pdf"
-                            capture="environment"
+                            accept="*"
                             onChange={(e) => {
                                 const files = e.target.files
                                 if (files && files[0]) setFile(files[0])
@@ -184,7 +183,7 @@ export default function RepaymentForm({ loanId, remainingBalance }: { loanId: st
                                 <>
                                     <Upload size={40} className="text-slate-700 group-hover:text-blue-500 mb-4 transition-transform group-hover:scale-110" />
                                     <span className="text-[10px] font-black text-slate-600 group-hover:text-white uppercase tracking-[0.3em] transition-colors italic">Choisir la photo / Prendre en photo</span>
-                                    <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — JPG, PNG, PDF</span>
+                                    <span className="text-[8px] font-bold text-slate-800 uppercase mt-2 italic tracking-widest">Max 10 Mo — Tous formats acceptés (PDF, JPG, PNG...)</span>
                                 </>
                             )}
                         </div>

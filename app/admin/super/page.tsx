@@ -375,7 +375,13 @@ export default async function SuperAdminPage({
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`w-1.5 h-1.5 rounded-full ${(item.count || 0) > 0 ? 'bg-orange-500 animate-pulse' : 'bg-slate-800'}`} />
                                                 <span className={`text-[10px] font-black italic ${(item.count || 0) > 0 ? 'text-white' : 'text-slate-700'}`}>
-                                                    {(item.count || 0)} <span className="text-[8px] uppercase font-bold ml-0.5">En cours</span>
+                                                    {(item.count || 0) > 0 ? (
+                                                        <>
+                                                            {(item.count || 0)} <span className="text-[8px] uppercase font-bold ml-0.5">En cours</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-[8px] uppercase font-bold italic opacity-30">Aucun en attente</span>
+                                                    )}
                                                 </span>
                                             </div>
                                         )}

@@ -273,6 +273,7 @@ export default function AdminDirectRepaymentModal({
                                             <div className="relative group/file h-[62px]">
                                                 <input
                                                     type="file"
+                                                    accept="*"
                                                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                                 />
