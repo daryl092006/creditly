@@ -6,7 +6,7 @@ const FileSchema = z.custom<File>((val) => {
     return val && typeof val === 'object' && 'size' in val && 'name' in val && 'type' in val;
 }, "Un fichier est requis")
     .refine((file) => file.size > 0, "Le fichier ne peut pas être vide")
-    .refine((file) => file.size <= 5 * 1024 * 1024, "La taille du fichier ne doit pas dépasser 5MB");
+    .refine((file) => file.size <= 10 * 1024 * 1024, "La taille du fichier ne doit pas dépasser 10MB");
 
 export const LoanRequestSchema = z.object({
     amount: z.coerce.number()

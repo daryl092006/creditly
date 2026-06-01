@@ -205,28 +205,7 @@ export async function submitRepayment(formData: FormData) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
 
-    const operator = (formData.get('operator') as string || 'MTN').toUpperCase();
-
     try {
-        // 1. Lire le fichier en buffer pour le hachage anti-fraude
-        const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-        // 2. Contrôles anti-fraude via le service de réconciliation
-        const { processPaymentProof } = await import('@/utils/payment-reconciliation');
-        const reconciliation = await processPaymentProof({
-            userId: user.id,
-            loanId,
-            declaredAmount: numAmount,
-            operator,
-            transactionReference: `AUTO_${loanId}_${Date.now()}`,
-            proofFileBuffer: fileBuffer,
-            senderPhone: formData.get('senderPhone') as string || '',
-            isExtension
-        });
-
-        if (!reconciliation.success) {
-            return { error: reconciliation.error || 'Erreur de vérification du paiement.' };
-        }
 
         // 3. Upload to Storage (repayment-proofs)
         const { data: uploadData, error: uploadError } = await adminSupabase.storage
@@ -248,11 +227,6 @@ export async function submitRepayment(formData: FormData) {
                 user_id: user.id,
                 amount_declared: numAmount,
                 proof_url: uploadData.path,
-                proof_hash: reconciliation.proofHash,
-                transaction_reference: null,
-                transaction_id: null,
-                operator: operator || null,
-                requires_double_validation: reconciliation.requiresDoubleValidation,
                 status: 'pending'
             })
 
