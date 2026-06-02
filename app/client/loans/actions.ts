@@ -201,6 +201,8 @@ export async function submitRepayment(formData: FormData) {
     }
 
     const isExtension = formData.get('isExtension') === 'true'
+    const operator = (formData.get('operator') as string) || 'INCONNU'
+    const senderPhone = (formData.get('senderPhone') as string) || ''
     const adminSupabase = await createAdminClient()
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${isExtension ? 'extension_' : 'repayment_'}${loanId}_${Date.now()}.${fileExt}`
@@ -219,6 +221,35 @@ export async function submitRepayment(formData: FormData) {
             return { error: getUserFriendlyErrorMessage(uploadError) }
         }
 
+        // ── RÉCONCILIATION ANTI-FRAUDE ───────────────────────────────────────
+        let reconciliationTransactionId: string | undefined
+        try {
+            const { processPaymentProof, fileToBuffer } = await import('@/utils/payment-reconciliation')
+            const fileBuffer = await fileToBuffer(file)
+            const reconciliation = await processPaymentProof({
+                userId: user.id,
+                loanId,
+                declaredAmount: numAmount,
+                operator: operator.toUpperCase(),
+                transactionReference: `AUTO_${user.id.slice(0, 8)}_${Date.now()}`,
+                proofFileBuffer: fileBuffer,
+                senderPhone,
+                isExtension
+            }, adminSupabase as any)
+
+            if (reconciliation.fraudDetected) {
+                // Supprimer le fichier déjà uploadé avant de retourner l'erreur
+                await adminSupabase.storage.from('repayment-proofs').remove([uploadData.path])
+                return { error: `⚠️ Reçu refusé : ${reconciliation.error}` }
+            }
+
+            reconciliationTransactionId = reconciliation.transactionId
+        } catch (reconciliationError) {
+            // Non-bloquant : si la réconciliation échoue, on continue
+            console.error('[Réconciliation] Erreur non-bloquante:', reconciliationError)
+        }
+        // ── FIN RÉCONCILIATION ───────────────────────────────────────────────
+
         // 4. Insert record with hash and reconciliation data
         const { error: dbError } = await adminSupabase
             .from('remboursements')
@@ -227,7 +258,8 @@ export async function submitRepayment(formData: FormData) {
                 user_id: user.id,
                 amount_declared: numAmount,
                 proof_url: uploadData.path,
-                status: 'pending'
+                status: 'pending',
+                ...(reconciliationTransactionId ? { payment_transaction_id: reconciliationTransactionId } : {})
             })
 
         if (dbError) {
@@ -260,6 +292,7 @@ export async function submitRepayment(formData: FormData) {
         return { error: e.message || "Erreur lors de l'envoi de la preuve." }
     }
 }
+
 
 export async function extendLoan(loanId: string) {
     try {

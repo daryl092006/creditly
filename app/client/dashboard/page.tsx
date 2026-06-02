@@ -721,10 +721,10 @@ export default async function ClientDashboard() {
                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/10 transition-colors"></div>
                             <h4 className="text-xl font-black text-white uppercase tracking-tighter italic mb-6">Aide & <br /> Messages</h4>
                             <div className="space-y-3">
-                                <button className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item">
+                                <Link href="/client/faq" className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:bg-slate-900 transition-all group/item">
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover/item:text-blue-400 transition-colors">Base de Savoir</span>
                                     <Help size={20} className="text-slate-700" />
-                                </button>
+                                </Link>
                                 <Link
                                     href="https://wa.me/14383906281"
                                     target="_blank"

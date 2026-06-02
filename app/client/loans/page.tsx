@@ -16,6 +16,8 @@ import {
 import LoanListActions from './loan-list-actions'
 import ExtensionButton from './extension-button'
 import { getSettingValue } from '../../admin/settings/actions'
+import RepaymentsRealtimeWatcher from './RepaymentsRealtimeWatcher'
+
 
 // Formule de calcul du total à payer (Capital + Frais + Extension)
 const calculateTotalToPay = (loan: any) => {
@@ -59,7 +61,10 @@ export default async function ClientLoansPage() {
 
     return (
         <div className="min-h-screen py-12 md:py-24 page-transition bg-slate-950 text-slate-200">
+            {/* Watcher Realtime invisible — rafraîchit auto quand un remboursement est validé */}
+            <RepaymentsRealtimeWatcher userId={user.id} />
             <div className="main-container max-w-7xl mx-auto px-6 space-y-16">
+
                 
                 {/* HEADER STRATÉGIQUE */}
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10">

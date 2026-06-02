@@ -302,6 +302,29 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 if (commissions.length > 0) {
                     await supabase.from('admin_commissions').insert(commissions)
                 }
+
+                // ── PROVISION SUR CRÉANCE ────────────────────────────────────
+                // Calculer et insérer une provision basée sur la classe de risque du client
+                try {
+                    const { data: riskUser } = await supabase
+                        .from('users')
+                        .select('risk_class')
+                        .eq('id', loan.user_id)
+                        .single()
+                    const { calculateProvision } = await import('@/utils/risk-engine')
+                    const riskClass = (riskUser?.risk_class || 'STANDARD') as any
+                    const provisionAmount = calculateProvision(Number(loan.amount), riskClass)
+                    await supabase.from('provisions').insert({
+                        loan_id: loanId,
+                        user_id: loan.user_id,
+                        amount: provisionAmount,
+                        risk_class: riskClass,
+                        status: 'active',
+                        created_at: new Date().toISOString()
+                    })
+                } catch (provisionError) { /* Non-bloquant */ }
+                // ── FIN PROVISION ────────────────────────────────────────────
+
             }
             // --- END COMMISSION SHARING ---
         }
@@ -556,6 +579,16 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                     .eq('loan_id', loan.id)
                     .eq('status', 'locked')
 
+                // ── LIBÉRATION DE LA PROVISION ───────────────────────────────
+                try {
+                    await supabase
+                        .from('provisions')
+                        .update({ status: 'released', released_at: new Date().toISOString() })
+                        .eq('loan_id', loan.id)
+                        .eq('status', 'active')
+                } catch (e) { /* Non-bloquant */ }
+                // ── FIN LIBÉRATION PROVISION ─────────────────────────────────
+
                 // Resynchroniser le score du client après remboursement complet
                 try {
                     const { calculateAndSyncUserRisk } = await import('@/utils/scoring-engine')
@@ -563,6 +596,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                 } catch (e) { /* Non-bloquant */ }
             }
             // ── FIN DÉVERROUILLAGE ───────────────────────────────────────────────
+
 
             // Incrémenter les stats de performance de l'agent remboursement (non-bloquant)
             if (adminId) {
