@@ -101,7 +101,13 @@ export async function evaluateUserRisk(userId: string, requestedAmount?: number)
     let baseLimit = 10000
     if (activeSub) {
         const { data: sub } = await supabase.from('user_subscriptions').select('plan:abonnements(max_loan_amount)').eq('user_id', userId).eq('status', 'active').maybeSingle()
-        if (sub) baseLimit = (sub.plan as any).max_loan_amount
+        if (sub) baseLimit = Number((sub.plan as any).max_loan_amount)
+    }
+
+    // Bonus de 5000F si 3 prêts ou plus remboursés à temps (sans extension)
+    const paidOnTimeCount = loans?.filter(l => l.status === 'paid' && !l.is_extended).length || 0
+    if (paidOnTimeCount >= 3) {
+        baseLimit += 5000
     }
 
     const scoreCoef = score >= 90 ? 1.0 : score >= 75 ? 0.8 : score >= 60 ? 0.6 : score >= 40 ? 0.3 : 0
@@ -111,6 +117,30 @@ export async function evaluateUserRisk(userId: string, requestedAmount?: number)
     const debtRatio = maxLoanAllowed > 0 ? (currentDebt / maxLoanAllowed) * 100 : 100
 
     // --- RÈGLES DE BLOCAGE ---
+    const sortedLoans = loans ? [...loans].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) : []
+    const finishedLoans = sortedLoans.filter(l => ['paid', 'overdue'].includes(l.status))
+    let hasThreeConsecutiveLates = false
+    if (finishedLoans.length >= 3) {
+        const lastThree = finishedLoans.slice(0, 3)
+        hasThreeConsecutiveLates = lastThree.every(l => l.status === 'overdue' || (l.status === 'paid' && Number(l.late_penalties || 0) > 0))
+    }
+
+    if (hasThreeConsecutiveLates) {
+        eligible = false
+        reasons.push("Compte bloqué définitivement (3 retards consécutifs).")
+        // Update user to inactive and blocked status in database
+        supabase.from('users').update({
+            is_account_active: false,
+            fraud_suspicion_level: 'BLOCKED'
+        }).eq('id', userId).then(({ error }) => {
+            if (error) console.error('[RiskEngine] Auto-block failed:', error.message)
+        })
+        // Sync with email blacklist table
+        if (user.email) {
+            supabase.from('email_blacklist').insert({ email: user.email }).then(() => {})
+        }
+    }
+
     if (kyc?.status !== 'verified') { eligible = false; reasons.push("KYC non validé"); }
     if (!user.active_subscription_id) { eligible = false; reasons.push("Abonnement inactif"); }
     if (score < 40) { eligible = false; reasons.push(`Score trop faible (${score})`); }

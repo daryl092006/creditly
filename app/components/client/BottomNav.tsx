@@ -25,8 +25,8 @@ export default function BottomNav() {
                             key={link.href}
                             href={link.href}
                             className={`flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-500 ${isActive
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 scale-110 -translate-y-1'
-                                    : 'text-slate-500 hover:text-slate-300'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 scale-110 -translate-y-1'
+                                : 'text-slate-500 hover:text-slate-300'
                                 }`}
                         >
                             <link.icon size={20} className={isActive ? 'animate-pulse' : ''} />

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { requestLoan } from '../actions'
 import { useRouter } from 'next/navigation'
 import { ActionButton } from '@/app/components/ui/ActionButton'
+import { SupportableError } from '@/app/components/ui/SupportableError'
 
 import LoanWaiver, { PersonalData } from './loan-waiver'
 
@@ -162,12 +163,17 @@ export default function LoanRequestForm({ subscription, userData, repaymentPhone
             </div>
 
             {error && (
-                <div className="mb-8 p-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-4 animate-shake text-left">
-                    <CloseFilled size={24} className="shrink-0" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 italic">Un petit problème</p>
-                        <p className="text-xs font-bold font-sans">{error}</p>
-                    </div>
+                <div className="mb-8">
+                    <SupportableError
+                        title="Erreur de demande de prêt"
+                        message={error}
+                        priority="high"
+                        category="Problème de demande de prêt"
+                        context={{
+                            planName: subscription.plan.name,
+                            action: 'request_loan'
+                        }}
+                    />
                 </div>
             )}
 

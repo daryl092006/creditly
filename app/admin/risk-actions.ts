@@ -87,7 +87,11 @@ async function computeRealScore(userId: string, supabaseAdmin: any): Promise<{
     // Dette courante
     // Dette courante calculée au début
 
-    const baseLimit = (sub?.plan as any)?.max_loan_amount || 10000
+    let baseLimit = Number((sub?.plan as any)?.max_loan_amount || 10000)
+    const paidOnTimeCount = loans?.filter((l: any) => l.status === 'paid' && !l.is_extended).length || 0
+    if (paidOnTimeCount >= 3) {
+        baseLimit += 5000
+    }
     const scoreCoef = score >= 90 ? 1.0 : score >= 75 ? 0.8 : score >= 60 ? 0.6 : score >= 40 ? 0.3 : 0
     const historyCoef = totalLoans === 0 ? 0.3 : totalLoans === 1 ? 0.5 : totalLoans === 2 ? 0.7 : 1.0
     const maxLoanAllowed = baseLimit

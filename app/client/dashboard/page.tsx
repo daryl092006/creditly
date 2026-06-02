@@ -311,11 +311,36 @@ export default async function ClientDashboard() {
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3">Score Confiance</p>
                             <p className="text-4xl font-black text-white italic tracking-tighter">
-                                {analysis.score} <span className="text-[12px] not-italic text-slate-700">%</span>
+                                {profile?.current_score ?? 0} <span className="text-[12px] not-italic text-slate-700">%</span>
                             </p>
                             <div className="mt-6 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: analysis.color }}></span>
-                                <p className="text-[9px] font-black uppercase italic" style={{ color: analysis.color }}>Rang : {analysis.label}</p>
+                                <span
+                                    className="w-2 h-2 rounded-full animate-pulse"
+                                    style={{
+                                        backgroundColor:
+                                            (profile?.risk_class?.toUpperCase() === 'ELITE') ? '#10b981' :
+                                                (profile?.risk_class?.toUpperCase() === 'FIABLE') ? '#3b82f6' :
+                                                    (profile?.risk_class?.toUpperCase() === 'A SURVEILLER') ? '#f59e0b' :
+                                                        (profile?.risk_class?.toUpperCase() === 'RISQUE') ? '#ef4444' : '#6b7280'
+                                    }}
+                                ></span>
+                                <p
+                                    className="text-[9px] font-black uppercase italic"
+                                    style={{
+                                        color:
+                                            (profile?.risk_class?.toUpperCase() === 'ELITE') ? '#10b981' :
+                                                (profile?.risk_class?.toUpperCase() === 'FIABLE') ? '#3b82f6' :
+                                                    (profile?.risk_class?.toUpperCase() === 'A SURVEILLER') ? '#f59e0b' :
+                                                        (profile?.risk_class?.toUpperCase() === 'RISQUE') ? '#ef4444' : '#6b7280'
+                                    }}
+                                >
+                                    Rang : {
+                                        (profile?.risk_class?.toUpperCase() === 'ELITE') ? 'Élite Alpha' :
+                                            (profile?.risk_class?.toUpperCase() === 'FIABLE') ? 'Fiable' :
+                                                (profile?.risk_class?.toUpperCase() === 'A SURVEILLER') ? 'À Surveiller' :
+                                                    (profile?.risk_class?.toUpperCase() === 'RISQUE') ? 'Risqué' : 'Standard'
+                                    }
+                                </p>
                             </div>
                         </div>
 

@@ -90,7 +90,12 @@ export async function getUserLoanEligibility(userId: string): Promise<UserEligib
     // Restriction active → bloque tout
     if (restrictionActive) baseLimit = 0
 
-    const realMaxLoanAmount = Math.max(0, baseLimit)
+    let realMaxLoanAmount = Math.max(0, baseLimit)
+
+    // Nouveau client (aucun prêt payé) -> limité à 25 000 FCFA
+    if (paidLoans.length === 0) {
+        realMaxLoanAmount = Math.min(realMaxLoanAmount, 25000)
+    }
 
     // --- Raisons de blocage et actions recommandées ---
     const blockingReasons: string[] = []

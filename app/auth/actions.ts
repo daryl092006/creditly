@@ -50,6 +50,49 @@ export async function signup(formData: FormData) {
             throw new Error("Cet email est sur liste noire et ne peut plus être utilisé sur cette plateforme.")
         }
 
+        // Check if phone or email matches any blocked/inactive user
+        const { data: blockedUsers } = await supabase
+            .from('users')
+            .select('id, email, whatsapp, guarantor_whatsapp')
+            .or('is_account_active.eq.false,fraud_suspicion_level.eq.BLOCKED')
+
+        // Fetch payout phone numbers for these blocked users
+        let blockedPayoutPhones: string[] = []
+        if (blockedUsers && blockedUsers.length > 0) {
+            const blockedUserIds = blockedUsers.map(u => u.id)
+            const { data: loans } = await supabase
+                .from('prets')
+                .select('payout_phone')
+                .in('user_id', blockedUserIds)
+            
+            blockedPayoutPhones = (loans || [])
+                .map(l => l.payout_phone?.replace(/\D/g, ''))
+                .filter(Boolean) as string[]
+        }
+
+        const isBlockedByIdentifier = (blockedUsers || []).some((u: any) => {
+            const cleanUserEmail = u.email?.toLowerCase().trim()
+            const cleanEmailInput = email?.toLowerCase().trim()
+            const cleanUserWhatsapp = u.whatsapp?.replace(/\D/g, '')
+            const cleanUserGuarantor = u.guarantor_whatsapp?.replace(/\D/g, '')
+            const cleanWhatsappInput = whatsapp?.replace(/\D/g, '')
+            const cleanGuarantorInput = guarantorWhatsapp?.replace(/\D/g, '')
+
+            return (
+                (cleanEmailInput && cleanUserEmail === cleanEmailInput) ||
+                (cleanWhatsappInput && cleanUserWhatsapp === cleanWhatsappInput) ||
+                (cleanWhatsappInput && cleanUserGuarantor === cleanWhatsappInput) ||
+                (cleanGuarantorInput && cleanUserWhatsapp === cleanGuarantorInput) ||
+                (cleanGuarantorInput && cleanUserGuarantor === cleanGuarantorInput)
+            )
+        }) || 
+        blockedPayoutPhones.includes(whatsapp?.replace(/\D/g, '')) || 
+        blockedPayoutPhones.includes(guarantorWhatsapp?.replace(/\D/g, ''))
+
+        if (isBlockedByIdentifier) {
+            throw new Error("Inscription impossible. Les coordonnées fournies (e-mail, téléphone ou garant) sont associées à un compte bloqué.")
+        }
+
         // 1. Auth Signup
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,

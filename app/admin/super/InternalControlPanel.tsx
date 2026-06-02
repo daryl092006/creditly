@@ -104,7 +104,7 @@ export function InternalControlPanel({ stats }: { stats: RiskStats }) {
                 <div className="glass-panel p-6 bg-slate-900/30 border-slate-800">
                     <div className="flex justify-between items-center mb-4">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none">Journal d'Audit Récent</p>
-                        <Link href="/admin/super/audit" className="text-[8px] font-black text-blue-500 uppercase tracking-widest hover:underline italic">Voir tout</Link>
+                        <Link href="/admin/support/audit" className="text-[8px] font-black text-blue-500 uppercase tracking-widest hover:underline italic">Voir tout</Link>
                     </div>
                     <div className="space-y-4">
                         {stats.recentAuditLogs.slice(0, 8).map((log, i) => (
