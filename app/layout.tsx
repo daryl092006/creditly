@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   description: "Plateforme de gestion de micro-prêts rapide et sécurisée.",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,6 +29,9 @@ export default function RootLayout({
     <html lang="fr" className={`${outfit.variable} dark`} suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content="ca-pub-7463108649392537" />
+        <link rel="icon" href="/creditly-logo.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/creditly-logo.png" />
+        <link rel="shortcut icon" href="/creditly-logo.png" />
       </head>
       <body className="antialiased selection:bg-blue-600/20" suppressHydrationWarning>
         <Script
