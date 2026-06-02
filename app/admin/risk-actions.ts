@@ -90,7 +90,7 @@ async function computeRealScore(userId: string, supabaseAdmin: any): Promise<{
     const baseLimit = (sub?.plan as any)?.max_loan_amount || 10000
     const scoreCoef = score >= 90 ? 1.0 : score >= 75 ? 0.8 : score >= 60 ? 0.6 : score >= 40 ? 0.3 : 0
     const historyCoef = totalLoans === 0 ? 0.3 : totalLoans === 1 ? 0.5 : totalLoans === 2 ? 0.7 : 1.0
-    const maxLoanAllowed = Math.floor(baseLimit * scoreCoef * historyCoef)
+    const maxLoanAllowed = baseLimit
     const debtRatio = maxLoanAllowed > 0 ? (currentDebt / maxLoanAllowed) * 100 : 100
 
     return { score, riskClass, currentDebt, debtRatio }

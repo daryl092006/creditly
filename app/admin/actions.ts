@@ -470,13 +470,38 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
             // SÉCURITÉ : On laisse l'admin valider même si ça dépasse (gestion des surplus et arrondis)
 
             const amountToApply = Math.max(0, amountVerified)
-            const newTotalPaid = Number(loan.amount_paid || 0) + amountToApply
 
             // Calcul de la dette restante RÉELLE avant application
             const { totalDebt: remainingDebtBefore } = calculateLoanDebt(loan as any)
 
-            // Le prêt est soldé si le montant versé couvre ou dépasse la dette totale restante
-            const isFullyPaid = !isExtensionRequest && (amountToApply >= (remainingDebtBefore - 50)) // Marge de 50 FCFA pour arrondis
+            // 1. D'ABORD mettre à jour le remboursement
+            await supabase
+                .from('remboursements')
+                .update({
+                    status: status, // statuts -> 'verified' ou 'rejected'
+                    admin_id: adminId,
+                    validated_at: new Date().toISOString(),
+                    surplus_amount: isExtensionRequest ? 0 : Math.max(0, amountToApply - remainingDebtBefore)
+                })
+                .eq('id', repaymentId)
+
+            // 2. RECALCULER DE MANIÈRE 100% FIABLE (évite les bugs de clics multiples)
+            const { data: allVerified } = await supabase
+                .from('remboursements')
+                .select('amount_declared')
+                .eq('loan_id', loan.id)
+                .eq('status', 'verified')
+
+            let newTotalPaid = 0;
+            if (isExtensionRequest) {
+                // L'extension ne rembourse pas le principal
+                newTotalPaid = Number(loan.amount_paid || 0);
+            } else {
+                newTotalPaid = allVerified?.reduce((sum, r) => sum + (Number(r.amount_declared) || 0), 0) || 0;
+            }
+
+            const baseDebt = Number(loan.amount) + (Number(loan.service_fee) || 0) + (Number(loan.extension_fee) || 0);
+            const isFullyPaid = !isExtensionRequest && (newTotalPaid >= (baseDebt - 50)); // Marge 50f
 
             const loanUpdates: any = {
                 amount_paid: newTotalPaid,
@@ -495,22 +520,11 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
                 loanUpdates.extension_date = new Date().toISOString()
             }
 
-            // Mettre à jour le prêt ET le remboursement
-            await Promise.all([
-                supabase
-                    .from('prets')
-                    .update(loanUpdates)
-                    .eq('id', repayment.loan_id),
-                supabase
-                    .from('remboursements')
-                    .update({
-                        status: status, // On met à jour le statut ICI aussi
-                        admin_id: adminId,
-                        validated_at: new Date().toISOString(),
-                        surplus_amount: isExtensionRequest ? 0 : Math.max(0, amountToApply - remainingDebtBefore)
-                    })
-                    .eq('id', repaymentId)
-            ])
+            // 3. Mettre à jour le prêt
+            await supabase
+                .from('prets')
+                .update(loanUpdates)
+                .eq('id', repayment.loan_id)
 
             // --- COMMISSION REMBOURSEMENT (Verrouillée, puis déverrouillage si prêt soldé) ---
             if (!isExtensionRequest && fee > 0) {
