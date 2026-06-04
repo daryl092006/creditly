@@ -91,16 +91,21 @@ export async function requestImpersonationSession(targetUserId: string, ticketId
     .single();
 
   if (error) {
-    console.error('Error requesting impersonation:', error);
-    throw new Error('Failed to request impersonation session');
+    console.error('Impersonation RLS/DB error:', error.message, error.code);
+    // Ne pas throw — retourner l'erreur pour éviter le crash Server Component
+    return { error: error.message || 'Permission refusée. Vérifiez votre rôle (support_n2 requis).' };
   }
 
-  await logAuditAction('IMPERSONATION_REQUESTED', targetUserId, { ticket_id: ticketId, session_id: session.id });
+  // Audit log : ne pas bloquer le flux si ça échoue
+  try {
+    await logAuditAction('IMPERSONATION_REQUESTED', targetUserId, { ticket_id: ticketId, session_id: session.id });
+  } catch (auditErr) {
+    console.error('Audit log failed (non-blocking):', auditErr);
+  }
+
   revalidatePath(`/admin/support/ticket/${ticketId}`);
 
-  // Dans un cas réel on enverrait l'OTP par SMS / InApp au client ici
-
-  return { sessionId: session.id, otp_code: otpCode }; // Retourné pour le démo, en vrai ne pas retourner à l'agent direct sans workflow
+  return { sessionId: session.id, otp_code: otpCode };
 }
 
 export async function startImpersonation(sessionId: string, otpCode: string) {
