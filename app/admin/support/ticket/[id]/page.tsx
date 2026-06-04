@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { requestImpersonationSession, assignTicket, resolveTicket } from '../../actions';
+import { assignTicket, resolveTicket } from '../../actions';
+import ImpersonationForm from './ImpersonationForm';
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -159,14 +160,11 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                   </form>
                 </div>
               ) : (
-                <form action={async () => { 'use server'; await requestImpersonationSession(ticket.user_id, ticket.id); }}>
-                  <button
-                    disabled={!ticket.agent_id}
-                    className="w-full py-4 rounded-xl bg-slate-950 border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-widest italic hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-3"
-                  >
-                    Demander l'accès sécurisé
-                  </button>
-                </form>
+                <ImpersonationForm
+                ticketId={ticket.id}
+                targetUserId={ticket.user_id}
+                isAssigned={!!ticket.agent_id}
+              />
               )}
             </section>
           </div>
