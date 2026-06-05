@@ -528,7 +528,7 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
 
             const loanUpdates: any = {
                 amount_paid: newTotalPaid,
-                ...(isFullyPaid ? { status: 'paid', closed_at: new Date().toISOString(), updated_at: new Date().toISOString() } : { updated_at: new Date().toISOString() })
+                ...(isFullyPaid ? { status: 'paid' } : {})
             }
 
             // LOGIQUE SPÉCIFIQUE EXTENSION

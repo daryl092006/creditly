@@ -92,8 +92,7 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
                     status: 'pending',
                     requires_double_validation: true,
                     first_validated_by: approvingAdminId,
-                    admin_id: approvingAdminId,
-                    description: `Remboursement via dividendes — en attente de 2ème validation (${tx.shareholder_name})`
+                    admin_id: approvingAdminId
                 })
                 // Note: Le prêt sera mis à jour par updateRepaymentStatus lors de la 2ème validation
             }
