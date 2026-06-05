@@ -258,8 +258,7 @@ export async function submitRepayment(formData: FormData) {
                 user_id: user.id,
                 amount_declared: numAmount,
                 proof_url: uploadData.path,
-                status: 'pending',
-                ...(reconciliationTransactionId ? { payment_transaction_id: reconciliationTransactionId } : {})
+                status: 'pending'
             })
 
         if (dbError) {
