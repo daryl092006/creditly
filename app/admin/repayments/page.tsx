@@ -35,8 +35,21 @@ export default async function AdminRepaymentPage({
         repQuery = repQuery.eq('status', statusFilter)
     }
 
+    let matchedUserIds: string[] = []
     if (queryStr) {
-        repQuery = repQuery.or(`id.ilike.%${queryStr}%,loan_id.ilike.%${queryStr}%,user_id.ilike.%${queryStr}%`)
+        const { data: matchedUsers } = await supabase
+            .from('users')
+            .select('id')
+            .or(`nom.ilike.%${queryStr}%,prenom.ilike.%${queryStr}%,email.ilike.%${queryStr}%`)
+        matchedUserIds = matchedUsers?.map(u => u.id) || []
+    }
+
+    if (queryStr) {
+        const orConditions = [`id.ilike.%${queryStr}%`, `loan_id.ilike.%${queryStr}%`, `user_id.ilike.%${queryStr}%`]
+        matchedUserIds.forEach(uid => {
+            orConditions.push(`user_id.eq.${uid}`)
+        })
+        repQuery = repQuery.or(orConditions.join(','))
     }
 
     repQuery = repQuery.order('created_at', { ascending: false })

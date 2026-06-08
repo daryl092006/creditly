@@ -228,27 +228,9 @@ export async function updateLoanStatus(loanId: string, status: 'approved' | 'rej
                 updates.service_fee = fee
             }
 
-            // ── DOUBLE VALIDATION pour les prêts >= 25 000 FCFA ──────────────────
-            if (Number(loan.amount) >= 25000) {
-                if (!loan.first_validated_by) {
-                    // Première validation : enregistrer l'admin et attendre la seconde
-                    await supabase.from('prets').update({
-                        first_validated_by: adminId,
-                        requires_double_validation: true
-                    }).eq('id', loanId)
-                    return {
-                        success: false,
-                        requiresSecondValidation: true,
-                        message: `✅ Première validation enregistrée. Ce prêt de ${Number(loan.amount).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur avant activation.`
-                    }
-                } else if (loan.first_validated_by === adminId) {
-                    return { error: "Vous avez déjà effectué la première validation. Un autre administrateur doit effectuer la seconde validation." }
-                } else {
-                    // Deuxième validation : un admin différent confirme
-                    updates.second_validated_by = adminId
-                }
-            }
-            // ── FIN DOUBLE VALIDATION ────────────────────────────────────────────
+            // ── DOUBLE VALIDATION DESACTIVER ─────────────────────────────────────
+            // Double validation désactivée pour tous les prêts.
+            // ── FIN DOUBLE VALIDATION DESACTIVER ──────────────────────────────────
 
             // --- COMMISSION SHARING LOGIC ---
             // 1. Get KYC Admin for this user
@@ -423,36 +405,9 @@ export async function updateRepaymentStatus(repaymentId: string, status: 'verifi
     // Vérifier si l'admin valide son PROPRE remboursement
     const isSelfRepayment = relatedLoan?.user_id === adminId
 
-    // ── DOUBLE VALIDATION : prêts >= 50 000 FCFA OU prêts staff/admin ───────────────
-    const needsDoubleValidation = status === 'verified' && (
-        Number(repayment.amount_declared) >= 50000 || isStaffLoan
-    )
-
-    if (needsDoubleValidation) {
-        if (!repayment.first_validated_by) {
-            // Bloquer si l'admin tente de valider son propre prêt staff en premier
-            if (isSelfRepayment) {
-                return { error: "❌ Vous ne pouvez pas valider le remboursement de votre propre prêt. Un autre owner doit effectuer la validation." }
-            }
-            // Première validation : enregistrer l'admin et attendre la seconde
-            await supabase.from('remboursements').update({
-                first_validated_by: adminId,
-                requires_double_validation: true
-            }).eq('id', repaymentId)
-
-            revalidatePath('/admin/repayments')
-            return {
-                success: false,
-                requiresSecondValidation: true,
-                message: `✅ Première validation enregistrée. Ce remboursement${isStaffLoan ? ' (Prêt Staff)' : ''} de ${Number(repayment.amount_declared).toLocaleString('fr-FR')} FCFA nécessite une DEUXIÈME validation par un autre administrateur.`
-            }
-        } else if (repayment.first_validated_by === adminId) {
-            return { error: "Vous avez déjà effectué la première validation. Un autre administrateur doit effectuer la seconde validation." }
-        } else {
-            // Seconde validation par un tiers : on autorise la mise à jour finale
-        }
-    }
-    // ── FIN DOUBLE VALIDATION ────────────────────────────────────────────
+    // ── DOUBLE VALIDATION DESACTIVER ─────────────────────────────────────
+    // Double validation désactivée pour tous les remboursements.
+    // ── FIN DOUBLE VALIDATION DESACTIVER ──────────────────────────────────
 
     // 2. Perform DB Update
     const { error: repError } = await supabase

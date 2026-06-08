@@ -90,8 +90,8 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
                     amount_declared: amountToApply,
                     proof_url: 'investor_payout_repayment',
                     status: 'pending',
-                    requires_double_validation: true,
-                    first_validated_by: approvingAdminId,
+                    requires_double_validation: false,
+                    first_validated_by: null,
                     admin_id: approvingAdminId
                 })
                 // Note: Le prêt sera mis à jour par updateRepaymentStatus lors de la 2ème validation

@@ -6,7 +6,6 @@ import { updateRepaymentStatus, getSignedProofUrl, deleteRepayment } from '../ac
 import ConfirmModal from '@/app/components/ui/ConfirmModal'
 import { DocumentPreviewModal } from '@/app/components/ui/DocumentPreviewModal'
 import { useRouter } from 'next/navigation'
-import DoubleValidationModal from '@/app/components/admin/DoubleValidationModal'
 import Link from 'next/link'
 
 export default function AdminRepaymentTable({
@@ -73,19 +72,7 @@ export default function AdminRepaymentTable({
         if (!validationPreview) return
         const { id } = validationPreview
 
-        // Logique de double validation intégrée
-        const row = rows.find(r => r.id === id)
-        if (row && row.amount_declared >= 50000) {
-            setLoading(id)
-            const res = await getSignedProofUrl(row.proof_url, 'repayment-proofs')
-            setDoubleConfirmProofUrl(res.url || null)
-            setDoubleConfirm({ id, admin_first: row.first_validated_by })
-            setLoading(null)
-            setValidationPreview(null)
-            return
-        }
-
-        // Sinon validation directe
+        // Validation directe (double validation désactivée)
         setValidationPreview(null)
         setConfirmAction({ id, status: 'verified' })
     }
@@ -183,12 +170,7 @@ export default function AdminRepaymentTable({
                                         <td className="px-8 py-6">
                                             <div className="space-y-2">
                                                 <p className="font-black text-emerald-400 text-lg tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                                {row.proof_url?.includes('extension_') && (
-                                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
-                                                        <div className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"></div>
-                                                        Prolongation (+5j)
-                                                    </div>
-                                                )}
+
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
@@ -326,11 +308,7 @@ export default function AdminRepaymentTable({
                                     <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Montant à valider</p>
                                     <div className="flex items-center gap-4">
                                         <p className="font-black text-emerald-400 text-2xl tracking-tighter italic leading-none">{row.amount_declared.toLocaleString('fr-FR')} <span className="text-[10px] not-italic text-slate-600">FCFA</span></p>
-                                        {row.proof_url?.includes('extension_') && (
-                                            <div className="px-2 py-1 bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20 rounded-md">
-                                                Prolongation
-                                            </div>
-                                        )}
+
                                     </div>
                                 </div>
 
@@ -436,27 +414,6 @@ export default function AdminRepaymentTable({
                         isLoading={loading === deleteConfirm?.id}
                     />
 
-                    {/* Double Validation Modal */}
-                    {doubleConfirm && (
-                        <DoubleValidationModal
-                            isOpen={!!doubleConfirm}
-                            onClose={() => setDoubleConfirm(null)}
-                            isLoading={!!loading}
-                            proofUrl={doubleConfirmProofUrl}
-                            repayment={rows.find(r => r.id === doubleConfirm.id)!}
-                            onConfirm={async (status) => {
-                                setLoading(doubleConfirm.id)
-                                const result = await updateRepaymentStatus(doubleConfirm.id, status)
-                                if (result?.error) {
-                                    setErrorAction({ title: "Erreur", message: result.error })
-                                } else {
-                                    setDoubleConfirm(null)
-                                    router.refresh()
-                                }
-                                setLoading(null)
-                            }}
-                        />
-                    )}
 
                     {/* Error Feedback Modal */}
                     <ConfirmModal

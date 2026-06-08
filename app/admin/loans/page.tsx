@@ -38,12 +38,22 @@ export default async function AdminLoanPage({
         loansQuery = loansQuery.eq('status', statusFilter)
     }
 
+    let matchedUserIds: string[] = []
     if (queryStr) {
-        // Search in loan ID or user details
-        loansQuery = loansQuery.or(`id.ilike.%${queryStr}%,user_id.ilike.%${queryStr}%`)
-        // Note: Complex nested search might be limited in Supabase .or(), 
-        // ideally we'd search in user table if needed, but let's stick to ID for now
-        // or we could use user.nom but ilike across joins is tricky in postgrest
+        const { data: matchedUsers } = await supabase
+            .from('users')
+            .select('id')
+            .or(`nom.ilike.%${queryStr}%,prenom.ilike.%${queryStr}%,email.ilike.%${queryStr}%`)
+        matchedUserIds = matchedUsers?.map(u => u.id) || []
+    }
+
+    if (queryStr) {
+        // Search in loan ID, user_id or user details (name, email)
+        const orConditions = [`id.ilike.%${queryStr}%`, `user_id.ilike.%${queryStr}%`]
+        matchedUserIds.forEach(uid => {
+            orConditions.push(`user_id.eq.${uid}`)
+        })
+        loansQuery = loansQuery.or(orConditions.join(','))
     }
 
     // Apply Sort
