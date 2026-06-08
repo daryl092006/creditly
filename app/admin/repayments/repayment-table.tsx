@@ -261,9 +261,9 @@ export default function AdminRepaymentTable({
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${row.status === 'verified' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                        row.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            'bg-slate-800 text-slate-500 border-slate-700'
+                                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${row.status === 'verified' ? 'text-emerald-500' :
+                                                        row.status === 'rejected' ? 'text-red-500' :
+                                                            'text-slate-500'
                                                         }`}>
                                                         {row.status === 'verified' ? 'Validé' :
                                                             row.status === 'rejected' ? 'Rejeté' :
@@ -353,8 +353,8 @@ export default function AdminRepaymentTable({
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Statut : {row.status === 'verified' ? 'Payé' : row.status}</span>
+                                        <div className="w-full text-center">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Statut : {row.status === 'verified' ? 'Payé' : row.status}</span>
                                         </div>
                                     )}
                                     {/* Delete button — always visible on mobile */}
