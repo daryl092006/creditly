@@ -126,7 +126,7 @@ export default function AdminKycClientTable({ submissions }: {
                                                 <p className="text-white text-lg tracking-tight font-black group-hover/name:text-blue-400 transition-colors uppercase italic">{sub.name}</p>
                                                 <p className="text-slate-500 text-xs font-bold leading-tight mb-3 group-hover/name:text-slate-400 transition-colors lowercase">{sub.email}</p>
                                             </Link>
-                                            <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/5 mt-2">
+                                            <div className="space-y-1 mt-2">
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-blue-500 mb-1">Détails de Vérification</p>
                                                 <p className="text-[10px] text-slate-400">Né(e): <span className="font-bold text-white">{sub.birth_date ? new Date(sub.birth_date).toLocaleDateString() : 'N/A'}</span> - Prof: <span className="font-bold text-white">{sub.profession || 'N/A'}</span></p>
                                                 <p className="text-[10px] text-slate-400 truncate">Réf: <span className="font-bold text-white">{sub.guarantor_name || 'N/A'}</span> ({sub.guarantor_whatsapp || '?'})</p>

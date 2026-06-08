@@ -152,13 +152,13 @@ export default async function AdminKycPage({
                                                 </td>
                                                 <td className="p-4">
                                                     {item.status === 'approved' ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase text-[9px] font-black tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                                            <CheckmarkFilled /> Approuvé
+                                                        <span className="text-emerald-400 uppercase text-[9px] font-black tracking-widest">
+                                                            Approuvé
                                                         </span>
                                                     ) : (
                                                         <div className="flex flex-col gap-1">
-                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 uppercase text-[9px] font-black tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                                                <CloseFilled /> Rejeté
+                                                            <span className="text-red-400 uppercase text-[9px] font-black tracking-widest">
+                                                                Rejeté
                                                             </span>
                                                             {item.rejection_reason && (
                                                                 <span className="text-[8px] text-red-500/60 font-bold italic truncate max-w-[150px]">

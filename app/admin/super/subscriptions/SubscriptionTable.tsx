@@ -215,7 +215,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                 </div>
                                             </td>
                                             <td className="px-6 py-6">
-                                                <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">
+                                                <span className="text-xs font-black uppercase text-slate-400">
                                                     {sub.plan.name}
                                                 </span>
                                             </td>
@@ -311,11 +311,11 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                             const displayStatus = isExpired ? 'expired' : sub.status;
 
                                                             return (
-                                                                <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${displayStatus === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                                    displayStatus === 'expired' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' :
-                                                                        displayStatus === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                                            displayStatus === 'cancelled' ? 'bg-slate-700/50 text-slate-400 border-slate-700' :
-                                                                                'bg-slate-800 text-slate-500 border-slate-700'
+                                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${displayStatus === 'active' ? 'text-blue-500' :
+                                                                    displayStatus === 'expired' ? 'text-amber-500' :
+                                                                        displayStatus === 'rejected' ? 'text-red-500' :
+                                                                            displayStatus === 'cancelled' ? 'text-slate-400' :
+                                                                                'text-slate-500'
                                                                     }`}>
                                                                     {displayStatus === 'active' ? 'Activé' :
                                                                         displayStatus === 'expired' ? 'Expiré' :
@@ -346,7 +346,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                             <p className="font-black text-white text-lg uppercase italic leading-tight tracking-tighter">{sub.user.prenom} {sub.user.nom}</p>
                                             <p className="text-[10px] font-bold text-slate-500 lowercase leading-none">{sub.user.email}</p>
                                         </div>
-                                        <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest italic border border-blue-500/10">
+                                        <span className="text-[10px] font-black uppercase text-slate-400">
                                             {sub.plan.name}
                                         </span>
                                     </div>
@@ -424,7 +424,7 @@ export default function SubscriptionTable({ rows, initialPlan = 'all' }: { rows:
                                                 Annuler l&apos;abonnement
                                             </button>
                                         ) : (
-                                            <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
+                                            <div className="w-full text-center">
                                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">
                                                     {(() => {
                                                         const isExpired = sub.status === 'active' && sub.end_date && new Date(sub.end_date) < new Date();

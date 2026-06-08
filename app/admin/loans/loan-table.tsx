@@ -229,7 +229,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
 
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         {row.risk_class && (
-                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${row.risk_class === 'A' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                            <span className="text-[10px] font-bold text-slate-500">
                                                                 Risque {row.risk_class}
                                                             </span>
                                                         )}
@@ -256,8 +256,8 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                                 )}
                                                             </>
                                                         ) : new Date(row.date) >= new Date('2026-03-08T00:00:00') ? (
-                                                            <span className="inline-flex items-center px-2 py-1 bg-slate-800/50 text-slate-600 border border-slate-700/50 rounded-lg text-[7px] font-black uppercase tracking-[0.1em] opacity-60">
-                                                                ⚠️ Pas de décharge
+                                                            <span className="text-[10px] text-slate-500 font-bold">
+                                                                Pas de décharge
                                                             </span>
                                                         ) : (
                                                             <span className="text-[7px] font-black text-slate-700 uppercase tracking-widest italic opacity-40">
@@ -284,17 +284,14 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-xs font-black uppercase tracking-widest border border-blue-500/20 italic">
+                                            <span className="text-xs font-black uppercase text-slate-400">
                                                 {row.plan}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${row.payout_network === 'MTN' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
-                                                        row.payout_network === 'Moov' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                                                            'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                                        }`}>
+                                                    <span className="text-[10px] font-bold text-slate-400">
                                                         {row.payout_network || 'À définir'}
                                                     </span>
                                                     <p className="text-xs font-black text-white italic">{row.payout_phone || 'Non renseigné'}</p>
@@ -361,9 +358,9 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                         Lecture Seule
                                                     </span>
                                                 ) : (
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest italic px-3 py-1 rounded-lg border ${row.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                        row.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            'bg-slate-800 text-slate-500 border-slate-700'
+                                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${row.status === 'active' ? 'text-blue-500' :
+                                                        row.status === 'rejected' ? 'text-red-500' :
+                                                            'text-slate-500'
                                                         }`}>
                                                         {row.status === 'active' ? 'Actif' :
                                                             row.status === 'rejected' ? 'Rejeté' :
@@ -420,7 +417,7 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                             )}
                                         </div>
                                     </div>
-                                    <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest italic border border-blue-500/10">
+                                    <span className="text-[10px] font-black uppercase text-slate-400">
                                         {row.plan}
                                     </span>
                                 </div>
@@ -481,8 +478,8 @@ export default function AdminLoanTable({ rows, currentUserRole, repaymentPhones 
                                                     </button>
                                                 </>
                                             ) : (
-                                                <div className="w-full py-4 text-center rounded-2xl bg-white/5 border border-white/5">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic leading-none">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
+                                                <div className="w-full text-center">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{row.status === 'active' ? 'Prêt Actif' : row.status === 'rejected' ? 'Dossier Refusé' : row.status}</span>
                                                 </div>
                                             )}
                                         </>

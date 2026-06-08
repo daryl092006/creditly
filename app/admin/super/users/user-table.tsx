@@ -206,15 +206,12 @@ export default function UserManagementTable({ rows, currentUserRoles, initialSha
                                                         <span className={`w-1.5 h-1.5 rounded-full ${row.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></span>
                                                         <span className={`text-[8px] font-black uppercase tracking-widest ${row.is_active ? 'text-emerald-500' : 'text-slate-600'}`}>
                                                             {row.is_active ? 'Compte Actif' : 'En attente'}
+                                                            {row.risk_class && (
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 ml-2">
+                                                                    {row.risk_class}
+                                                                </span>
+                                                            )}
                                                         </span>
-                                                        {row.risk_class && (
-                                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${row.risk_class.toUpperCase() === 'ELITE' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                                row.risk_class.toUpperCase() === 'STANDARD' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
-                                                                    'bg-red-500/10 text-red-500 border-red-500/20'
-                                                                }`}>
-                                                                {row.risk_class}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -266,9 +263,9 @@ export default function UserManagementTable({ rows, currentUserRoles, initialSha
                                                         </div>
                                                     </>
                                                 ) : (
-                                                    <div className="flex flex-wrap gap-1">
+                                                    <div className="flex flex-wrap gap-2 text-slate-400">
                                                         {getRoles(row).map(r => (
-                                                            <span key={r} className="px-2 py-0.5 bg-slate-800 text-slate-400 border border-white/5 rounded text-[8px] font-black uppercase tracking-widest">
+                                                            <span key={r} className="text-[10px] font-black uppercase tracking-widest">
                                                                 {availableRoles.find(ar => ar.id === r)?.label || r}
                                                             </span>
                                                         ))}
@@ -407,7 +404,7 @@ export default function UserManagementTable({ rows, currentUserRoles, initialSha
                                                     ))
                                                 ) : (
                                                     getRoles(row).map(r => (
-                                                        <span key={r} className="px-2 py-1 bg-slate-800 text-slate-500 border border-white/5 rounded text-[8px] font-black uppercase tracking-widest">
+                                                        <span key={r} className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                                             {availableRoles.find(ar => ar.id === r)?.label || r}
                                                         </span>
                                                     ))
