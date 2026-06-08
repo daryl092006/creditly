@@ -281,15 +281,10 @@ export async function calculateDynamicLoanLimit(
 
     if (!user) return { dynamicLimit: 0, planMaxAmount, coeffScore: 0, coeffHistory: 0, cappedByLiquidity: false };
 
-    // 1. Coefficient basé sur la classe de risque
-    let coeffScore = 0.6;
-    if (user.risk_class === 'ELITE') coeffScore = 1.0;
-    else if (user.risk_class === 'FIABLE') coeffScore = 0.8;
-    else if (user.risk_class === 'STANDARD') coeffScore = 0.6;
-    else if (user.risk_class === 'A SURVEILLER') coeffScore = 0.3;
-    else if (user.risk_class === 'RISQUE') coeffScore = 0; // Bloqué
+    // 1. Coefficient basé sur la classe de risque (Forcé à 1.0 pour garantir l'accès au plafond maximal de l'abonnement)
+    let coeffScore = 1.0;
 
-    // 2. Coefficient historique (Supprimé car l'activation du forfait donne droit au plafond complet du score)
+    // 2. Coefficient historique (Supprimé car l'activation du forfait donne droit au plafond complet)
     let coeffHistory = 1.0;
 
     // 3. Calcul du plafond dynamique
