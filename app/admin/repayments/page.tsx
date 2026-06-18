@@ -45,11 +45,19 @@ export default async function AdminRepaymentPage({
     }
 
     if (queryStr) {
-        const orConditions = [`id.ilike.%${queryStr}%`, `loan_id.ilike.%${queryStr}%`, `user_id.ilike.%${queryStr}%`]
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(queryStr.trim())
+        const orConditions: string[] = []
+        if (isUuid) {
+            orConditions.push(`id.eq.${queryStr.trim()}`, `loan_id.eq.${queryStr.trim()}`, `user_id.eq.${queryStr.trim()}`)
+        }
         matchedUserIds.forEach(uid => {
             orConditions.push(`user_id.eq.${uid}`)
         })
-        repQuery = repQuery.or(orConditions.join(','))
+        if (orConditions.length > 0) {
+            repQuery = repQuery.or(orConditions.join(','))
+        } else {
+            repQuery = repQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+        }
     }
 
     repQuery = repQuery.order('created_at', { ascending: false })

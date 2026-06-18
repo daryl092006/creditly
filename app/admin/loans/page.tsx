@@ -48,12 +48,19 @@ export default async function AdminLoanPage({
     }
 
     if (queryStr) {
-        // Search in loan ID, user_id or user details (name, email)
-        const orConditions = [`id.ilike.%${queryStr}%`, `user_id.ilike.%${queryStr}%`]
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(queryStr.trim())
+        const orConditions: string[] = []
+        if (isUuid) {
+            orConditions.push(`id.eq.${queryStr.trim()}`, `user_id.eq.${queryStr.trim()}`)
+        }
         matchedUserIds.forEach(uid => {
             orConditions.push(`user_id.eq.${uid}`)
         })
-        loansQuery = loansQuery.or(orConditions.join(','))
+        if (orConditions.length > 0) {
+            loansQuery = loansQuery.or(orConditions.join(','))
+        } else {
+            loansQuery = loansQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+        }
     }
 
     // Apply Sort

@@ -11,7 +11,7 @@ import AdminEmailControl from '@/app/components/admin/AdminEmailControl'
 import { InternalControlPanel } from './InternalControlPanel'
 import { checkPlatformLiquidity, evaluateUserRisk } from '@/utils/risk-engine'
 
-import { calculateProfitToShare, getShareholderByEmail, getShareholdersConfig } from '@/utils/finance-utils'
+import { calculateProfitToShare, getShareholderByEmail, getShareholdersConfig, getPlatformCapital } from '@/utils/finance-utils'
 import InvestorSection from '../finance/InvestorSection'
 
 export default async function SuperAdminPage({
@@ -131,36 +131,18 @@ export default async function SuperAdminPage({
     const shareholders = await getShareholdersConfig(supabaseAdmin)
 
     // CALCUL DE LA LIQUIDITÉ RÉELLE (Pour éviter les 603k fantômes)
-    const INITIAL_TOTAL_CAPITAL = 2000000
+    const INITIAL_TOTAL_CAPITAL = await getPlatformCapital(supabaseAdmin)
     const capitalInCirculation = (allActiveLoans || []).reduce((acc: number, loan) => acc + Math.max(0, Number(loan.amount) - Number(loan.amount_paid)), 0)
 
-    // Le capital disponible augmente avec les réinvestissements ("Remises")
-    const totalCashInCaisse = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) + totalProfitEarned - totalWithdrawals - capitalInCirculation)
-    const maxCapitalAllowedInHand = Math.max(0, (INITIAL_TOTAL_CAPITAL + totalInvestorInvestments) - capitalInCirculation)
+    const totalCashInCaisse = Math.max(0, INITIAL_TOTAL_CAPITAL + totalProfitEarned - totalWithdrawals - capitalInCirculation)
+    const maxCapitalAllowedInHand = Math.max(0, INITIAL_TOTAL_CAPITAL - capitalInCirculation)
     const capitalInHand = Math.max(0, Math.min(maxCapitalAllowedInHand, totalCashInCaisse))
     const benefitsInHand = Math.max(0, totalCashInCaisse - capitalInHand)
 
-    // --- LOGIQUE DE PARTS DYNAMIQUES (CAPITAL FLOTTANT) ---
     const allUsers = admins || [] // On utilise la liste des admins déjà chargée
     const idToEmail = Object.fromEntries(allUsers.map(u => [u.id, u.email?.toLowerCase()]))
 
-    const shareholdersWithCapital = shareholders.map(s => {
-        const baseCapital = INITIAL_TOTAL_CAPITAL * s.share;
-        const myInvestments = ledgerTransactions
-            ?.filter((t: any) =>
-                (t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()) &&
-                t.type === 'investment' &&
-                t.status === 'approved'
-            )
-            .reduce((acc: number, t: any) => acc + Math.abs(Number(t.amount)), 0) || 0;
-
-        return { ...s, currentCapital: baseCapital + myInvestments };
-    });
-
-    const totalCurrentCapital = shareholdersWithCapital.reduce((acc: number, s: any) => acc + s.currentCapital, 0);
-
-    const enrichedShareholders = shareholdersWithCapital.map(s => {
-        const dynamicShare = s.currentCapital / totalCurrentCapital;
+    const enrichedShareholders = shareholders.map(s => {
         const adminId = allUsers.find(u => u.email?.toLowerCase() === s.email?.toLowerCase())?.id
         const myComms = totalCommissions?.filter((c: any) => c.admin_id === adminId) || []
         const realizedComms = myComms.filter((c: any) => c.loan?.status === 'paid' || c.type === 'repayment_reward')
@@ -173,20 +155,12 @@ export default async function SuperAdminPage({
             return acc + totalDebt
         }, 0)
 
-        const myTransactions = ledgerTransactions.filter((t: any) =>
-            t.shareholder_name?.toLowerCase().trim() === s.name?.toLowerCase().trim()
-        )
-        const approvedTransactions = myTransactions.filter((t: any) => t.status === 'approved')
-        const totalAdjustments = approvedTransactions.reduce((acc: number, t: any) => acc + Number(t.amount), 0)
-
         return {
             ...s,
             realizedComms: totalComms,
             totalDebt: myDebt,
-            share: dynamicShare,
-            originalShare: s.share,
-            totalAdjustments: totalAdjustments,
-            balance: Math.floor(totalProfitEarned * dynamicShare) + totalAdjustments + totalComms
+            currentCapital: INITIAL_TOTAL_CAPITAL * s.share,
+            originalShare: s.originalShare || s.share
         }
     })
 

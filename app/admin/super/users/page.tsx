@@ -30,7 +30,12 @@ export default async function UserManagementPage({
 
     // Apply Filters
     if (queryStr) {
-        usersQuery = usersQuery.or(`email.ilike.%${queryStr}%,nom.ilike.%${queryStr}%,prenom.ilike.%${queryStr}%,id.ilike.%${queryStr}%`)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(queryStr.trim())
+        if (isUuid) {
+            usersQuery = usersQuery.eq('id', queryStr.trim())
+        } else {
+            usersQuery = usersQuery.or(`email.ilike.%${queryStr}%,nom.ilike.%${queryStr}%,prenom.ilike.%${queryStr}%`)
+        }
     }
 
     if (statusFilter === 'active') {

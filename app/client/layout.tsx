@@ -3,6 +3,7 @@ import NotificationBanner from '@/components/NotificationBanner'
 import RealtimeClientSync from '../components/client/RealtimeClientSync'
 import { createClient } from '@/utils/supabase/server'
 import BottomNav from '../components/client/BottomNav'
+import AutoLogout from '../components/AutoLogout'
 
 import { redirect } from 'next/navigation'
 
@@ -30,6 +31,7 @@ export default async function ClientLayout({ children }: { children: React.React
 
     return (
         <div className="min-h-screen bg-slate-950">
+            <AutoLogout />
             <RealtimeClientSync userId={user?.id} />
             <NotificationBanner />
             <ClientHeader roles={roles} />

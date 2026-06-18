@@ -2,6 +2,7 @@ import AdminNav from '@/app/components/admin/AdminNav'
 import { getCurrentUserRoles } from '@/utils/admin-security'
 import RealtimeAdminSync from '../components/admin/RealtimeAdminSync'
 import { createClient } from '@/utils/supabase/server'
+import AutoLogout from '../components/AutoLogout'
 
 export default async function AdminLayout({
     children,
@@ -35,6 +36,7 @@ export default async function AdminLayout({
 
     return (
         <div className="min-h-screen bg-slate-950">
+            <AutoLogout />
             <RealtimeAdminSync />
             <AdminNav userRoles={roles} notificationCounts={notificationCounts} />
             <main className="page-transition">

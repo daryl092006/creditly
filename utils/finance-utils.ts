@@ -2,12 +2,9 @@ import { calculateLoanDebt } from './loan-utils'
 
 export const DISTRIBUTION_START_DATE = '2026-03-19T00:00:00Z'
 
-// Fallback if DB fetch fails
 export const DEFAULT_SHAREHOLDERS = [
-    { email: 'wilfriedgwld@gmail.com', share: 0.03, color: '#f59e0b', name: 'Wilfried' },
-    { email: 'emilebodjrenou31@gmail.com', share: 0.005, color: '#ef4444', name: 'Borel' },
-    { email: 'denisgangnito9@gmail.com', share: 0.08, color: '#10b981', name: 'Denis' },
-    { email: 'hllawani0@gmail.com', share: 0.885, color: '#3b82f6', name: 'Habib' }
+    { email: 'denisgangnito9@gmail.com', share: 0.085, color: '#10b981', name: 'Denis' },
+    { email: 'hllawani0@gmail.com', share: 0.915, color: '#3b82f6', name: 'Habib' }
 ]
 
 export async function getPlatformCapital(supabase: any) {

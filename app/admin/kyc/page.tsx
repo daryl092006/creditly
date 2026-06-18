@@ -39,11 +39,19 @@ export default async function AdminKycPage({
     }
 
     if (queryStr) {
-        const orConditions = [`id.ilike.%${queryStr}%`, `user_id.ilike.%${queryStr}%`]
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(queryStr.trim())
+        const orConditions: string[] = []
+        if (isUuid) {
+            orConditions.push(`id.eq.${queryStr.trim()}`, `user_id.eq.${queryStr.trim()}`)
+        }
         matchedUserIds.forEach(uid => {
             orConditions.push(`user_id.eq.${uid}`)
         })
-        kycQuery = kycQuery.or(orConditions.join(','))
+        if (orConditions.length > 0) {
+            kycQuery = kycQuery.or(orConditions.join(','))
+        } else {
+            kycQuery = kycQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+        }
     }
 
     kycQuery = kycQuery.order('created_at', { ascending: false })
@@ -76,7 +84,7 @@ export default async function AdminKycPage({
             { type: 'id_card', url: sub.id_card_url },
             { type: 'selfie', url: sub.selfie_url },
             { type: 'proof_of_residence', url: sub.proof_of_residence_url }
-        ]
+        ].filter(d => d.url)
     }))
 
     return (

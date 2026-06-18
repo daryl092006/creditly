@@ -277,8 +277,12 @@ export default async function Home() {
                             <div>
                                 <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-8 italic">Navigation</h4>
                                 <ul className="space-y-4">
-                                    {['Solutions', 'Tarifs', 'Sécurité'].map(l => (
-                                        <li key={l}><Link href="#" className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">{l}</Link></li>
+                                    {[
+                                        { name: 'Solutions', href: '#features' },
+                                        { name: 'Tarifs', href: '#pricing' },
+                                        { name: 'Sécurité', href: '#security' }
+                                    ].map(l => (
+                                        <li key={l.name}><Link href={l.href} className="text-xs font-black text-slate-500 hover:text-blue-500 transition-colors uppercase italic">{l.name}</Link></li>
                                     ))}
                                 </ul>
                             </div>
