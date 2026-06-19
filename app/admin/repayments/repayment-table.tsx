@@ -180,12 +180,12 @@ export default function AdminRepaymentTable({
                                                     <div className="flex items-center gap-2">
                                                         <div className="h-1 flex-1 bg-slate-800 rounded-full overflow-hidden w-24">
                                                             <div
-                                                                className={`h-full transition-all ${row.loan_initial_total <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                                                                style={{ width: `${row.loan_initial_total <= 0 ? 0 : Math.min((row.loan_amount_paid / row.loan_initial_total) * 100, 100)}%` }}
+                                                                className={`h-full transition-all ${(row.loan_amount_paid + row.loan_total_due) <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                                                style={{ width: `${(row.loan_amount_paid + row.loan_total_due) <= 0 ? 0 : Math.min((row.loan_amount_paid / (row.loan_amount_paid + row.loan_total_due)) * 100, 100)}%` }}
                                                             />
                                                         </div>
                                                         <span className="text-[8px] font-black text-blue-400 italic">
-                                                            {row.loan_initial_total <= 0 ? '0%' : ((row.loan_amount_paid / row.loan_initial_total) * 100).toFixed(0) + '%'}
+                                                            {(row.loan_amount_paid + row.loan_total_due) <= 0 ? '0%' : ((row.loan_amount_paid / (row.loan_amount_paid + row.loan_total_due)) * 100).toFixed(0) + '%'}
                                                         </span>
                                                     </div>
                                                 </Link>
@@ -316,13 +316,13 @@ export default function AdminRepaymentTable({
                                     <div className="flex justify-between items-end">
                                         <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic leading-none">Progression Prêt</p>
                                         <span className="text-[10px] font-black text-blue-400 italic">
-                                            {row.loan_initial_total <= 0 ? '0%' : ((row.loan_amount_paid / row.loan_initial_total) * 100).toFixed(0) + '%'}
+                                            {(row.loan_amount_paid + row.loan_total_due) <= 0 ? '0%' : ((row.loan_amount_paid / (row.loan_amount_paid + row.loan_total_due)) * 100).toFixed(0) + '%'}
                                         </span>
                                     </div>
                                     <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full transition-all ${row.loan_initial_total <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                                            style={{ width: `${row.loan_initial_total <= 0 ? 0 : Math.min((row.loan_amount_paid / row.loan_initial_total) * 100, 100)}%` }}
+                                            className={`h-full transition-all ${(row.loan_amount_paid + row.loan_total_due) <= 0 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                            style={{ width: `${(row.loan_amount_paid + row.loan_total_due) <= 0 ? 0 : Math.min((row.loan_amount_paid / (row.loan_amount_paid + row.loan_total_due)) * 100, 100)}%` }}
                                         />
                                     </div>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
