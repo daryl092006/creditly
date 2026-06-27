@@ -99,8 +99,8 @@ export async function updateInvestorTransactionStatus(id: string, status: 'appro
         }
     }
 
-    // --- NOUVEAU : RECALCUL AUTOMATIQUE DES PARTS SI INVESTISSEMENT/RETRAIT ---
-    if (status === 'approved' && (tx.type === 'investment' || (tx.type === 'withdrawal' && !tx.description?.startsWith('[REPAY_DEBT]')))) {
+    // --- NOUVEAU : RECALCUL AUTOMATIQUE DES PARTS SI INVESTISSEMENT ---
+    if (status === 'approved' && tx.type === 'investment') {
         const { syncShareholdersShares } = await import('@/utils/finance-utils')
         await syncShareholdersShares(supabaseAdmin, tx.shareholder_name, tx.amount, tx.type)
     }
