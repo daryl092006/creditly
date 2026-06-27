@@ -183,24 +183,25 @@ export default function InvestorSection({
 
                             <div className="pt-6 border-t border-white/5 space-y-4">
                                 <div className="space-y-1">
-                                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Solde Disponible (Brut)</p>
+                                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Solde Disponible (Gains Cumulés)</p>
                                     <p className={`text-2xl font-black italic tracking-tighter leading-none ${s.balance >= 0 ? 'text-white' : 'text-red-500'}`}>
                                         {s.balance.toLocaleString('fr-FR')} F
                                     </p>
                                 </div>
 
                                 {s.totalDebt > 0 && (
-                                    <div className="space-y-1 pt-1">
-                                        <p className="text-[8px] font-black text-red-500 uppercase tracking-widest leading-none italic">Dette à déduire</p>
-                                        <p className="text-sm font-black text-red-500 italic tracking-tighter leading-none">
-                                            - {s.totalDebt.toLocaleString('fr-FR')} F
-                                        </p>
-                                        <div className="pt-3 border-t border-white/5">
-                                            <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest leading-none">Net Retirable</p>
-                                            <p className="text-xl font-black text-emerald-500 italic tracking-tighter">
-                                                {Math.max(0, s.balance - s.totalDebt).toLocaleString('fr-FR')} F
-                                            </p>
+                                    <div className="space-y-2 pt-1">
+                                        <div className="flex justify-between items-center text-[9px] font-bold text-red-500 italic">
+                                            <span className="text-[8px] font-black text-red-500 uppercase tracking-widest leading-none">Dette active à déduire</span>
+                                            <span>- {s.totalDebt.toLocaleString('fr-FR')} F</span>
                                         </div>
+                                        <div className="flex justify-between items-center text-[9px] font-bold text-emerald-500 italic border-t border-white/5 pt-2">
+                                            <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest leading-none">Net Retirable (Vers votre poche)</span>
+                                            <span>{Math.max(0, s.balance - s.totalDebt).toLocaleString('fr-FR')} F</span>
+                                        </div>
+                                        <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider italic leading-tight">
+                                            * Vous pouvez utiliser vos gains ({s.balance.toLocaleString('fr-FR')} F) pour rembourser votre dette dans l'onglet "Gérer".
+                                        </p>
                                     </div>
                                 )}
 
@@ -340,6 +341,7 @@ export default function InvestorSection({
                 onClose={() => setSelectedName(null)}
                 name={selectedName || ''}
                 debt={shareholdersWithBalance.find(s => s.name === selectedName)?.totalDebt || 0}
+                balance={shareholdersWithBalance.find(s => s.name === selectedName)?.balance || 0}
                 onSuccess={handleTransaction}
             />
         </div >

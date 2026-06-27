@@ -8,12 +8,14 @@ export function InvestorTransactionModal({
     onClose, 
     name, 
     debt = 0,
+    balance = 0,
     onSuccess 
 }: { 
     isOpen: boolean; 
     onClose: () => void; 
     name: string;
     debt?: number;
+    balance?: number;
     onSuccess: (type: 'withdrawal' | 'investment', amount: number, repayDebt?: boolean) => Promise<void>;
 }) {
     const [amount, setAmount] = useState('')
@@ -45,6 +47,12 @@ export function InvestorTransactionModal({
                 <div className="space-y-2">
                     <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Action Trésorerie : {name}</h3>
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Enregistrer un mouvement de fonds personnel</p>
+                    
+                    <div className="mt-4 p-4 bg-slate-950/40 border border-white/5 rounded-2xl flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Gains Disponibles (Solde Brut)</span>
+                        <span className="text-lg font-black text-white italic">{balance.toLocaleString('fr-FR')} F</span>
+                    </div>
+
                     {debt > 0 && (
                         <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
                             <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
